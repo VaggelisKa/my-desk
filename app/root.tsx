@@ -50,6 +50,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 size="icon"
                 className="hover:bg-gray-300 focus-visible:ring-white"
               >
+                <span className="sr-only">logout</span>
                 <ExitIcon className="h-6 w-6" />
               </Button>
             </form>
