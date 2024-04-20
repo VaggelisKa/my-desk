@@ -4,10 +4,10 @@ import {
   type MetaFunction,
   json,
 } from "@vercel/remix";
-import { TypographyH1 } from "~/components/ui/Typography";
-import { Input } from "~/components/ui/Input";
-import { Label } from "~/components/ui/Label";
-import { Button } from "~/components/ui/Button";
+import { TypographyH1 } from "~/components/ui/typography";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Button } from "~/components/ui/button";
 import { useEffect, useRef } from "react";
 
 let validEmployeeNumbers = ["g04255", "g04256"];
