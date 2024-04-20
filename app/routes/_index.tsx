@@ -1,5 +1,6 @@
-import type { MetaFunction } from "@vercel/remix";
+import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
 import { Button } from "~/components/ui/button";
+import { userCookie } from "~/cookies.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -7,6 +8,15 @@ export const meta: MetaFunction = () => {
     { name: "description", content: "Welcome to Remix!" },
   ];
 };
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  let cookieHeader = request.headers.get("Cookie");
+  let parsedUserCookie = await userCookie.parse(cookieHeader);
+
+  console.log(parsedUserCookie);
+
+  return null;
+}
 
 export default function Index() {
   return (

@@ -1,4 +1,10 @@
-import { Form, redirect, useActionData, useNavigation } from "@remix-run/react";
+import {
+  Form,
+  Link,
+  redirect,
+  useActionData,
+  useNavigation,
+} from "@remix-run/react";
 import {
   type ActionFunctionArgs,
   type MetaFunction,
@@ -9,6 +15,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Button } from "~/components/ui/button";
 import { useEffect, useRef } from "react";
+import { userCookie } from "~/cookies.server";
 
 let validEmployeeNumbers = ["g04255", "g04256"];
 
@@ -30,7 +37,9 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 
-  return redirect("/");
+  return redirect("/", {
+    headers: { "Set-Cookie": await userCookie.serialize(employeeNumber) },
+  });
 }
 
 export default function LoginPage() {
@@ -69,9 +78,26 @@ export default function LoginPage() {
           )}
         </fieldset>
 
-        <Button name="intent" value="employee-login" type="submit">
-          Login
-        </Button>
+        <div className="w-full">
+          <Button
+            className="w-full"
+            name="intent"
+            value="employee-login"
+            type="submit"
+          >
+            Login
+          </Button>
+
+          <p className="pt-2">
+            Don't have a desk assigned?{" "}
+            <Link
+              className="text-blue-400 underline outline-blue-300"
+              to="/login/guest"
+            >
+              Click here
+            </Link>
+          </p>
+        </div>
       </Form>
     </section>
   );
