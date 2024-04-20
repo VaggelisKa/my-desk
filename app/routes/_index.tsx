@@ -1,5 +1,5 @@
 import type { MetaFunction } from "@vercel/remix";
-import { Button } from "~/components/ui/button";
+import { Button } from "~/components/ui/Button";
 
 export const meta: MetaFunction = () => {
   return [
@@ -13,6 +13,7 @@ export default function Index() {
     <div>
       <h1>Welcome to Remix</h1>
       <Button>test 1</Button>
+      <a href="/login"> to login</a>
     </div>
   );
 }
