@@ -5,6 +5,9 @@ import { requireAuthCookie } from "~/cookies.server";
 
 import { DeskButton } from "~/components/desk-button";
 import { DialogDemo } from "~/components/desk-selection-modal";
+import { db } from "~/lib/db/drizzle.server";
+import { users } from "~/lib/db/schema.server";
+import { eq } from "drizzle-orm";
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,7 +19,9 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   let employeeNumber = await requireAuthCookie(request);
 
-  return { employeeNumber };
+  let user = await db.select().from(users).where(eq(users.id, employeeNumber));
+
+  return { user };
 }
 
 export default function Index() {
