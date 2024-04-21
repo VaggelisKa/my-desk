@@ -18,6 +18,8 @@ export let links: LinksFunction = () => [
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  console.log("REQUEST => ", request.headers.get("Cookie"));
+
   let cookieHeader = request.headers.get("Cookie");
   let employeeNumber = await userCookie.parse(cookieHeader);
 
