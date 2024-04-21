@@ -40,7 +40,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   let formData = await request.formData();
   let employeeNumber = String(formData.get("employee-number"));
-  let hasError = !validEmployeeNumbers.includes(employeeNumber);
+  let hasError = !validEmployeeNumbers.includes(employeeNumber.toLowerCase());
 
   if (hasError) {
     return json(
