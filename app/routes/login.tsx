@@ -8,6 +8,7 @@ import {
 import {
   type ActionFunctionArgs,
   type MetaFunction,
+  type LoaderFunctionArgs,
   json,
 } from "@vercel/remix";
 import { TypographyH1 } from "~/components/ui/typography";
@@ -24,6 +25,17 @@ export let meta: MetaFunction = () => [
     title: "Employee login",
   },
 ];
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  let cookieHeader = request.headers.get("Cookie");
+  let employeeNumber = await userCookie.parse(cookieHeader);
+
+  if (employeeNumber) {
+    throw redirect("/");
+  }
+
+  return null;
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   let formData = await request.formData();

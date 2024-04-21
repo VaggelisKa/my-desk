@@ -42,7 +42,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-gray-300">A workspace management app</p>
           </div>
 
-          {loaderData.employeeNumber && (
+          {loaderData?.employeeNumber && (
             <form method="POST" action="/login/logout">
               <Button
                 type="submit"

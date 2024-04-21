@@ -1,6 +1,7 @@
+import { useLoaderData } from "@remix-run/react";
 import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
 import { Button } from "~/components/ui/button";
-import { userCookie } from "~/cookies.server";
+import { requireAuthCookie } from "~/cookies.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -10,18 +11,17 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let cookieHeader = request.headers.get("Cookie");
-  let parsedUserCookie = await userCookie.parse(cookieHeader);
+  let employeeNumber = await requireAuthCookie(request);
 
-  console.log(parsedUserCookie);
-
-  return null;
+  return { employeeNumber };
 }
 
 export default function Index() {
+  let loaderData = useLoaderData<typeof loader>();
+
   return (
     <div>
-      <h1>Welcome to Remix</h1>
+      <h1>Welcome to Remix, {loaderData?.employeeNumber ?? ""}</h1>
       <Button>test 1</Button>
       <a href="/login"> to login</a>
     </div>
