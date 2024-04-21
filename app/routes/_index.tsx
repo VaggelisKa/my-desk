@@ -18,9 +18,6 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   let employeeNumber = await requireAuthCookie(request);
-
-  console.log("EMPLOYEE NUMBER => ", employeeNumber);
-
   let user = await db.select().from(users).where(eq(users.id, employeeNumber));
 
   console.log("USER => ", user);

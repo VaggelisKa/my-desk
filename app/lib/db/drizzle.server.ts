@@ -1,5 +1,14 @@
+import * as dotenv from "dotenv";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
+
+dotenv.config();
+
+console.log(
+  "credentials => ",
+  process.env.DATABASE_URL,
+  process.env.DATABASE_AUTH_TOKEN,
+);
 
 if (!process.env.DATABASE_URL) {
   console.log(process.env.DATABASE_URL);
