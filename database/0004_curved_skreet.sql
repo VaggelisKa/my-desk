@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS `desks_row_column_unique`;

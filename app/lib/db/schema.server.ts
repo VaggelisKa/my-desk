@@ -18,13 +18,14 @@ export let desks = sqliteTable(
   {
     id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
     row: integer("row", { mode: "number" }).notNull(),
+    block: integer("block", { mode: "number" }).notNull(),
     column: integer("column", { mode: "number" }).notNull(),
     userId: text("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
   },
   (t) => ({
-    uniqueRowAndColumnCombo: unique().on(t.row, t.column),
+    uniqueRowAndColumnCombo: unique().on(t.block, t.row, t.column),
   }),
 );
 

@@ -16,11 +16,57 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+let desksMock = {
+  1: [
+    { row: 1, seat: 1, userId: "1" },
+    { row: 1, seat: 2, userId: "2" },
+    { row: 1, seat: 3, userId: "3" },
+    { row: 2, seat: 1, userId: "4" },
+    { row: 2, seat: 2, userId: "5" },
+    { row: 2, seat: 3, userId: "6" },
+  ],
+  2: [
+    { row: 1, seat: 1, userId: "7" },
+    { row: 1, seat: 2, userId: "8" },
+    { row: 1, seat: 3, userId: "9" },
+    { row: 2, seat: 1, userId: "10" },
+    { row: 2, seat: 2, userId: "11" },
+    { row: 2, seat: 3, userId: "12" },
+  ],
+  3: [
+    { row: 1, seat: 1, userId: "7" },
+    { row: 1, seat: 2, userId: "8" },
+    { row: 1, seat: 3, userId: "9" },
+    { row: 2, seat: 1, userId: "10" },
+    { row: 2, seat: 2, userId: "11" },
+    { row: 2, seat: 3, userId: "12" },
+  ],
+  4: [
+    { row: 1, seat: 1, userId: "7" },
+    { row: 1, seat: 2, userId: "8" },
+    { row: 1, seat: 3, userId: "9" },
+  ],
+  5: [
+    { row: 1, seat: 1, userId: "7" },
+    { row: 1, seat: 2, userId: "8" },
+    { row: 1, seat: 3, userId: "9" },
+    { row: 2, seat: 1, userId: "10" },
+    { row: 2, seat: 2, userId: "11" },
+    { row: 2, seat: 3, userId: "12" },
+  ],
+  6: [
+    { row: 1, seat: 1, userId: "7" },
+    { row: 1, seat: 2, userId: "8" },
+    { row: 1, seat: 3, userId: "9" },
+    { row: 2, seat: 1, userId: "10" },
+    { row: 2, seat: 2, userId: "11" },
+    { row: 2, seat: 3, userId: "12" },
+  ],
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   let employeeNumber = await requireAuthCookie(request);
   let user = await db.select().from(users).where(eq(users.id, employeeNumber));
-
-  console.log("USER => ", user);
 
   return { user };
 }
@@ -32,31 +78,22 @@ export default function Index() {
 
   return (
     <section>
-      <div className="grid grid-cols-3 gap-4 md:gap-8">
-        <div className="flex flex-col gap-2">
-          <span className="text-sm">C1.1</span>
-          <DialogDemo TriggerElement={<DeskButton />} />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span>C1.2</span>
-          <DeskButton />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span>C1.3</span>
-          <DeskButton />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span>C1.4</span>
-          <DeskButton />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span>C1.5</span>
-          <DeskButton />
-        </div>
+      <div className="flex flex-col gap-8">
+        {Object.entries(desksMock).map(([block, desks]) => {
+          return (
+            <div key={block} className="flex flex-col gap-2">
+              <span className="text-lg font-bold">Block {block}</span>
+              <div className="grid grid-cols-3 gap-2">
+                {desks.map((desk) => (
+                  <DialogDemo
+                    key={desk.row + desk.seat}
+                    TriggerElement={<DeskButton />}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

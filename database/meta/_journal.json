@@ -22,6 +22,27 @@
       "when": 1713712840294,
       "tag": "0002_opposite_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1713816893902,
+      "tag": "0003_tough_sheva_callister",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1713816927543,
+      "tag": "0004_curved_skreet",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1713817038074,
+      "tag": "0005_nosy_unicorn",
+      "breakpoints": true
     }
   ]
 }

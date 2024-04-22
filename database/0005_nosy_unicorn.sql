@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `desks_block_row_column_unique` ON `desks` (`block`,`row`,`column`);

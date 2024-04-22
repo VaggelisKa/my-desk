@@ -1,0 +1,1 @@
+ALTER TABLE desks ADD `block` integer NOT NULL;
