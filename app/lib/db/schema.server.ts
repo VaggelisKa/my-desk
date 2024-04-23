@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import {
   integer,
   primaryKey,
@@ -32,8 +33,16 @@ export let desks = sqliteTable(
 export let reservations = sqliteTable(
   "reservations",
   {
-    userId: text("user_id").notNull(),
-    deskId: integer("desk_id", { mode: "number" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    deskId: integer("desk_id", { mode: "number" }).references(() => desks.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
     day: text("day").notNull(),
     week: integer("week", { mode: "number" }).notNull(),
   },
@@ -43,3 +52,28 @@ export let reservations = sqliteTable(
     }),
   }),
 );
+
+// relations for query syntax
+
+export let usersRelations = relations(users, ({ one, many }) => ({
+  reservations: many(reservations),
+}));
+
+export let desksRelations = relations(desks, ({ one, many }) => ({
+  reservations: many(reservations),
+  user: one(users, {
+    fields: [desks.userId],
+    references: [users.id],
+  }),
+}));
+
+export let reservationsRelations = relations(reservations, ({ one, many }) => ({
+  users: one(users, {
+    fields: [reservations.userId],
+    references: [users.id],
+  }),
+  desks: one(desks, {
+    fields: [reservations.deskId],
+    references: [desks.id],
+  }),
+}));

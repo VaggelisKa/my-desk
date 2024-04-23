@@ -68,13 +68,19 @@ let desksMock = {
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAuthCookie(request);
 
-  let res = await db
-    .select()
-    .from(desks)
-    .fullJoin(reservations, eq(reservations.deskId, desks.id))
-    .fullJoin(users, eq(users.id, desks.userId));
+  let res = await db.query.desks.findMany({
+    columns: {
+      block: true,
+      row: true,
+      column: true,
+    },
+    with: {
+      reservations: true,
+      user: true,
+    },
+  });
 
-  return { data: res };
+  return { res };
 }
 
 export default function Index() {
