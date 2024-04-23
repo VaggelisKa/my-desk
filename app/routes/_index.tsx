@@ -6,8 +6,9 @@ import { requireAuthCookie } from "~/cookies.server";
 import { DeskButton } from "~/components/desk-button";
 import { DialogDemo } from "~/components/desk-selection-modal";
 import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema.server";
+
 import { eq } from "drizzle-orm";
+import { desks, reservations, users } from "~/lib/db/schema.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -65,10 +66,15 @@ let desksMock = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let employeeNumber = await requireAuthCookie(request);
-  let user = await db.select().from(users).where(eq(users.id, employeeNumber));
+  await requireAuthCookie(request);
 
-  return { user };
+  let res = await db
+    .select()
+    .from(desks)
+    .fullJoin(reservations, eq(reservations.deskId, desks.id))
+    .fullJoin(users, eq(users.id, desks.userId));
+
+  return { data: res };
 }
 
 export default function Index() {

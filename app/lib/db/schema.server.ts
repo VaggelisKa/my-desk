@@ -38,6 +38,8 @@ export let reservations = sqliteTable(
     week: integer("week", { mode: "number" }).notNull(),
   },
   (t) => ({
-    compositePrimaryKey: primaryKey({ columns: [t.deskId, t.userId] }),
+    compositePrimaryKey: primaryKey({
+      columns: [t.deskId, t.userId, t.day, t.week],
+    }),
   }),
 );
