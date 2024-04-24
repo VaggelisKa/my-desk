@@ -4,11 +4,8 @@ import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
 import { requireAuthCookie } from "~/cookies.server";
 
 import { DeskButton } from "~/components/desk-button";
-import { DialogDemo } from "~/components/desk-selection-modal";
+import { DeskModal } from "~/components/desk-selection-modal";
 import { db } from "~/lib/db/drizzle.server";
-
-import { eq } from "drizzle-orm";
-import { desks, reservations, users } from "~/lib/db/schema.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -17,62 +14,15 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-let desksMock = {
-  1: [
-    { row: 1, seat: 1, userId: "1" },
-    { row: 1, seat: 2, userId: "2" },
-    { row: 1, seat: 3, userId: "3" },
-    { row: 2, seat: 1, userId: "4" },
-    { row: 2, seat: 2, userId: "5" },
-    { row: 2, seat: 3, userId: "6" },
-  ],
-  2: [
-    { row: 1, seat: 1, userId: "7" },
-    { row: 1, seat: 2, userId: "8" },
-    { row: 1, seat: 3, userId: "9" },
-    { row: 2, seat: 1, userId: "10" },
-    { row: 2, seat: 2, userId: "11" },
-    { row: 2, seat: 3, userId: "12" },
-  ],
-  3: [
-    { row: 1, seat: 1, userId: "7" },
-    { row: 1, seat: 2, userId: "8" },
-    { row: 1, seat: 3, userId: "9" },
-    { row: 2, seat: 1, userId: "10" },
-    { row: 2, seat: 2, userId: "11" },
-    { row: 2, seat: 3, userId: "12" },
-  ],
-  4: [
-    { row: 1, seat: 1, userId: "7" },
-    { row: 1, seat: 2, userId: "8" },
-    { row: 1, seat: 3, userId: "9" },
-  ],
-  5: [
-    { row: 1, seat: 1, userId: "7" },
-    { row: 1, seat: 2, userId: "8" },
-    { row: 1, seat: 3, userId: "9" },
-    { row: 2, seat: 1, userId: "10" },
-    { row: 2, seat: 2, userId: "11" },
-    { row: 2, seat: 3, userId: "12" },
-  ],
-  6: [
-    { row: 1, seat: 1, userId: "7" },
-    { row: 1, seat: 2, userId: "8" },
-    { row: 1, seat: 3, userId: "9" },
-    { row: 2, seat: 1, userId: "10" },
-    { row: 2, seat: 2, userId: "11" },
-    { row: 2, seat: 3, userId: "12" },
-  ],
-};
-
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAuthCookie(request);
 
-  let res = await db.query.desks.findMany({
+  let desks = await db.query.desks.findMany({
     columns: {
       block: true,
       row: true,
       column: true,
+      id: true,
     },
     with: {
       reservations: true,
@@ -80,26 +30,39 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  return { res };
+  let desksAggregatedByBlock = desks.reduce(
+    (acc, desk) => {
+      if (!acc[desk.block]) {
+        acc[desk.block] = [];
+      }
+
+      acc[desk.block].push(desk);
+
+      return acc;
+    },
+    {} as Record<number, typeof desks>,
+  );
+
+  return { desks: desksAggregatedByBlock };
 }
 
 export default function Index() {
-  let loaderData = useLoaderData<typeof loader>();
-
-  console.log(loaderData);
+  let data = useLoaderData<typeof loader>();
 
   return (
     <section>
       <div className="flex flex-col gap-8">
-        {Object.entries(desksMock).map(([block, desks]) => {
+        {Object.entries(data.desks).map(([block, desks]) => {
           return (
             <div key={block} className="flex flex-col gap-2">
               <span className="text-lg font-bold">Block {block}</span>
               <div className="grid grid-cols-3 gap-2">
                 {desks.map((desk) => (
-                  <DialogDemo
-                    key={desk.row + desk.seat}
+                  <DeskModal
+                    key={desk.id}
                     TriggerElement={<DeskButton />}
+                    // @ts-expect-error Fix the type
+                    desk={desk}
                   />
                 ))}
               </div>

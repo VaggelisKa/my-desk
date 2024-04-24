@@ -7,12 +7,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
+import type { users, reservations } from "~/lib/db/schema.server";
 
-export function DialogDemo({
-  TriggerElement,
-}: {
+type DeskModalProps = {
+  desk: {
+    id: number;
+    row: number;
+    block: number;
+    column: number;
+    user: typeof users.$inferSelect;
+    reservations: (typeof reservations.$inferSelect)[];
+  };
   TriggerElement?: React.ReactNode;
-}) {
+};
+
+export function DeskModal({ TriggerElement, desk }: DeskModalProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
