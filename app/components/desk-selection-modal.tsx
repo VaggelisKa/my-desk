@@ -88,16 +88,13 @@ export function DeskModal({
                 {["M", "T", "W", "Th", "F"].map((day) => (
                   <div key={day} className="flex flex-col items-center">
                     <div
-                      style={{
-                        backgroundColor: desk.reservations.find((r) => {
-                          console.log(r.day, lettersToDays[day]);
-
-                          return r.day === lettersToDays[day];
-                        })
-                          ? "rgb(248, 113, 113)"
-                          : "rgb(74, 222, 128)",
-                      }}
-                      className="h-4 w-4 rounded-s "
+                      className={`h-4 w-4 rounded-sm ${
+                        desk.reservations.find(
+                          (r) => r.day === lettersToDays[day],
+                        )
+                          ? "bg-red-400"
+                          : "bg-green-400"
+                      }`}
                     />
                     <p className="text-xs">{day}</p>
                   </div>
