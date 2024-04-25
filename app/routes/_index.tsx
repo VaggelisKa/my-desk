@@ -15,7 +15,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAuthCookie(request);
+  let userId = await requireAuthCookie(request);
 
   let desks = await db.query.desks.findMany({
     columns: {
@@ -43,7 +43,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     {} as Record<number, typeof desks>,
   );
 
-  return { desks: desksAggregatedByBlock };
+  return { desks: desksAggregatedByBlock, userId };
 }
 
 export default function Index() {
@@ -63,6 +63,7 @@ export default function Index() {
                     TriggerElement={<DeskButton />}
                     // @ts-expect-error Fix the type
                     desk={desk}
+                    allowedToReserve={desk.user?.id === data.userId}
                   />
                 ))}
               </div>

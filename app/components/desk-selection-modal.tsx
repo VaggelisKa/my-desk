@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -17,10 +18,11 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-  DrawerClose,
   Drawer,
 } from "./ui/drawer";
 import { useState } from "react";
+import { Link } from "@remix-run/react";
+import { ArrowRightIcon } from "@radix-ui/react-icons";
 
 type DeskModalProps = {
   desk: {
@@ -32,9 +34,23 @@ type DeskModalProps = {
     reservations: (typeof reservations.$inferSelect)[];
   };
   TriggerElement?: React.ReactNode;
+  children?: React.ReactNode;
+  allowedToReserve?: boolean;
 };
 
-export function DeskModal({ TriggerElement, desk }: DeskModalProps) {
+let lettersToDays: Record<string, string> = {
+  M: "monday",
+  T: "tuesday",
+  W: "wednesday",
+  Th: "thursday",
+  F: "friday",
+};
+
+export function DeskModal({
+  TriggerElement,
+  desk,
+  allowedToReserve,
+}: DeskModalProps) {
   let [open, setOpen] = useState(false);
   let isSmallDevice = useMediaQuery("(max-width : 768px)");
 
@@ -71,7 +87,18 @@ export function DeskModal({ TriggerElement, desk }: DeskModalProps) {
               <div className="flex gap-2 pt-1">
                 {["M", "T", "W", "Th", "F"].map((day) => (
                   <div key={day} className="flex flex-col items-center">
-                    <div className="h-4 w-4 rounded-sm bg-green-400" />
+                    <div
+                      style={{
+                        backgroundColor: desk.reservations.find((r) => {
+                          console.log(r.day, lettersToDays[day]);
+
+                          return r.day === lettersToDays[day];
+                        })
+                          ? "rgb(248, 113, 113)"
+                          : "rgb(74, 222, 128)",
+                      }}
+                      className="h-4 w-4 rounded-s "
+                    />
                     <p className="text-xs">{day}</p>
                   </div>
                 ))}
@@ -79,11 +106,16 @@ export function DeskModal({ TriggerElement, desk }: DeskModalProps) {
             </div>
           </div>
 
-          <DrawerFooter className="pt-2">
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
+          {allowedToReserve && (
+            <DrawerFooter>
+              <Button asChild>
+                <div className="flex gap-1">
+                  <Link to={`/reserve/${desk.id}`}>Reserve</Link>
+                  <ArrowRightIcon className="mt-[2px] h-4 w-4" />
+                </div>
+              </Button>
+            </DrawerFooter>
+          )}
         </DrawerContent>
       </Drawer>
     );
@@ -121,12 +153,31 @@ export function DeskModal({ TriggerElement, desk }: DeskModalProps) {
             <div className="flex gap-2 pt-1">
               {["M", "T", "W", "Th", "F"].map((day) => (
                 <div key={day} className="flex flex-col items-center">
-                  <div className="h-4 w-4 rounded-sm bg-green-400" />
+                  <div
+                    className={`h-4 w-4 rounded-sm ${
+                      desk.reservations.find(
+                        (r) => r.day === lettersToDays[day],
+                      )
+                        ? "bg-red-400"
+                        : "bg-green-400"
+                    }`}
+                  />
                   <p className="text-xs">{day}</p>
                 </div>
               ))}
             </div>
           </div>
+
+          {allowedToReserve && (
+            <DialogFooter className="">
+              <Button asChild>
+                <div className="flex gap-1">
+                  <Link to={`/reserve/${desk.id}`}>Reserve</Link>
+                  <ArrowRightIcon className="mt-[2px] h-4 w-4" />
+                </div>
+              </Button>
+            </DialogFooter>
+          )}
         </div>
       </DialogContent>
     </Dialog>
