@@ -23,6 +23,7 @@ import {
 import { useState } from "react";
 import { Link } from "@remix-run/react";
 import { ArrowRightIcon } from "@radix-ui/react-icons";
+import { getWeek } from "date-fns";
 
 type DeskModalProps = {
   desk: {
@@ -51,8 +52,66 @@ export function DeskModal({
   desk,
   allowedToReserve,
 }: DeskModalProps) {
+  let currentWeek = getWeek(new Date());
+
   let [open, setOpen] = useState(false);
   let isSmallDevice = useMediaQuery("(max-width : 768px)");
+
+  function isReserved(day: string, week: number) {
+    return desk.reservations.find(
+      (r) => r.day === lettersToDays[day] && r.week === week,
+    );
+  }
+
+  let contentTemplate = (
+    <div className="flex flex-col gap-4 ">
+      <div>
+        <span className="text-sm text-gray-500">Assigned to</span>
+        <p className="capitalize">
+          {`${desk.user.firstName} ${desk.user.lastName}`}
+        </p>
+      </div>
+
+      <div>
+        <span className="text-sm text-gray-500">Computer type</span>
+        <p>Desktop</p>
+      </div>
+
+      <div>
+        <span className="text-sm text-gray-500">Availability</span>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex gap-2 pt-1">
+            {["M", "T", "W", "Th", "F"].map((day) => (
+              <div key={day} className="flex flex-col items-center">
+                <div
+                  className={`h-4 w-4 rounded-sm ${
+                    isReserved(day, currentWeek) ? "bg-red-400" : "bg-green-400"
+                  }`}
+                />
+                <p className="text-xs">{day}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            {["M", "T", "W", "Th", "F"].map((day) => (
+              <div key={day} className="flex flex-col items-center">
+                <div
+                  className={`h-4 w-4 rounded-sm ${
+                    isReserved(day, currentWeek + 1)
+                      ? "bg-red-400"
+                      : "bg-green-400"
+                  }`}
+                />
+                <p className="text-xs">{day}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   if (isSmallDevice) {
     return (
@@ -69,50 +128,17 @@ export function DeskModal({
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="flex flex-col gap-4 px-4">
-            <div>
-              <span className="text-sm text-gray-500">Assigned to</span>
-              <p className="capitalize">
-                {`${desk.user.firstName} ${desk.user.lastName}`}
-              </p>
-            </div>
+          <div className="px-4">{contentTemplate}</div>
 
-            <div>
-              <span className="text-sm text-gray-500">Computer type</span>
-              <p>Desktop</p>
-            </div>
-
-            <div>
-              <span className="text-sm text-gray-500">Weekly availability</span>
-              <div className="flex gap-2 pt-1">
-                {["M", "T", "W", "Th", "F"].map((day) => (
-                  <div key={day} className="flex flex-col items-center">
-                    <div
-                      className={`h-4 w-4 rounded-sm ${
-                        desk.reservations.find(
-                          (r) => r.day === lettersToDays[day],
-                        )
-                          ? "bg-red-400"
-                          : "bg-green-400"
-                      }`}
-                    />
-                    <p className="text-xs">{day}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {allowedToReserve && (
-            <DrawerFooter>
-              <Button asChild>
-                <div className="flex gap-1">
-                  <Link to={`/reserve/${desk.id}`}>Reserve</Link>
-                  <ArrowRightIcon className="mt-[2px] h-4 w-4" />
-                </div>
+          <DrawerFooter>
+            {allowedToReserve && (
+              <Button className="padding-0" asChild>
+                <Link className="flex gap-1 p-4" to={`/reserve/${desk.id}`}>
+                  Reserve <ArrowRightIcon className="mt-1 h-4 w-4" />
+                </Link>
               </Button>
-            </DrawerFooter>
-          )}
+            )}
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     );
@@ -132,50 +158,21 @@ export function DeskModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <div>
-            <span className="text-sm text-gray-500">Assigned to</span>
-            <p className="capitalize">
-              {`${desk.user.firstName} ${desk.user.lastName}`}
-            </p>
-          </div>
+        {contentTemplate}
 
-          <div>
-            <span className="text-sm text-gray-500">Computer type</span>
-            <p>Desktop</p>
-          </div>
-
-          <div>
-            <span className="text-sm text-gray-500">Weekly availability</span>
-            <div className="flex gap-2 pt-1">
-              {["M", "T", "W", "Th", "F"].map((day) => (
-                <div key={day} className="flex flex-col items-center">
-                  <div
-                    className={`h-4 w-4 rounded-sm ${
-                      desk.reservations.find(
-                        (r) => r.day === lettersToDays[day],
-                      )
-                        ? "bg-red-400"
-                        : "bg-green-400"
-                    }`}
-                  />
-                  <p className="text-xs">{day}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {allowedToReserve && (
-            <DialogFooter className="">
-              <Button asChild>
-                <div className="flex gap-1">
-                  <Link to={`/reserve/${desk.id}`}>Reserve</Link>
-                  <ArrowRightIcon className="mt-[2px] h-4 w-4" />
-                </div>
-              </Button>
-            </DialogFooter>
-          )}
-        </div>
+        {allowedToReserve && (
+          <DialogFooter className="">
+            <Button className="padding-0" asChild>
+              <Link
+                className="flex gap-1 p-4"
+                to={`/reserve/${desk.id}`}
+                prefetch="render"
+              >
+                Reserve <ArrowRightIcon className="mt-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

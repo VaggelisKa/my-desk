@@ -20,6 +20,8 @@ import {
   SelectLabel,
   SelectItem,
 } from "~/components/ui/select";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   let userId = await requireAuthCookie(request);
@@ -87,8 +89,6 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ReserveDeskPage() {
-  let { desk } = useLoaderData<typeof loader>();
-
   let currentWeek = getWeek(new Date());
   let startOfCurrentWeek = format(startOfISOWeek(new Date()), "dd.MM");
   let endOfCurrentWeek = format(endOfISOWeek(new Date()), "dd.MM");
@@ -101,46 +101,71 @@ export default function ReserveDeskPage() {
     "dd.MM",
   );
 
+  let { desk } = useLoaderData<typeof loader>();
+  let [selectedWeek, setSelectedWeek] = useState(String(currentWeek));
+
+  function isReserved(day: string) {
+    return !!desk.reservations.filter(
+      (r) => r.week === Number(selectedWeek) && r.day === day,
+    )?.length;
+  }
+
   return (
-    <section className="flex flex-col gap-16">
+    <section className="flex max-w-xl flex-col justify-center gap-16">
       <TypographyH1>Reservation form</TypographyH1>
 
-      <Form className="flex flex-col gap-4" method="POST">
+      <Form className="flex flex-col gap-8" method="POST">
         <input type="hidden" name="deskId" value={desk.id} />
 
-        <Select name="week" required>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select the week" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value={String(currentWeek)}>
-                Current {`(${startOfCurrentWeek} - ${endOfCurrentWeek})`}
-              </SelectItem>
-              <SelectItem value={String(currentWeek + 1)}>
-                Next {`(${startOfNextWeek} - ${endOfNextWeek})`}
-              </SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        <fieldset className="space-y-2">
+          <p className="text-sm font-medium capitalize leading-none">
+            Selected week
+          </p>
+          <Select
+            onValueChange={setSelectedWeek}
+            defaultValue={String(currentWeek)}
+            name="week"
+            required
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Select the week" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={String(currentWeek)}>
+                  Current {`(${startOfCurrentWeek} - ${endOfCurrentWeek})`}
+                </SelectItem>
+                <SelectItem value={String(currentWeek + 1)}>
+                  Next {`(${startOfNextWeek} - ${endOfNextWeek})`}
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </fieldset>
 
-        <fieldset className="flex flex-wrap gap-4">
+        <fieldset className="flex flex-wrap items-center gap-6">
           {["monday", "tuesday", "wednesday", "thursday", "friday"].map(
             (day) => (
               <div key={day} className="flex items-center space-x-2">
-                <Checkbox id={`day-${day}`} name={day} />
+                <Checkbox
+                  disabled={isReserved(day)}
+                  id={`day-${day}`}
+                  name={day}
+                />
                 <label
                   htmlFor={`day-${day}`}
                   className="text-sm font-medium capitalize leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  {day}
+                  {day} {isReserved(day) ? "(reserved)" : ""}
                 </label>
               </div>
             ),
           )}
         </fieldset>
 
-        <button>submit</button>
+        <Button className="max-w-full sm:max-w-[6rem]" type="submit">
+          Reserve
+        </Button>
       </Form>
     </section>
   );
