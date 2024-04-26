@@ -1,6 +1,7 @@
 import {
   Links,
   Meta,
+  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
@@ -37,10 +38,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="min-h-screen">
         <header className="flex items-center justify-between bg-gray-800 p-2 text-white">
-          <div>
+          <NavLink to="/" aria-label="To homepage">
             <span className="text-lg font-bold">Share-a-desk</span>
             <p className="text-xs text-gray-300">A workspace management app</p>
-          </div>
+          </NavLink>
 
           {loaderData?.employeeNumber && (
             <form method="POST" action="/login/logout">
