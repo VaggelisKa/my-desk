@@ -45,6 +45,7 @@ export let reservations = sqliteTable(
     }),
     day: text("day").notNull(),
     week: integer("week", { mode: "number" }).notNull(),
+    date: text("date"),
   },
   (t) => ({
     compositePrimaryKey: primaryKey({

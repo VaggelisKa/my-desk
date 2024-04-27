@@ -2,11 +2,26 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "./ui/typography";
 import { TrashIcon } from "@radix-ui/react-icons";
-import { format } from "date-fns";
+import { type users } from "~/lib/db/schema.server";
 
-export function ReservationsTable() {
+export function ReservationsTable({
+  reservations,
+}: {
+  reservations: {
+    deskId: number | null;
+    day: string;
+    week: number;
+    date: string | null;
+    desks: {
+      row: number;
+      block: number;
+      column: number;
+    } | null;
+    users: typeof users.$inferSelect;
+  }[];
+}) {
   return (
-    <div key="1" className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <TypographyH1 className="text-2xl font-bold lg:text-3xl">
           Reservations
@@ -34,32 +49,38 @@ export function ReservationsTable() {
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-200 dark:border-gray-700">
-              <td className="px-4 py-3">
-                <div className="font-medium text-gray-900 dark:text-gray-100">
-                  {format("2023-04-26", "dd.MM.yyyy").toString()}
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <div className="font-medium text-gray-900 dark:text-gray-100">
-                  Block 2, Row 2, Column 3
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <div className="font-medium text-gray-900 dark:text-gray-100">
-                  Evangelos karavasileiadis
-                </div>
-              </td>
+            {reservations.map((reservation) => (
+              <tr
+                key={reservation.deskId + reservation.day + reservation.week}
+                className="border-b border-gray-200 dark:border-gray-700"
+              >
+                <td className="px-4 py-3">
+                  <div className="font-medium capitalize text-gray-900 dark:text-gray-100">
+                    {`${reservation.day} (${reservation.date})`}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    Block {reservation.desks?.block}, Row{" "}
+                    {reservation.desks?.row}, Column {reservation.desks?.column}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {reservation.users.firstName} {reservation.users.lastName}
+                  </div>
+                </td>
 
-              <td className="px-4 py-3">
-                <div className="flex items-center space-x-2">
-                  <Button size="icon" variant="destructive">
-                    <span className="sr-only">Delete reservation</span>
-                    <TrashIcon className="h-5 w-5 font-bold" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
+                <td className="px-4 py-3">
+                  <div className="flex items-center space-x-2">
+                    <Button size="icon" variant="destructive">
+                      <span className="sr-only">Delete reservation</span>
+                      <TrashIcon className="h-5 w-5 font-bold" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

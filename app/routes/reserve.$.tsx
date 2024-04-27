@@ -10,18 +10,52 @@ import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema.server";
-import { getWeek, startOfISOWeek, endOfISOWeek, format, add } from "date-fns";
+import {
+  getWeek,
+  startOfISOWeek,
+  endOfISOWeek,
+  format,
+  add,
+  startOfWeek,
+  getYear,
+  addDays,
+  addWeeks,
+} from "date-fns";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectGroup,
-  SelectLabel,
   SelectItem,
 } from "~/components/ui/select";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
+
+function getDateOfYearWeekAndDay(dayName: string, weekNumber: number) {
+  const startOfWeekOfYearWeek = startOfWeek(
+    new Date(getYear(new Date()), 0, 1),
+  ); // January 1st of the given year
+  const targetDate = addWeeks(startOfWeekOfYearWeek, weekNumber - 1); // Subtracting 1 because weeks are 0-indexed
+
+  const dayIndex = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ].indexOf(dayName.toLowerCase());
+
+  if (dayIndex === -1) {
+    throw new Error("Invalid day name");
+  }
+
+  const targetDayDate = addDays(targetDate, dayIndex);
+
+  return format(targetDayDate, "dd.MM.yyyy");
+}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   let userId = await requireAuthCookie(request);
@@ -80,6 +114,7 @@ export async function action({ request }: ActionFunctionArgs) {
       week,
       deskId,
       userId,
+      date: getDateOfYearWeekAndDay(day, week),
     };
   });
 

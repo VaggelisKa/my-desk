@@ -23,6 +23,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           userId: false,
         },
       },
+      users: true,
     },
     columns: {
       userId: false,
@@ -39,7 +40,7 @@ export default function ReservationsPage() {
   let { reservations } = useLoaderData<typeof loader>();
 
   return reservations.length ? (
-    <ReservationsTable />
+    <ReservationsTable reservations={reservations} />
   ) : (
     <div className="flex flex-col items-center justify-center gap-6">
       <CalendarCheckIcon className="h-16 w-16 text-gray-400 dark:text-gray-500" />
