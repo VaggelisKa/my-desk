@@ -36,8 +36,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     where: eq(reservations.userId, userId),
   });
 
-  console.log(reservationsRes);
-
   return { reservations: reservationsRes };
 }
 

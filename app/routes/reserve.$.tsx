@@ -20,6 +20,7 @@ import {
   getYear,
   addDays,
   addWeeks,
+  isAfter,
 } from "date-fns";
 import {
   Select,
@@ -32,7 +33,7 @@ import {
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 
-function getDateOfYearWeekAndDay(dayName: string, weekNumber: number) {
+function getDateByWeekAndDay(dayName: string, weekNumber: number) {
   const startOfWeekOfYearWeek = startOfWeek(
     new Date(getYear(new Date()), 0, 1),
   ); // January 1st of the given year
@@ -52,9 +53,7 @@ function getDateOfYearWeekAndDay(dayName: string, weekNumber: number) {
     throw new Error("Invalid day name");
   }
 
-  const targetDayDate = addDays(targetDate, dayIndex);
-
-  return format(targetDayDate, "dd.MM.yyyy");
+  return addDays(targetDate, dayIndex);
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -114,7 +113,7 @@ export async function action({ request }: ActionFunctionArgs) {
       week,
       deskId,
       userId,
-      date: getDateOfYearWeekAndDay(day, week),
+      date: format(getDateByWeekAndDay(day, week), "dd.MM.yyyy"),
     };
   });
 
@@ -144,6 +143,20 @@ export default function ReserveDeskPage() {
       (r) => r.week === Number(selectedWeek) && r.day === day,
     )?.length;
   }
+
+  function isAfterToday(day: string) {
+    let date = getDateByWeekAndDay(day, Number(selectedWeek));
+
+    return isAfter(new Date(date), new Date());
+  }
+
+  let availableDays = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+  ].filter((d) => isAfterToday(d));
 
   return (
     <section className="flex max-w-xl flex-col justify-center gap-16">
@@ -178,29 +191,33 @@ export default function ReserveDeskPage() {
           </Select>
         </fieldset>
 
-        <fieldset className="flex flex-wrap items-center gap-6">
-          {["monday", "tuesday", "wednesday", "thursday", "friday"].map(
-            (day) => (
-              <div key={day} className="flex items-center space-x-2">
-                <Checkbox
-                  disabled={isReserved(day)}
-                  id={`day-${day}`}
-                  name={day}
-                />
-                <label
-                  htmlFor={`day-${day}`}
-                  className="text-sm font-medium capitalize leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {day} {isReserved(day) ? "(reserved)" : ""}
-                </label>
-              </div>
-            ),
-          )}
-        </fieldset>
+        {availableDays.length ? (
+          <>
+            <fieldset className="flex flex-wrap items-center gap-6">
+              {availableDays.map((day) => (
+                <div key={day} className="flex items-center space-x-2">
+                  <Checkbox
+                    disabled={isReserved(day)}
+                    id={`day-${day}`}
+                    name={day}
+                  />
+                  <label
+                    htmlFor={`day-${day}`}
+                    className="text-sm font-medium capitalize leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {day} {isReserved(day) ? "(reserved)" : ""}
+                  </label>
+                </div>
+              ))}
+            </fieldset>
 
-        <Button className="max-w-full sm:max-w-[6rem]" type="submit">
-          Reserve
-        </Button>
+            <Button className="max-w-full sm:max-w-[6rem]" type="submit">
+              Reserve
+            </Button>
+          </>
+        ) : (
+          "No available days to reserve!"
+        )}
       </Form>
     </section>
   );
