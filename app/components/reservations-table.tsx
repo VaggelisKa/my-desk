@@ -1,8 +1,9 @@
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { TypographyH1 } from "./ui/typography";
-import { TrashIcon } from "@radix-ui/react-icons";
+import { TypographyH1 } from "~/components/ui/typography";
 import { type users } from "~/lib/db/schema.server";
+import { TrashIcon } from "@radix-ui/react-icons";
+import { Form } from "@remix-run/react";
 
 export function ReservationsTable({
   reservations,
@@ -72,12 +73,33 @@ export function ReservationsTable({
                 </td>
 
                 <td className="px-4 py-3">
-                  <div className="flex items-center space-x-2">
-                    <Button size="icon" variant="destructive">
+                  <Form method="DELETE" className="flex items-center space-x-2">
+                    {reservation.date && (
+                      <input
+                        name="reservation-date"
+                        value={reservation.date}
+                        type="text"
+                        hidden
+                      />
+                    )}
+                    <input
+                      name="reservation-user-id"
+                      value={reservation.users.id}
+                      type="text"
+                      hidden
+                    />
+                    <input
+                      name="reservation-day"
+                      value={reservation.day}
+                      type="text"
+                      hidden
+                    />
+
+                    <Button type="submit" size="icon" variant="destructive">
                       <span className="sr-only">Delete reservation</span>
                       <TrashIcon className="h-5 w-5 font-bold" />
                     </Button>
-                  </div>
+                  </Form>
                 </td>
               </tr>
             ))}

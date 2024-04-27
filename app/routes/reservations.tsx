@@ -1,6 +1,11 @@
 import { Link, useLoaderData } from "@remix-run/react";
-import { type MetaFunction, type LoaderFunctionArgs } from "@vercel/remix";
-import { eq } from "drizzle-orm";
+import {
+  type MetaFunction,
+  type LoaderFunctionArgs,
+  type ActionFunctionArgs,
+  json,
+} from "@vercel/remix";
+import { and, eq } from "drizzle-orm";
 import { ReservationsTable } from "~/components/reservations-table";
 import { Button } from "~/components/ui/button";
 import { requireAuthCookie } from "~/cookies.server";
@@ -34,6 +39,36 @@ export async function loader({ request }: LoaderFunctionArgs) {
   console.log(reservationsRes);
 
   return { reservations: reservationsRes };
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  let userId = await requireAuthCookie(request);
+  let formData = await request.formData();
+  let reservationDate = String(formData.get("reservation-date"));
+  let reservationUserId = String(formData.get("reservation-user-id"));
+  let reservationDay = String(formData.get("reservation-day"));
+
+  if (reservationUserId !== userId) {
+    return json(null, { status: 403 });
+  }
+
+  if (!reservationDate || !reservationUserId || !reservationDay) {
+    return json("Reservation information missing", { status: 400 });
+  }
+
+  if (request.method === "DELETE") {
+    await db
+      .delete(reservations)
+      .where(
+        and(
+          eq(reservations.userId, reservationUserId),
+          eq(reservations.date, reservationDate),
+          eq(reservations.day, reservationDay),
+        ),
+      );
+  }
+
+  return null;
 }
 
 export default function ReservationsPage() {
