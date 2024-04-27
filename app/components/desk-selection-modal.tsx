@@ -1,3 +1,8 @@
+import { ArrowRightIcon } from "@radix-ui/react-icons";
+import { Link } from "@remix-run/react";
+import { getWeek } from "date-fns";
+import { useState } from "react";
+import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -8,22 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import type { users, reservations } from "~/lib/db/schema.server";
-import { useMediaQuery } from "usehooks-ts";
-
+import type { reservations, users } from "~/lib/db/schema.server";
 import {
-  DrawerTrigger,
+  Drawer,
   DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-  Drawer,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
 } from "./ui/drawer";
-import { useState } from "react";
-import { Link } from "@remix-run/react";
-import { ArrowRightIcon } from "@radix-ui/react-icons";
-import { getWeek } from "date-fns";
 
 type DeskModalProps = {
   desk: {

@@ -1,9 +1,9 @@
+import { TrashIcon } from "@radix-ui/react-icons";
+import { Form } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "~/components/ui/typography";
 import { type users } from "~/lib/db/schema.server";
-import { TrashIcon } from "@radix-ui/react-icons";
-import { Form } from "@remix-run/react";
 
 export function ReservationsTable({
   reservations,
@@ -42,7 +42,7 @@ export function ReservationsTable({
                 Desk
               </th>
               <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">
-                Reserved under
+                Reserved For
               </th>
               <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300">
                 Actions
@@ -61,13 +61,13 @@ export function ReservationsTable({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 text-nowrap">
                     Block {reservation.desks?.block}, Row{" "}
                     {reservation.desks?.row}, Column {reservation.desks?.column}
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 capitalize">
                     {reservation.users.firstName} {reservation.users.lastName}
                   </div>
                 </td>
