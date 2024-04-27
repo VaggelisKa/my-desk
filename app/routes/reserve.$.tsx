@@ -4,34 +4,34 @@ import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "@vercel/remix";
+import {
+  add,
+  addDays,
+  addWeeks,
+  endOfISOWeek,
+  format,
+  getWeek,
+  getYear,
+  isAfter,
+  startOfISOWeek,
+  startOfWeek,
+} from "date-fns";
 import { eq } from "drizzle-orm";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema.server";
-import {
-  getWeek,
-  startOfISOWeek,
-  endOfISOWeek,
-  format,
-  add,
-  startOfWeek,
-  getYear,
-  addDays,
-  addWeeks,
-  isAfter,
-} from "date-fns";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-} from "~/components/ui/select";
-import { useState } from "react";
-import { Button } from "~/components/ui/button";
 
 function getDateByWeekAndDay(dayName: string, weekNumber: number) {
   const startOfWeekOfYearWeek = startOfWeek(

@@ -1,9 +1,9 @@
 import { Link, useLoaderData } from "@remix-run/react";
 import {
-  type MetaFunction,
-  type LoaderFunctionArgs,
-  type ActionFunctionArgs,
   json,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+  type MetaFunction,
 } from "@vercel/remix";
 import { and, eq } from "drizzle-orm";
 import { ReservationsTable } from "~/components/reservations-table";
