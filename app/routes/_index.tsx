@@ -1,17 +1,12 @@
 import { useLoaderData } from "@remix-run/react";
 import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
-
-import { requireAuthCookie } from "~/cookies.server";
-
 import { DeskButton } from "~/components/desk-button";
 import { DeskModal } from "~/components/desk-selection-modal";
+import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 
 export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
+  return [{ title: "View desks" }];
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {

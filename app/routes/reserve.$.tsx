@@ -8,12 +8,11 @@ import {
   add,
   addDays,
   addWeeks,
-  endOfISOWeek,
+  endOfWeek,
   format,
   getWeek,
   getYear,
   isAfter,
-  startOfISOWeek,
   startOfWeek,
 } from "date-fns";
 import { eq } from "drizzle-orm";
@@ -124,16 +123,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function ReserveDeskPage() {
   let currentWeek = getWeek(new Date());
-  let startOfCurrentWeek = format(startOfISOWeek(new Date()), "dd.MM");
-  let endOfCurrentWeek = format(endOfISOWeek(new Date()), "dd.MM");
+  let startOfCurrentWeek = format(startOfWeek(new Date()), "dd.MM");
+  let endOfCurrentWeek = format(endOfWeek(new Date()), "dd.MM");
   let startOfNextWeek = format(
-    startOfISOWeek(add(new Date(), { weeks: 1 })),
+    startOfWeek(add(new Date(), { weeks: 1 })),
     "dd.MM",
   );
-  let endOfNextWeek = format(
-    endOfISOWeek(add(new Date(), { weeks: 1 })),
-    "dd.MM",
-  );
+  let endOfNextWeek = format(endOfWeek(add(new Date(), { weeks: 1 })), "dd.MM");
 
   let { desk } = useLoaderData<typeof loader>();
   let [selectedWeek, setSelectedWeek] = useState(String(currentWeek));
