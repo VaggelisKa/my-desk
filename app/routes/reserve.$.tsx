@@ -13,6 +13,8 @@ import {
   getWeek,
   getYear,
   isAfter,
+  setHours,
+  setMinutes,
   startOfWeek,
 } from "date-fns";
 import { eq } from "drizzle-orm";
@@ -140,10 +142,11 @@ export default function ReserveDeskPage() {
     )?.length;
   }
 
-  function isAfterToday(day: string) {
+  function isAfterEod(day: string) {
     let date = getDateByWeekAndDay(day, Number(selectedWeek));
+    let endOfDay = setMinutes(setHours(new Date(), 15), 0);
 
-    return isAfter(new Date(date), new Date());
+    return isAfter(new Date(date), endOfDay);
   }
 
   let availableDays = [
@@ -152,7 +155,7 @@ export default function ReserveDeskPage() {
     "wednesday",
     "thursday",
     "friday",
-  ].filter((d) => isAfterToday(d));
+  ].filter((d) => isAfterEod(d));
 
   return (
     <section className="flex max-w-xl flex-col justify-center gap-16">
