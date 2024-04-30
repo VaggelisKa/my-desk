@@ -142,11 +142,12 @@ export default function ReserveDeskPage() {
     )?.length;
   }
 
-  function isAfterEod(day: string) {
+  function isAfterToday(day: string) {
     let date = getDateByWeekAndDay(day, Number(selectedWeek));
     let endOfDay = setMinutes(setHours(new Date(), 15), 0);
+    let threePm = setMinutes(setHours(date, 15), 0);
 
-    return isAfter(new Date(date), endOfDay);
+    return isAfter(threePm, endOfDay);
   }
 
   let availableDays = [
@@ -155,7 +156,7 @@ export default function ReserveDeskPage() {
     "wednesday",
     "thursday",
     "friday",
-  ].filter((d) => isAfterEod(d));
+  ].filter((d) => isAfterToday(d));
 
   return (
     <section className="flex max-w-xl flex-col justify-center gap-16">
