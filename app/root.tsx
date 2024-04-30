@@ -9,21 +9,21 @@ import {
   useLoaderData,
 } from "@remix-run/react";
 import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
-import stylesheet from "~/globals.css?url";
-import { userCookie } from "./cookies.server";
+import { eq } from "drizzle-orm";
 import { UserAvatar } from "~/components/ui/avatar";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import stylesheet from "~/globals.css?url";
+import { userCookie } from "./cookies.server";
 import { db } from "./lib/db/drizzle.server";
 import { users } from "./lib/db/schema.server";
-import { eq } from "drizzle-orm";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -63,33 +63,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-gray-300">A workspace management app</p>
           </NavLink>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <UserAvatar
-                className="transition-all hover:scale-105 hover:bg-gray-500"
-                firstName={user.firstName}
-                lastName={user.lastName}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="mr-4" side="bottom">
-              <DropdownMenuLabel>User actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+          {user?.id && (
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <UserAvatar
+                  className="transition-all hover:scale-105 hover:bg-gray-500"
+                  firstName={user.firstName}
+                  lastName={user.lastName}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="mr-4" side="bottom">
+                <DropdownMenuLabel>User actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
 
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <Link to="/reservations" prefetch="intent">
-                    Reservations
-                  </Link>
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem>
+                    <Link to="/reservations" prefetch="intent">
+                      Reservations
+                    </Link>
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem>
-                  <Link to="/reserve" prefetch="intent">
-                    Add reservation
-                  </Link>
-                </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link to="/reserve" prefetch="intent">
+                      Add reservation
+                    </Link>
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem>
-                  {user?.id && (
+                  <DropdownMenuItem>
                     <form method="POST" action="/login/logout">
                       <input
                         className="appearance-none"
@@ -97,11 +97,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         value="Logout"
                       />
                     </form>
-                  )}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </header>
 
         <main className="container flex w-full justify-center py-24">
