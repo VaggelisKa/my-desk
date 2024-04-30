@@ -31,14 +31,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   let formData = await request.formData();
   let employeeNumber = String(formData.get("employee-number"));
-  let name = String(formData.get("name"));
+  let firstName = String(formData.get("name"));
+  let lastName = String(formData.get("last-name"));
   let errors: { employeeNumber?: string; name?: string } = {};
 
   if (!employeeNumber) {
     errors.employeeNumber = "Employee number is required";
   }
 
-  if (!name) {
+  if (!firstName) {
     errors.name = "Name is required";
   }
 
@@ -47,7 +48,13 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   return redirect("/", {
-    headers: { "Set-Cookie": await userCookie.serialize(employeeNumber) },
+    headers: {
+      "Set-Cookie": await userCookie.serialize({
+        userId: employeeNumber,
+        firstName,
+        lastName,
+      }),
+    },
   });
 }
 
@@ -58,7 +65,7 @@ export default function guestLoginPage() {
 
       <Form method="POST" className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="employee-number">Employee number</Label>
+          <Label htmlFor="employee-number">User ID</Label>
 
           <Input
             id="employee-number"
@@ -72,14 +79,25 @@ export default function guestLoginPage() {
         </fieldset>
 
         <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="name">Full name</Label>
+          <Label htmlFor="name">First name</Label>
 
           <Input
             id="name"
             name="name"
             type="text"
-            placeholder="John Doe"
+            placeholder="John"
             required
+          />
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-2">
+          <Label htmlFor="last-name">Last name (Optional)</Label>
+
+          <Input
+            id="last-name"
+            name="last-name"
+            type="text"
+            placeholder="Doe"
           />
         </fieldset>
 

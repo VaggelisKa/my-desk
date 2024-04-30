@@ -31,22 +31,28 @@ export let links: LinksFunction = () => [
 
 export async function loader({ request }: LoaderFunctionArgs) {
   let cookieHeader = request.headers.get("Cookie");
-  let employeeNumber = await userCookie.parse(cookieHeader);
+  let userData = await userCookie.parse(cookieHeader);
 
   let registeredUser = await db
     .select()
     .from(users)
-    .where(eq(users.id, employeeNumber));
+    .where(eq(users.id, userData?.userId || ""));
 
   let user = registeredUser?.[0]
     ? registeredUser[0]
-    : { id: employeeNumber, firstName: "test", lastName: "test" };
+    : {
+        id: userData?.userId,
+        firstName: userData?.firstName,
+        lastName: userData?.lastName,
+      };
 
   return { user };
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   let { user } = useLoaderData<typeof loader>();
+
+  console.log(user);
 
   return (
     <html lang="en">

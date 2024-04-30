@@ -6,16 +6,16 @@ import {
   useNavigation,
 } from "@remix-run/react";
 import {
-  type ActionFunctionArgs,
-  type MetaFunction,
-  type LoaderFunctionArgs,
   json,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+  type MetaFunction,
 } from "@vercel/remix";
-import { TypographyH1 } from "~/components/ui/typography";
+import { useEffect, useRef } from "react";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Button } from "~/components/ui/button";
-import { useEffect, useRef } from "react";
+import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
 
 let validEmployeeNumbers = ["g04255", "g04256"];
@@ -28,9 +28,9 @@ export let meta: MetaFunction = () => [
 
 export async function loader({ request }: LoaderFunctionArgs) {
   let cookieHeader = request.headers.get("Cookie");
-  let employeeNumber = await userCookie.parse(cookieHeader);
+  let userData = await userCookie.parse(cookieHeader);
 
-  if (employeeNumber) {
+  if (userData?.userId) {
     throw redirect("/");
   }
 
@@ -50,7 +50,9 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   return redirect("/", {
-    headers: { "Set-Cookie": await userCookie.serialize(employeeNumber) },
+    headers: {
+      "Set-Cookie": await userCookie.serialize({ userId: employeeNumber }),
+    },
   });
 }
 
@@ -71,7 +73,7 @@ export default function LoginPage() {
 
       <Form method="POST" className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="employee-number">Employee number</Label>
+          <Label htmlFor="employee-number">User ID</Label>
 
           <Input
             ref={inputRef}

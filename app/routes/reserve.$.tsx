@@ -58,7 +58,7 @@ function getDateByWeekAndDay(dayName: string, weekNumber: number) {
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  let userId = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
   let deskId = Number(params["*"]);
 
   if (deskId) {
@@ -95,7 +95,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  let userId = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
   let formData = await request.formData();
   let deskId = Number(formData.get("deskId"));
   let week = Number(formData.get("week"));

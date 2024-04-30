@@ -19,7 +19,7 @@ export let meta: MetaFunction = () => [
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let userId = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
   let reservationsRes = await db.query.reservations.findMany({
     with: {
       desks: {
@@ -40,7 +40,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  let userId = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
   let formData = await request.formData();
   let reservationDate = String(formData.get("reservation-date"));
   let reservationUserId = String(formData.get("reservation-user-id"));

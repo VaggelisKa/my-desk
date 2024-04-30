@@ -10,7 +10,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let userId = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
 
   let desks = await db.query.desks.findMany({
     columns: {

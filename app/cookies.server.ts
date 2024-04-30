@@ -10,9 +10,9 @@ export let userCookie = createCookie("user", {
 
 export async function requireAuthCookie(request: Request) {
   let cookieHeader = request.headers.get("Cookie");
-  let employeeNumber = await userCookie.parse(cookieHeader);
+  let user = await userCookie.parse(cookieHeader);
 
-  if (!employeeNumber) {
+  if (!user?.userId) {
     throw redirect("/login", {
       headers: {
         "Set-Cookie": await userCookie.serialize("", { maxAge: 0 }),
@@ -20,5 +20,5 @@ export async function requireAuthCookie(request: Request) {
     });
   }
 
-  return employeeNumber as string;
+  return user as { userId: string; firstName?: string; lastName?: string };
 }
