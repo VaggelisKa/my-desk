@@ -14,7 +14,6 @@ import {
   getYear,
   isAfter,
   setHours,
-  setMinutes,
   startOfWeek,
 } from "date-fns";
 import { eq } from "drizzle-orm";
@@ -144,10 +143,11 @@ export default function ReserveDeskPage() {
 
   function isAfterToday(day: string) {
     let date = getDateByWeekAndDay(day, Number(selectedWeek));
-    let endOfDay = setMinutes(setHours(new Date(), 15), 0);
-    let threePm = setMinutes(setHours(date, 15), 0);
+    let currentHours = new Date().getHours();
+    let now = setHours(new Date(), currentHours);
+    let selectedDayAtThreePm = setHours(date, 15);
 
-    return isAfter(threePm, endOfDay);
+    return isAfter(selectedDayAtThreePm, now);
   }
 
   let availableDays = [
