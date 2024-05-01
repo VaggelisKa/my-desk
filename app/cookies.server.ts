@@ -20,5 +20,10 @@ export async function requireAuthCookie(request: Request) {
     });
   }
 
-  return user as { userId: string; firstName?: string; lastName?: string };
+  return user as {
+    userId: string;
+    firstName?: string;
+    lastName?: string;
+    external?: boolean;
+  };
 }

@@ -53,6 +53,7 @@ export async function action({ request }: ActionFunctionArgs) {
         userId: employeeNumber,
         firstName,
         lastName,
+        external: true,
       }),
     },
   });

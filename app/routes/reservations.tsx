@@ -19,7 +19,7 @@ export let meta: MetaFunction = () => [
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let { userId } = await requireAuthCookie(request);
+  let { userId, external } = await requireAuthCookie(request);
   let reservationsRes = await db.query.reservations.findMany({
     with: {
       desks: {
@@ -36,7 +36,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     where: eq(reservations.userId, userId),
   });
 
-  return { reservations: reservationsRes };
+  return { reservations: reservationsRes, external };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -70,7 +70,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ReservationsPage() {
-  let { reservations } = useLoaderData<typeof loader>();
+  let { reservations, external } = useLoaderData<typeof loader>();
 
   return reservations.length ? (
     <ReservationsTable reservations={reservations} />
@@ -83,11 +83,13 @@ export default function ReservationsPage() {
           You haven't made any reservations yet!
         </p>
       </div>
-      <Button className="padding-0 w-full md:w-auto" asChild>
-        <Link className="flex gap-1 p-4" to="/reserve">
-          Make a reservation
-        </Link>
-      </Button>
+      {!external && (
+        <Button className="padding-0 w-full md:w-auto" asChild>
+          <Link className="flex gap-1 p-4" to="/reserve">
+            Make a reservation
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

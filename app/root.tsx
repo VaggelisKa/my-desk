@@ -44,6 +44,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         id: userData?.userId,
         firstName: userData?.firstName,
         lastName: userData?.lastName,
+        external: true,
       };
 
   return { user };
@@ -89,11 +90,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem>
-                    <Link to="/reserve" prefetch="intent">
-                      Add reservation
-                    </Link>
-                  </DropdownMenuItem>
+                  {!("external" in user) && (
+                    <DropdownMenuItem>
+                      <Link to="/reserve" prefetch="intent">
+                        Add reservation
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
 
                   <DropdownMenuItem>
                     <form method="POST" action="/login/logout">
