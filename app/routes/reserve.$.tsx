@@ -145,9 +145,9 @@ export default function ReserveDeskPage() {
     let date = getDateByWeekAndDay(day, Number(selectedWeek));
     let currentHours = new Date().getHours();
     let now = setHours(new Date(), currentHours);
-    let selectedDayAtThreePm = setHours(date, 15);
+    let selectedDayAt11Am = setHours(date, 11);
 
-    return isAfter(selectedDayAtThreePm, now);
+    return isAfter(selectedDayAt11Am, now);
   }
 
   let availableDays = [
