@@ -1,5 +1,5 @@
 import { ArrowRightIcon } from "@radix-ui/react-icons";
-import { Link } from "@remix-run/react";
+import { Link, useFetcher } from "@remix-run/react";
 import { getWeek } from "date-fns";
 import { useState } from "react";
 import { useMediaQuery } from "usehooks-ts";
@@ -46,15 +46,33 @@ let lettersToDays: Record<string, string> = {
   F: "friday",
 };
 
+let days = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
 export function DeskModal({
   TriggerElement,
   desk,
   allowedToReserve,
 }: DeskModalProps) {
   let currentWeek = getWeek(new Date());
+  let todaysDay = days[new Date().getDay()];
 
+  let fetcher = useFetcher();
   let [open, setOpen] = useState(false);
   let isSmallDevice = useMediaQuery("(max-width : 768px)");
+  let showReserveForTodayButton =
+    todaysDay !== "saturday" &&
+    todaysDay !== "sunday" &&
+    // TODO Handle lowercase in function
+    !isReserved(todaysDay?.at(0)?.toUpperCase() ?? "", currentWeek);
+  let isSubmitting = fetcher.state !== "idle";
 
   function isReserved(day: string, week: number) {
     return desk.reservations.find(
@@ -159,8 +177,8 @@ export function DeskModal({
 
         {contentTemplate}
 
-        {allowedToReserve && (
-          <DialogFooter className="">
+        <DialogFooter>
+          {allowedToReserve ? (
             <Button className="padding-0" asChild>
               <Link
                 className="flex gap-1 p-4"
@@ -170,8 +188,23 @@ export function DeskModal({
                 Reserve <ArrowRightIcon className="mt-1 h-4 w-4" />
               </Link>
             </Button>
-          </DialogFooter>
-        )}
+          ) : showReserveForTodayButton ? (
+            <fetcher.Form method="POST" action="/reserve">
+              <input type="text" name="deskId" defaultValue={desk.id} hidden />
+              <input
+                type="text"
+                name="week"
+                defaultValue={currentWeek}
+                hidden
+              />
+              <input type="text" name={todaysDay} defaultValue="on" hidden />
+
+              <Button disabled={isSubmitting} type="submit">
+                Reserve for today
+              </Button>
+            </fetcher.Form>
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
