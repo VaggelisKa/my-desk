@@ -7,9 +7,9 @@
     "build": "remix vite:build",
     "dev": "remix vite:dev",
     "typecheck": "tsc",
-    "migrations:generate": "drizzle-kit generate:sqlite",
+    "migrations:generate": "drizzle-kit generate",
     "migrations:run": "node -r esbuild-register ./app/lib/db/migrator.mjs",
-    "migrations:push": "drizzle-kit push:sqlite",
+    "migrations:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio --verbose"
   },
   "dependencies": {

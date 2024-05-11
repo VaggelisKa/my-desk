@@ -1,8 +1,6 @@
 {
-  "version": "5",
+  "version": "6",
   "dialect": "sqlite",
-  "id": "486b7710-b912-418b-8f52-84b4584c88db",
-  "prevId": "0dcc7eee-7139-4792-8325-03f138a92ea6",
   "tables": {
     "desks": {
       "name": "desks",
@@ -58,15 +56,15 @@
         "desks_user_id_users_id_fk": {
           "name": "desks_user_id_users_id_fk",
           "tableFrom": "desks",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
@@ -160,10 +158,11 @@
   },
   "enums": {},
   "_meta": {
-    "schemas": {},
     "tables": {
       "\"reservations_new\"": "\"reservations\""
     },
     "columns": {}
-  }
+  },
+  "id": "486b7710-b912-418b-8f52-84b4584c88db",
+  "prevId": "0dcc7eee-7139-4792-8325-03f138a92ea6"
 }

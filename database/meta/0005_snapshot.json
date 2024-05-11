@@ -1,8 +1,6 @@
 {
-  "version": "5",
+  "version": "6",
   "dialect": "sqlite",
-  "id": "d28e5a9a-68a8-4392-ac27-4b0ac2bae122",
-  "prevId": "0936247f-cfc9-4b4b-84b2-0c84c2739d73",
   "tables": {
     "desks": {
       "name": "desks",
@@ -58,15 +56,15 @@
         "desks_user_id_users_id_fk": {
           "name": "desks_user_id_users_id_fk",
           "tableFrom": "desks",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
@@ -158,8 +156,9 @@
   },
   "enums": {},
   "_meta": {
-    "schemas": {},
     "tables": {},
     "columns": {}
-  }
+  },
+  "id": "d28e5a9a-68a8-4392-ac27-4b0ac2bae122",
+  "prevId": "0936247f-cfc9-4b4b-84b2-0c84c2739d73"
 }

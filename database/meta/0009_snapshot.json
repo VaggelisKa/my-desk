@@ -1,8 +1,6 @@
 {
-  "version": "5",
+  "version": "6",
   "dialect": "sqlite",
-  "id": "e15183fb-be70-42b6-a789-092cce944c9c",
-  "prevId": "c7c3dd6e-25b5-42fa-888e-8ed4be40150f",
   "tables": {
     "desks": {
       "name": "desks",
@@ -58,15 +56,15 @@
         "desks_user_id_users_id_fk": {
           "name": "desks_user_id_users_id_fk",
           "tableFrom": "desks",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         }
       },
       "compositePrimaryKeys": {},
@@ -109,28 +107,28 @@
         "reservations_user_id_users_id_fk": {
           "name": "reservations_user_id_users_id_fk",
           "tableFrom": "reservations",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
+          "onUpdate": "cascade",
+          "onDelete": "cascade"
         },
         "reservations_desk_id_desks_id_fk": {
           "name": "reservations_desk_id_desks_id_fk",
           "tableFrom": "reservations",
-          "tableTo": "desks",
           "columnsFrom": [
             "desk_id"
           ],
+          "tableTo": "desks",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
+          "onUpdate": "cascade",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {
@@ -187,8 +185,9 @@
   },
   "enums": {},
   "_meta": {
-    "schemas": {},
     "tables": {},
     "columns": {}
-  }
+  },
+  "id": "e15183fb-be70-42b6-a789-092cce944c9c",
+  "prevId": "c7c3dd6e-25b5-42fa-888e-8ed4be40150f"
 }
