@@ -10,6 +10,8 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
+import { db } from "~/lib/db/drizzle.server";
+import { users } from "~/lib/db/schema.server";
 
 export let meta: MetaFunction = () => [
   {
@@ -33,27 +35,42 @@ export async function action({ request }: ActionFunctionArgs) {
   let employeeNumber = String(formData.get("employee-number"));
   let firstName = String(formData.get("name"));
   let lastName = String(formData.get("last-name"));
-  let errors: { employeeNumber?: string; name?: string } = {};
+  let errors: {
+    employeeNumber?: string;
+    firstName?: string;
+    lastName?: string;
+  } = {};
 
   if (!employeeNumber) {
     errors.employeeNumber = "Employee number is required";
   }
 
   if (!firstName) {
-    errors.name = "Name is required";
+    errors.firstName = "Name is required";
+  }
+
+  if (!lastName) {
+    errors.lastName = "Last name is required";
   }
 
   if (Object.keys(errors).length) {
     return json({ ok: false, errors }, { status: 400 });
   }
 
+  let newUser = await db
+    .insert(users)
+    .values({
+      id: employeeNumber.toLowerCase(),
+      firstName,
+      lastName,
+    })
+    .onConflictDoNothing()
+    .returning({ id: users.id });
+
   return redirect("/", {
     headers: {
       "Set-Cookie": await userCookie.serialize({
-        userId: employeeNumber,
-        firstName,
-        lastName,
-        external: true,
+        userId: newUser?.[0]?.id || employeeNumber,
       }),
     },
   });
@@ -62,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function guestLoginPage() {
   return (
     <section className="flex flex-col gap-16">
-      <TypographyH1>Guest login portal</TypographyH1>
+      <TypographyH1>Register portal</TypographyH1>
 
       <Form method="POST" className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
@@ -92,13 +109,14 @@ export default function guestLoginPage() {
         </fieldset>
 
         <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="last-name">Last name (Optional)</Label>
+          <Label htmlFor="last-name">Last name</Label>
 
           <Input
             id="last-name"
             name="last-name"
             type="text"
             placeholder="Doe"
+            required
           />
         </fieldset>
 

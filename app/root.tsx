@@ -23,7 +23,7 @@ import {
 import stylesheet from "~/globals.css?url";
 import { userCookie } from "./cookies.server";
 import { db } from "./lib/db/drizzle.server";
-import { users } from "./lib/db/schema.server";
+import { desks, users } from "./lib/db/schema.server";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -38,22 +38,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .from(users)
     .where(eq(users.id, userData?.userId || ""));
 
-  let user = registeredUser?.[0]
-    ? registeredUser[0]
-    : {
-        id: userData?.userId,
-        firstName: userData?.firstName,
-        lastName: userData?.lastName,
-        external: true,
-      };
+  let hasAssignedDesk = false;
 
-  return { user };
+  if (registeredUser?.[0]) {
+    hasAssignedDesk = !!(
+      await db
+        .select()
+        .from(desks)
+        .where(eq(desks.userId, registeredUser[0].id))
+    )?.length;
+  }
+
+  return {
+    user: registeredUser?.[0],
+    hasAssignedDesk,
+  };
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  let { user } = useLoaderData<typeof loader>();
-
-  console.log(user);
+  let data = useLoaderData<typeof loader>();
 
   return (
     <html lang="en">
@@ -70,13 +73,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-gray-300">A workspace management app</p>
           </NavLink>
 
-          {user?.id && (
+          {data?.user?.id && (
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <UserAvatar
                   className="transition-all hover:scale-105 hover:bg-gray-500"
-                  firstName={user.firstName}
-                  lastName={user.lastName}
+                  firstName={data.user.firstName}
+                  lastName={data.user.lastName}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="mr-4" side="bottom">
@@ -90,7 +93,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
 
-                  {!("external" in user) && (
+                  {data.hasAssignedDesk && (
                     <DropdownMenuItem>
                       <Link to="/reserve" prefetch="intent">
                         Add reservation
