@@ -11,14 +11,15 @@ import {
   type LoaderFunctionArgs,
   type MetaFunction,
 } from "@vercel/remix";
+import { eq } from "drizzle-orm";
 import { useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
-
-let validEmployeeNumbers = ["g04255", "g04256"];
+import { db } from "~/lib/db/drizzle.server";
+import { users } from "~/lib/db/schema.server";
 
 export let meta: MetaFunction = () => [
   {
@@ -39,19 +40,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   let formData = await request.formData();
-  let employeeNumber = String(formData.get("employee-number"));
-  let hasError = !validEmployeeNumbers.includes(employeeNumber.toLowerCase());
+  let userId = String(formData.get("user-id"));
 
-  if (hasError) {
+  if (!userId || userId.length !== 6) {
     return json(
       { ok: false, error: "Invalid employee number" },
-      { status: 401 },
+      { status: 400 },
     );
+  }
+
+  let user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (!user) {
+    return json({ ok: false, error: "No user found" }, { status: 401 });
   }
 
   return redirect("/", {
     headers: {
-      "Set-Cookie": await userCookie.serialize({ userId: employeeNumber }),
+      "Set-Cookie": await userCookie.serialize({ userId }),
     },
   });
 }
@@ -63,7 +71,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (data?.error && navigation.state === "idle") {
-      inputRef.current?.focus();
+      if (inputRef.current) {
+        inputRef.current.value = "";
+        inputRef.current.focus();
+      }
     }
   }, [data?.error, navigation]);
 
@@ -73,12 +84,12 @@ export default function LoginPage() {
 
       <Form method="POST" className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="employee-number">User ID</Label>
+          <Label htmlFor="user-id">User ID</Label>
 
           <Input
             ref={inputRef}
-            id="employee-number"
-            name="employee-number"
+            id="user-id"
+            name="user-id"
             type="text"
             autoFocus
             required
