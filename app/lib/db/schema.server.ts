@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import {
   integer,
   primaryKey,
@@ -46,9 +46,6 @@ export let reservations = sqliteTable(
     day: text("day").notNull(),
     week: integer("week", { mode: "number" }).notNull(),
     date: text("date"),
-    createdAt: integer("created_at", { mode: "timestamp" }).default(
-      sql`(unixepoch() * 1000)`,
-    ),
   },
   (t) => ({
     compositePrimaryKey: primaryKey({
