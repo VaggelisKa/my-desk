@@ -1,4 +1,9 @@
-import { Link, useLoaderData } from "@remix-run/react";
+import {
+  Link,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+} from "@remix-run/react";
 import {
   json,
   type ActionFunctionArgs,
@@ -6,8 +11,10 @@ import {
   type MetaFunction,
 } from "@vercel/remix";
 import { and, asc, eq } from "drizzle-orm";
+import { useEffect } from "react";
 import { ReservationsTable } from "~/components/reservations-table";
 import { Button } from "~/components/ui/button";
+import { useToast } from "~/components/ui/use-toast";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema.server";
@@ -67,11 +74,20 @@ export async function action({ request }: ActionFunctionArgs) {
       );
   }
 
-  return null;
+  return json("Reservation deleted", { status: 200 });
 }
 
 export default function ReservationsPage() {
   let { reservations, external } = useLoaderData<typeof loader>();
+  let message = useActionData<typeof action>();
+  let { toast } = useToast();
+  let navigation = useNavigation();
+
+  useEffect(() => {
+    if (message === "Reservation deleted" && navigation.state === "idle") {
+      toast({ title: "Reservation deleted" });
+    }
+  }, [message, toast, navigation.state]);
 
   return reservations.length ? (
     <ReservationsTable reservations={reservations} />
