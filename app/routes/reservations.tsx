@@ -5,7 +5,7 @@ import {
   type LoaderFunctionArgs,
   type MetaFunction,
 } from "@vercel/remix";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { ReservationsTable } from "~/components/reservations-table";
 import { Button } from "~/components/ui/button";
 import { requireAuthCookie } from "~/cookies.server";
@@ -34,6 +34,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       userId: false,
     },
     where: eq(reservations.userId, userId),
+    orderBy: [asc(reservations.date)],
   });
 
   return { reservations: reservationsRes, external };
