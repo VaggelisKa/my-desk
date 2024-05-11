@@ -20,11 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { Toaster } from "~/components/ui/toaster";
+import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
-import { Toaster } from "./components/ui/toaster";
-import { userCookie } from "./cookies.server";
-import { db } from "./lib/db/drizzle.server";
-import { desks, users } from "./lib/db/schema.server";
+import { db } from "~/lib/db/drizzle.server";
+import { desks, users } from "~/lib/db/schema.server";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },

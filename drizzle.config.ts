@@ -1,5 +1,5 @@
-import type { Config } from "drizzle-kit";
 import * as dotenv from "dotenv";
+import type { Config } from "drizzle-kit";
 dotenv.config();
 
 if (!process.env.DATABASE_URL) {
@@ -14,6 +14,7 @@ export default {
   schema: "./app/lib/db/schema.server.ts",
   out: "./database",
   driver: "turso",
+  dialect: "sqlite",
   dbCredentials: {
     url: process.env.DATABASE_URL,
     authToken: process.env.DATABASE_AUTH_TOKEN,
