@@ -26,7 +26,7 @@ import { Toaster } from "~/components/ui/toaster";
 import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
-import { desks, users } from "~/lib/db/schema.server";
+import { users } from "~/lib/db/schema.server";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -37,25 +37,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let cookieHeader = request.headers.get("Cookie");
   let userData = await userCookie.parse(cookieHeader);
 
-  let registeredUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userData?.userId || ""));
-
-  let hasAssignedDesk = false;
-
-  if (registeredUser?.[0]) {
-    hasAssignedDesk = !!(
-      await db
-        .select()
-        .from(desks)
-        .where(eq(desks.userId, registeredUser[0].id))
-    )?.length;
-  }
+  let user = await db.query.users.findFirst({
+    where: eq(users.id, userData?.userId || ""),
+    with: {
+      desk: true,
+    },
+  });
 
   return {
-    user: registeredUser?.[0],
-    hasAssignedDesk,
+    user,
+    hasAssignedDesk: !!user?.desk,
   };
 }
 

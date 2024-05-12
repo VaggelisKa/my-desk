@@ -59,8 +59,12 @@ export let reservations = sqliteTable(
 
 // relations for query syntax
 
-export let usersRelations = relations(users, ({ many }) => ({
+export let usersRelations = relations(users, ({ one, many }) => ({
   reservations: many(reservations),
+  desk: one(desks, {
+    fields: [users.id],
+    references: [desks.userId],
+  }),
 }));
 
 export let desksRelations = relations(desks, ({ one, many }) => ({
