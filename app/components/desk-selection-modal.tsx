@@ -31,7 +31,9 @@ type DeskModalProps = {
     block: number;
     column: number;
     user: typeof users.$inferSelect;
-    reservations: (typeof reservations.$inferSelect)[];
+    reservations: (typeof reservations.$inferSelect & {
+      users: typeof users.$inferSelect;
+    })[];
   };
   TriggerElement?: React.ReactNode;
   children?: React.ReactNode;
@@ -44,7 +46,7 @@ let lettersToDays: Record<string, string> = {
   W: "wednesday",
   Th: "thursday",
   F: "friday",
-};
+} as const;
 
 let days = [
   "sunday",
@@ -73,10 +75,14 @@ export function DeskModal({
     // TODO Handle lowercase in function
     !isReserved(todaysDay?.at(0)?.toUpperCase() ?? "", currentWeek);
   let isSubmitting = fetcher.state !== "idle";
+  let userBorrowingDesk =
+    isReserved(todaysDay, currentWeek)?.users.id !== desk.user.id
+      ? isReserved(todaysDay, currentWeek)?.users
+      : null;
 
   function isReserved(day: string, week: number) {
     return desk.reservations.find(
-      (r) => r.day === lettersToDays[day] && r.week === week,
+      (r) => r.day === (lettersToDays[day] || day) && r.week === week,
     );
   }
 
@@ -89,6 +95,13 @@ export function DeskModal({
         </p>
       </div>
 
+      {userBorrowingDesk && (
+        <div>
+          <span className="text-sm text-gray-500">Used for today by</span>
+          <p className="capitalize">{`${userBorrowingDesk.firstName} ${userBorrowingDesk.lastName}`}</p>
+        </div>
+      )}
+
       <div>
         <span className="text-sm text-gray-500">Computer type</span>
         <p>Desktop</p>
@@ -99,7 +112,7 @@ export function DeskModal({
 
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex gap-2 pt-1">
-            {["M", "T", "W", "Th", "F"].map((day) => (
+            {Object.keys(lettersToDays).map((day) => (
               <div key={day} className="flex flex-col items-center">
                 <div
                   className={`h-4 w-4 rounded-sm ${
@@ -112,7 +125,7 @@ export function DeskModal({
           </div>
 
           <div className="flex gap-2 pt-1">
-            {["M", "T", "W", "Th", "F"].map((day) => (
+            {Object.keys(lettersToDays).map((day) => (
               <div key={day} className="flex flex-col items-center">
                 <div
                   className={`h-4 w-4 rounded-sm ${

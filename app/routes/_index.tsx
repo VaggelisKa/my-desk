@@ -20,7 +20,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
       id: true,
     },
     with: {
-      reservations: true,
+      reservations: {
+        with: {
+          users: true,
+        },
+      },
       user: true,
     },
   });

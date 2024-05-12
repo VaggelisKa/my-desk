@@ -11,6 +11,7 @@ import {
 } from "@remix-run/react";
 import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
 import { eq } from "drizzle-orm";
+import { ErrorCard } from "~/components/error-card";
 import { UserAvatar } from "~/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,7 +27,6 @@ import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema.server";
-import { ErrorCard } from "./components/error-card";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
