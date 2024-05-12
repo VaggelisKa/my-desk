@@ -30,6 +30,7 @@ import { desks, users } from "~/lib/db/schema.server";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
+  { rel: "icon", href: "/favicon.png" },
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {

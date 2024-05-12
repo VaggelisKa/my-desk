@@ -72,8 +72,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       throw new Error("Desk not found");
     }
 
-    console.log("desk path", desk);
-
     return { desk, userId };
   } else {
     let desk = await db.query.desks.findFirst({
@@ -86,8 +84,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     if (!desk) {
       throw new Error("Desk not found, querying user!");
     }
-
-    console.log("user path", desk);
 
     return { desk, userId };
   }
