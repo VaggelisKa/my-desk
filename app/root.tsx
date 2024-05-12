@@ -6,7 +6,8 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData,
+  useRouteError,
+  useRouteLoaderData,
 } from "@remix-run/react";
 import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
 import { eq } from "drizzle-orm";
@@ -25,6 +26,7 @@ import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema.server";
+import { ErrorCard } from "./components/error-card";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -57,7 +59,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  let data = useLoaderData<typeof loader>();
+  let data = useRouteLoaderData<typeof loader>("root");
+  let error = useRouteError();
 
   return (
     <html lang="en">
@@ -118,7 +121,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="container flex w-full justify-center py-24">
-          {children}
+          {/* @ts-expect-error Remix forwards an error message but type is unknown*/}
+          {error ? <ErrorCard message={error?.message} /> : children}
         </main>
         <Toaster />
         <ScrollRestoration />
