@@ -23,7 +23,7 @@ import { users } from "~/lib/db/schema.server";
 
 export let meta: MetaFunction = () => [
   {
-    title: "Employee login",
+    title: "Login to your account",
   },
 ];
 

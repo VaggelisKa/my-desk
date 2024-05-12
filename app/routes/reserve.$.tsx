@@ -3,6 +3,7 @@ import {
   redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
+  type MetaFunction,
 } from "@vercel/remix";
 import {
   add,
@@ -32,6 +33,12 @@ import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema.server";
+
+export let meta: MetaFunction = () => [
+  {
+    title: "Add a reservation",
+  },
+];
 
 function getDateByWeekAndDay(dayName: string, weekNumber: number) {
   const startOfWeekOfYearWeek = startOfWeek(

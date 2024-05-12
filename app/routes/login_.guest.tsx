@@ -15,7 +15,7 @@ import { users } from "~/lib/db/schema.server";
 
 export let meta: MetaFunction = () => [
   {
-    title: "Guest login",
+    title: "Create new user",
   },
 ];
 
