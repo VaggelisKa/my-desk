@@ -46,7 +46,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return {
     user,
-    hasAssignedDesk: !!user?.desk,
   };
 }
 
@@ -84,12 +83,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
                 <DropdownMenuGroup>
                   <DropdownMenuItem>
-                    <Link to="/reservations" prefetch="intent">
+                    <Link to="/reservations" prefetch="render">
                       Reservations
                     </Link>
                   </DropdownMenuItem>
 
-                  {data.hasAssignedDesk && (
+                  {data.user?.desk?.id && (
                     <DropdownMenuItem>
                       <Link to="/reserve" prefetch="intent">
                         Add reservation
