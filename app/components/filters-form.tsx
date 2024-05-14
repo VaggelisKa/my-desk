@@ -1,5 +1,6 @@
 import { Form, useSubmit } from "@remix-run/react";
 import { useRef } from "react";
+import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
   Select,
@@ -47,6 +48,10 @@ export function FiltersForm() {
           </SelectContent>
         </Select>
       </fieldset>
+
+      <Button variant="secondary" type="reset">
+        Reset
+      </Button>
     </Form>
   );
 }
