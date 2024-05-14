@@ -50,7 +50,7 @@ export function FiltersForm() {
       </fieldset>
 
       <Button variant="secondary" type="reset">
-        Reset
+        Reset filters
       </Button>
     </Form>
   );
