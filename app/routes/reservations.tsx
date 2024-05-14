@@ -63,15 +63,14 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   if (request.method === "DELETE") {
-    await db
-      .delete(reservations)
-      .where(
-        and(
-          eq(reservations.userId, reservationUserId),
-          eq(reservations.date, reservationDate),
-          eq(reservations.day, reservationDay),
-        ),
-      );
+    await db.delete(reservations).where(
+      and(
+        // TODO Add deskId to the checks
+        eq(reservations.userId, reservationUserId),
+        eq(reservations.date, reservationDate),
+        eq(reservations.day, reservationDay),
+      ),
+    );
   }
 
   return json("Reservation deleted", { status: 200 });

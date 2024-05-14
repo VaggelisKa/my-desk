@@ -1,17 +1,22 @@
 import React from "react";
+import { cn } from "~/lib/utils";
 
-export const DeskButton = React.forwardRef<HTMLButtonElement, any>(
-  (props, ref) => (
-    <button
-      ref={ref}
-      className="rounded-lg bg-gray-100 p-4 transition-all  hover:scale-105 hover:bg-gray-200"
-      {...props}
-    >
-      <DeskIcon />
-      {!!props.name && <p className="mt-2 text-sm capitalize">{props.name}</p>}
-    </button>
-  ),
-);
+export const DeskButton = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...rest }, ref) => (
+  <button
+    ref={ref}
+    className={cn(
+      "rounded-lg bg-gray-100 p-4 transition-all  hover:scale-105 hover:bg-gray-200",
+      className,
+    )}
+    {...rest}
+  >
+    <DeskIcon />
+    {!!rest.name && <p className="mt-2 text-sm capitalize">{rest.name}</p>}
+  </button>
+));
 
 DeskButton.displayName = "DeskButton";
 

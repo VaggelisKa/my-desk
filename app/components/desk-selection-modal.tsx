@@ -65,7 +65,6 @@ export function DeskModal({
 }: DeskModalProps) {
   let currentWeek = getWeek(new Date());
   let todaysDay = days[new Date().getDay()];
-
   let fetcher = useFetcher();
   let [open, setOpen] = useState(false);
   let isSmallDevice = useMediaQuery("(max-width : 768px)");
@@ -143,6 +142,18 @@ export function DeskModal({
     </div>
   );
 
+  let reserveForTodayForm = (
+    <fetcher.Form method="POST" action="/reserve">
+      <input type="text" name="deskId" defaultValue={desk.id} hidden />
+      <input type="text" name="week" defaultValue={currentWeek} hidden />
+      <input type="text" name={todaysDay} defaultValue="on" hidden />
+
+      <Button className="w-full" disabled={isSubmitting} type="submit">
+        Reserve for today
+      </Button>
+    </fetcher.Form>
+  );
+
   if (isSmallDevice) {
     return (
       <Drawer open={open} onOpenChange={setOpen}>
@@ -161,13 +172,15 @@ export function DeskModal({
           <div className="px-4">{contentTemplate}</div>
 
           <DrawerFooter>
-            {allowedToReserve && (
+            {allowedToReserve ? (
               <Button className="padding-0" asChild>
                 <Link className="flex gap-1 p-4" to={`/reserve/${desk.id}`}>
-                  Reserve <ArrowRightIcon className="mt-1 h-4 w-4" />
+                  Reserve <ArrowRightIcon className="mt-[2px] h-4 w-4" />
                 </Link>
               </Button>
-            )}
+            ) : showReserveForTodayButton ? (
+              reserveForTodayForm
+            ) : null}
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
@@ -202,20 +215,7 @@ export function DeskModal({
               </Link>
             </Button>
           ) : showReserveForTodayButton ? (
-            <fetcher.Form method="POST" action="/reserve">
-              <input type="text" name="deskId" defaultValue={desk.id} hidden />
-              <input
-                type="text"
-                name="week"
-                defaultValue={currentWeek}
-                hidden
-              />
-              <input type="text" name={todaysDay} defaultValue="on" hidden />
-
-              <Button disabled={isSubmitting} type="submit">
-                Reserve for today
-              </Button>
-            </fetcher.Form>
+            reserveForTodayForm
           ) : null}
         </DialogFooter>
       </DialogContent>

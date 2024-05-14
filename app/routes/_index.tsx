@@ -74,7 +74,15 @@ export default function Index() {
                 {desksData.map((desk) => (
                   <DeskModal
                     key={desk.id}
-                    TriggerElement={<DeskButton name={desk.user?.firstName} />}
+                    TriggerElement={
+                      <DeskButton
+                        style={{
+                          gridColumnStart: desk.column,
+                          gridColumnEnd: desk.column,
+                        }}
+                        name={desk.user?.firstName}
+                      />
+                    }
                     // @ts-expect-error Fix the type
                     desk={desk}
                     allowedToReserve={desk.user?.id === data.userId}
