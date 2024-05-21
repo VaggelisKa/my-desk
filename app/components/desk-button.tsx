@@ -8,7 +8,7 @@ export const DeskButton = React.forwardRef<
   <button
     ref={ref}
     className={cn(
-      "rounded-lg bg-gray-100 p-4 transition-all  hover:scale-105 hover:bg-gray-200",
+      "rounded-lg bg-gray-100 p-4 transition-all  hover:scale-105 hover:bg-gray-200 disabled:opacity-20  disabled:bg-red-300 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-red-300",
       className,
     )}
     {...rest}

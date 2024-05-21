@@ -1,5 +1,6 @@
 import { useLoaderData } from "@remix-run/react";
 import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
+import { format } from "date-fns";
 import { DeskButton } from "~/components/desk-button";
 import { DeskModal } from "~/components/desk-selection-modal";
 import { FiltersForm } from "~/components/filters-form";
@@ -31,28 +32,32 @@ export async function loader({ request }: LoaderFunctionArgs) {
       },
       user: true,
     },
-    where: (desks, { eq }) =>
-      Number(column) ? eq(desks.column, Number(column)) : undefined,
   });
 
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
-      if (
-        showFree &&
-        !!desk.reservations.find((r) => r.date === "14.05.2024")
-      ) {
-        return acc;
-      }
-
       if (!acc[desk.block]) {
         acc[desk.block] = [];
       }
 
-      acc[desk.block].push(desk);
+      if (
+        (showFree &&
+          !!desk.reservations.find(
+            (r) => r.date === format(new Date(), "dd.MM.yyyy"),
+          )) ||
+        (column !== null && desk.column !== Number(column))
+      ) {
+        acc[desk.block].push({ ...desk, disabled: true });
+      } else {
+        acc[desk.block].push(desk);
+      }
 
       return acc;
     },
-    {} as Record<number, typeof desksRes>,
+    {} as Record<
+      number,
+      Array<(typeof desksRes)[number] & { disabled?: boolean }>
+    >,
   );
 
   return { desks: desksAggregatedByBlock, userId };
@@ -60,6 +65,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function Index() {
   let data = useLoaderData<typeof loader>();
+
+  console.log(data?.desks);
 
   return (
     <section className="flex flex-col gap-16 md:flex-row md:gap-24">
@@ -80,6 +87,7 @@ export default function Index() {
                           gridColumnStart: desk.column,
                           gridColumnEnd: desk.column,
                         }}
+                        disabled={desk.disabled}
                         name={desk.user?.firstName}
                       />
                     }
