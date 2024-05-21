@@ -45,7 +45,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           !!desk.reservations.find(
             (r) => r.date === format(new Date(), "dd.MM.yyyy"),
           )) ||
-        (column !== null && desk.column !== Number(column))
+        (column !== null && column !== "all" && desk.column !== Number(column))
       ) {
         acc[desk.block].push({ ...desk, disabled: true });
       } else {
@@ -65,8 +65,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function Index() {
   let data = useLoaderData<typeof loader>();
-
-  console.log(data?.desks);
 
   return (
     <section className="flex flex-col gap-16 md:flex-row md:gap-24">
