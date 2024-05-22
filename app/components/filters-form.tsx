@@ -1,6 +1,5 @@
 import { Form, useSearchParams, useSubmit } from "@remix-run/react";
-import { useRef, useState } from "react";
-import { Button } from "~/components/ui/button";
+import { useRef } from "react";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
   Select,
@@ -15,9 +14,6 @@ export function FiltersForm() {
   let formRef = useRef<HTMLFormElement | null>(null);
   let submit = useSubmit();
   let [searchParams] = useSearchParams();
-  let [selectedColumn, setSelectedColumn] = useState(
-    searchParams.get("column") ?? "all",
-  );
 
   return (
     <Form ref={formRef} method="GET" className="flex flex-col gap-8">
@@ -42,9 +38,8 @@ export function FiltersForm() {
         </p>
         <Select
           name="column"
-          value={selectedColumn}
-          onValueChange={(value) => {
-            setSelectedColumn(value);
+          defaultValue={searchParams.get("column") ?? "all"}
+          onValueChange={() => {
             submit(formRef.current);
           }}
         >
@@ -61,16 +56,6 @@ export function FiltersForm() {
           </SelectContent>
         </Select>
       </fieldset>
-
-      <Button
-        variant="secondary"
-        type="reset"
-        onClick={() => {
-          setSelectedColumn("all");
-        }}
-      >
-        Reset filters
-      </Button>
     </Form>
   );
 }
