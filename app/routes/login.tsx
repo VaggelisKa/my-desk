@@ -79,8 +79,8 @@ export default function LoginPage() {
   }, [data?.error, navigation]);
 
   return (
-    <section className="flex flex-col gap-16">
-      <TypographyH1>Employee login</TypographyH1>
+    <section className="flex flex-col gap-16 w-full sm:w-auto">
+      <TypographyH1>Login to profile</TypographyH1>
 
       <Form method="POST" className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
@@ -113,8 +113,8 @@ export default function LoginPage() {
             Login
           </Button>
 
-          <p className="pt-2">
-            Don't have a desk assigned?{" "}
+          <p className="pt-2 text-center">
+            Don't have an account?{" "}
             <Link
               className="text-blue-400 underline outline-blue-300"
               to="/login/guest"

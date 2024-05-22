@@ -78,8 +78,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function guestLoginPage() {
   return (
-    <section className="flex flex-col gap-16">
-      <TypographyH1>Register portal</TypographyH1>
+    <section className="flex flex-col gap-16 w-full sm:w-auto">
+      <TypographyH1>Register new account</TypographyH1>
 
       <Form method="POST" className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2">
