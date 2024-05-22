@@ -21,7 +21,7 @@ export function ReservationsTable({
 }) {
   return (
     <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto relative">
         <table className="w-full table-auto">
           <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
