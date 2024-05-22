@@ -75,7 +75,7 @@ export default function Index() {
           return (
             <div key={block} className="flex flex-col gap-2">
               <span className="text-lg font-bold">Block {block}</span>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 grid-rows-2 gap-2">
                 {desksData.map((desk) => (
                   <DeskModal
                     key={desk.id}
@@ -84,6 +84,8 @@ export default function Index() {
                         style={{
                           gridColumnStart: desk.column,
                           gridColumnEnd: desk.column,
+                          gridRowStart: desk.row,
+                          gridRowEnd: desk.row,
                         }}
                         disabled={desk.disabled}
                         name={desk.user?.firstName}
