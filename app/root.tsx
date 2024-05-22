@@ -54,14 +54,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let error = useRouteError();
 
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body className="min-h-screen">
+      <body className="min-h-screen overflow-x-hidden">
         <header className="flex items-center justify-between bg-gray-800 p-2 text-white">
           <NavLink to="/" aria-label="To homepage">
             <span className="text-lg font-bold">Share-a-desk</span>

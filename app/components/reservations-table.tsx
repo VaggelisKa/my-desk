@@ -1,8 +1,6 @@
 import { TrashIcon } from "@radix-ui/react-icons";
 import { Form } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { TypographyH1 } from "~/components/ui/typography";
 import { type users } from "~/lib/db/schema.server";
 
 export function ReservationsTable({
@@ -23,16 +21,6 @@ export function ReservationsTable({
 }) {
   return (
     <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      {false && (
-        <div className="mb-6 flex items-center justify-between">
-          <TypographyH1 className="text-2xl font-bold lg:text-3xl">
-            Reservations
-          </TypographyH1>
-          <div className="flex items-center space-x-4">
-            <Input placeholder="Search reservations..." type="text" />
-          </div>
-        </div>
-      )}
       <div className="overflow-x-auto">
         <table className="w-full table-auto">
           <thead className="bg-gray-100 dark:bg-gray-800">
@@ -81,6 +69,7 @@ export function ReservationsTable({
                         name="reservation-date"
                         value={reservation.date}
                         type="text"
+                        readOnly
                         hidden
                       />
                     )}
@@ -88,12 +77,14 @@ export function ReservationsTable({
                       name="reservation-user-id"
                       value={reservation.users.id}
                       type="text"
+                      readOnly
                       hidden
                     />
                     <input
                       name="reservation-day"
                       value={reservation.day}
                       type="text"
+                      readOnly
                       hidden
                     />
 
