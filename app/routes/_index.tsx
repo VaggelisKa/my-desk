@@ -12,7 +12,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let { userId } = await requireAuthCookie(request);
+  let { userId, role } = await requireAuthCookie(request);
   let url = new URL(request.url);
   let showFree = url.searchParams.get("show-free");
   let column = url.searchParams.get("column");
@@ -60,7 +60,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     >,
   );
 
-  return { desks: desksAggregatedByBlock, userId };
+  return { desks: desksAggregatedByBlock, userId, role };
 }
 
 export default function Index() {
@@ -94,6 +94,7 @@ export default function Index() {
                     // @ts-expect-error Fix the type
                     desk={desk}
                     allowedToReserve={desk.user?.id === data.userId}
+                    allowedToEdit={data.role === "admin"}
                   />
                 ))}
               </div>

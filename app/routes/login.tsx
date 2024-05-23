@@ -59,7 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   return redirect("/", {
     headers: {
-      "Set-Cookie": await userCookie.serialize({ userId }),
+      "Set-Cookie": await userCookie.serialize({ userId, role: user.role }),
     },
   });
 }

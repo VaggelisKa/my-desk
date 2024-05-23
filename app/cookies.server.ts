@@ -25,5 +25,6 @@ export async function requireAuthCookie(request: Request) {
     firstName?: string;
     lastName?: string;
     external?: boolean;
+    role?: "admin" | "user" | null;
   };
 }

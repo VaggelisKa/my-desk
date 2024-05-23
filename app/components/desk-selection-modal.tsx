@@ -38,6 +38,7 @@ type DeskModalProps = {
   TriggerElement?: React.ReactNode;
   children?: React.ReactNode;
   allowedToReserve?: boolean;
+  allowedToEdit?: boolean;
 };
 
 let lettersToDays: Record<string, string> = {
@@ -62,6 +63,7 @@ export function DeskModal({
   TriggerElement,
   desk,
   allowedToReserve,
+  allowedToEdit,
 }: DeskModalProps) {
   let currentWeek = getWeek(new Date());
   let todaysDay = days[new Date().getDay()];
@@ -180,6 +182,15 @@ export function DeskModal({
             ) : showReserveForTodayButton ? (
               reserveForTodayForm
             ) : null}
+
+            {allowedToEdit && (
+              <Button className="padding-0" variant="secondary" asChild>
+                <Link className="flex gap-1 p-4" to={`/desks/${desk.id}/edit`}>
+                  Edit desk info
+                  <ArrowRightIcon className="mt-1 h-4 w-4" />
+                </Link>
+              </Button>
+            )}
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
@@ -216,6 +227,15 @@ export function DeskModal({
           ) : showReserveForTodayButton ? (
             reserveForTodayForm
           ) : null}
+
+          {allowedToEdit && (
+            <Button className="padding-0" variant="secondary" asChild>
+              <Link className="flex gap-1 p-4" to={`/desks/${desk.id}/edit`}>
+                Edit desk info
+                <ArrowRightIcon className="mt-1 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
