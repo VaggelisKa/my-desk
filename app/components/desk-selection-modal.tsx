@@ -71,8 +71,7 @@ export function DeskModal({
   let showReserveForTodayButton =
     todaysDay !== "saturday" &&
     todaysDay !== "sunday" &&
-    // TODO Handle lowercase in function
-    !isReserved(todaysDay?.at(0)?.toUpperCase() ?? "", currentWeek);
+    !isReserved(todaysDay, currentWeek);
   let isSubmitting = fetcher.state !== "idle";
   let userBorrowingDesk =
     isReserved(todaysDay, currentWeek)?.users.id !== desk.user.id
