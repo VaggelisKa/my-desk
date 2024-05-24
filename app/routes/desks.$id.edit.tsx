@@ -6,6 +6,7 @@ import {
   type LoaderFunctionArgs,
 } from "@remix-run/server-runtime";
 import { eq } from "drizzle-orm";
+import { redirectWithToast } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -59,7 +60,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
     .set({ userId: updatedUserId })
     .where(eq(desks.id, deskId));
 
-  return redirect(`/`);
+  return redirectWithToast(`/`, {
+    message: "Desk updated successfully!",
+    type: "success",
+  });
 }
 
 export default function EditDeskPage() {

@@ -1,6 +1,5 @@
 import { Form, useLoaderData } from "@remix-run/react";
 import {
-  redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
   type MetaFunction,
@@ -19,6 +18,7 @@ import {
 } from "date-fns";
 import { eq } from "drizzle-orm";
 import { useState } from "react";
+import { redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -122,7 +122,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   await db.insert(reservations).values(formattedValues);
 
-  return redirect("/");
+  return redirectWithSuccess("/", { message: "Reservation added!" });
 }
 
 export default function ReserveDeskPage() {

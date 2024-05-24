@@ -6,11 +6,14 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  json,
   useRouteError,
   useRouteLoaderData,
 } from "@remix-run/react";
 import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
 import { eq } from "drizzle-orm";
+import { useEffect } from "react";
+import { getToast } from "remix-toast";
 import { ErrorCard } from "~/components/error-card";
 import { UserAvatar } from "~/components/ui/avatar";
 import {
@@ -27,6 +30,7 @@ import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema.server";
+import { useToast } from "./components/ui/use-toast";
 
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -37,6 +41,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let cookieHeader = request.headers.get("Cookie");
   let userData = await userCookie.parse(cookieHeader);
 
+  let { toast, headers } = await getToast(request);
   let user = await db.query.users.findFirst({
     where: eq(users.id, userData?.userId || ""),
     with: {
@@ -44,14 +49,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  return {
-    user,
-  };
+  return json(
+    {
+      user,
+      toast,
+    },
+    { headers },
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   let data = useRouteLoaderData<typeof loader>("root");
   let error = useRouteError();
+  let { toast } = useToast();
+
+  useEffect(() => {
+    if (data?.toast) {
+      toast({ title: data.toast?.message });
+    }
+  }, [data?.toast, toast]);
 
   return (
     <html lang="en">
