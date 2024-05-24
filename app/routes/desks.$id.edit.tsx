@@ -1,5 +1,10 @@
-import { Form, useLoaderData } from "@remix-run/react";
-import { redirect, type LoaderFunctionArgs } from "@remix-run/server-runtime";
+import { Form, useLoaderData, useNavigation } from "@remix-run/react";
+import {
+  json,
+  redirect,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from "@remix-run/server-runtime";
 import { eq } from "drizzle-orm";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -30,8 +35,37 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return deskData;
 }
 
+export async function action({ request, params }: ActionFunctionArgs) {
+  let { role } = await requireAuthCookie(request);
+
+  if (role !== "admin") {
+    return redirect("/", { status: 403 });
+  }
+
+  if (isNaN(Number(params.id))) {
+    return json({ message: "Invalid desk data" }, { status: 400 });
+  }
+
+  let deskId = Number(params.id);
+  let formData = await request.formData();
+  let updatedUserId = String(formData.get("user-id"));
+
+  if (!updatedUserId) {
+    return json({ message: "Invalid user id" }, { status: 400 });
+  }
+
+  await db
+    .update(desks)
+    .set({ userId: updatedUserId })
+    .where(eq(desks.id, deskId));
+
+  return redirect(`/`);
+}
+
 export default function EditDeskPage() {
   let data = useLoaderData<typeof loader>();
+  let navigation = useNavigation();
+  let isSubmitting = navigation.state !== "idle";
 
   return (
     <section className="flex flex-col gap-16 w-full sm:w-auto">
@@ -53,7 +87,7 @@ export default function EditDeskPage() {
           />
         </fieldset>
 
-        <Button className="w-full" type="submit">
+        <Button className="w-full" type="submit" disabled={isSubmitting}>
           Edit
         </Button>
       </Form>
