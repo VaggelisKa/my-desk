@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 import { eq } from "drizzle-orm";
 import { useState } from "react";
-import { redirectWithSuccess } from "remix-toast";
+import { redirectWithError, redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -76,7 +76,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     });
 
     if (!desk) {
-      throw new Error("Desk not found");
+      return redirectWithError("/", { message: "Desk not found!" });
     }
 
     return { desk, userId };
@@ -89,7 +89,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     });
 
     if (!desk) {
-      throw new Error("Desk not found, querying user!");
+      return redirectWithError("/", {
+        message: "Desk not found!",
+        description:
+          "Could not determine the desk assigned to the logged in user, please contact and administrator.",
+      });
     }
 
     return { desk, userId };
@@ -139,7 +143,7 @@ export default function ReserveDeskPage() {
   let [selectedWeek, setSelectedWeek] = useState(String(currentWeek));
 
   function isReserved(day: string) {
-    return !!desk.reservations.filter(
+    return !!desk?.reservations.filter(
       (r) => r.week === Number(selectedWeek) && r.day === day,
     )?.length;
   }
@@ -166,7 +170,7 @@ export default function ReserveDeskPage() {
       <TypographyH1>Reservation form</TypographyH1>
 
       <Form className="flex flex-col gap-8" method="POST">
-        <input type="hidden" name="deskId" value={desk.id} />
+        <input type="hidden" name="deskId" value={desk?.id} />
 
         <fieldset className="space-y-2">
           <p className="text-sm font-medium capitalize leading-none">

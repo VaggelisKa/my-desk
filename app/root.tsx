@@ -64,8 +64,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let { toast } = useToast();
 
   useEffect(() => {
-    if (data?.toast) {
-      toast({ title: data.toast?.message });
+    if (!data?.toast) {
+      return;
+    }
+
+    if (data.toast.type === "success") {
+      toast({
+        title: data.toast?.message,
+        description: data.toast?.description,
+      });
+    }
+
+    if (data.toast.type === "error") {
+      toast({
+        title: data.toast.message,
+        description: data.toast?.description,
+        variant: "destructive",
+      });
     }
   }, [data?.toast, toast]);
 

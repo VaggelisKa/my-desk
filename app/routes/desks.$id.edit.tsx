@@ -6,7 +6,7 @@ import {
   type LoaderFunctionArgs,
 } from "@remix-run/server-runtime";
 import { eq } from "drizzle-orm";
-import { redirectWithToast } from "remix-toast";
+import { redirectWithError, redirectWithToast } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -30,7 +30,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   });
 
   if (!deskData) {
-    throw new Error("Desk not found");
+    return redirectWithError("/", { message: "Desk not found!" });
   }
 
   return deskData;
