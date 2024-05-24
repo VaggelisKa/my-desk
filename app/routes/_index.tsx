@@ -6,6 +6,7 @@ import { DeskModal } from "~/components/desk-selection-modal";
 import { FiltersForm } from "~/components/filters-form";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
+import { cn } from "~/lib/utils";
 
 export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];
@@ -75,7 +76,13 @@ export default function Index() {
           return (
             <div key={block} className="flex flex-col gap-2">
               <span className="text-lg font-bold">Block {block}</span>
-              <div className="grid grid-cols-3 grid-rows-2 gap-2">
+              <div
+                className={cn(
+                  `grid grid-cols-3 grid-rows-2 gap-2`,
+                  // Maybe there is a smarter way for this?
+                  block === "4" && "grid-rows-1",
+                )}
+              >
                 {desksData.map((desk) => (
                   <DeskModal
                     key={desk.id}
