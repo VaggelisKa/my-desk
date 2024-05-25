@@ -128,7 +128,7 @@ export default function EditDeskPage() {
         </Button>
       </Form>
 
-      {data.reservations.length && (
+      {!!data.reservations.length && (
         <ReservationsTable reservations={data.reservations} />
       )}
     </section>
