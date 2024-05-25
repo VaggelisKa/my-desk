@@ -104,10 +104,13 @@ export default function EditDeskPage() {
   let isSubmitting = navigation.state !== "idle";
 
   return (
-    <section className="flex flex-col gap-16 w-full sm:w-auto">
+    <section className="flex flex-col gap-16 w-full sm:w-auto items-center ">
       <TypographyH1>Edit desk info</TypographyH1>
 
-      <Form method="PUT" className="flex flex-col gap-4">
+      <Form
+        method="PUT"
+        className="flex flex-col gap-4 max-w-full w-full sm:max-w-xs"
+      >
         <fieldset className="flex flex-col gap-2">
           <Label htmlFor="user-id">Assigned user id</Label>
 

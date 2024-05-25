@@ -114,23 +114,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
                 <DropdownMenuGroup>
                   <DropdownMenuItem>
-                    <Link to="/reservations" prefetch="render">
+                    <Link
+                      className="w-full"
+                      to="/reservations"
+                      prefetch="render"
+                    >
                       Reservations
                     </Link>
                   </DropdownMenuItem>
 
                   {data.user?.desk?.id && (
                     <DropdownMenuItem>
-                      <Link to="/reserve" prefetch="intent">
+                      <Link
+                        to="/reserve"
+                        className="w-full flex"
+                        prefetch="intent"
+                      >
                         Add reservation
                       </Link>
                     </DropdownMenuItem>
                   )}
 
                   <DropdownMenuItem>
-                    <form method="POST" action="/login/logout">
+                    <form
+                      method="POST"
+                      action="/login/logout"
+                      className="w-full"
+                    >
                       <input
-                        className="appearance-none"
+                        className="appearance-none flex cursor-pointer w-full"
                         type="submit"
                         value="Logout"
                       />
