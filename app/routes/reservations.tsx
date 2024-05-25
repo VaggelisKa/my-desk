@@ -42,15 +42,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  let { userId } = await requireAuthCookie(request);
+  let { role } = await requireAuthCookie(request);
   let formData = await request.formData();
   let reservationDate = String(formData.get("reservation-date"));
   let reservationUserId = String(formData.get("reservation-user-id"));
   let reservationDay = String(formData.get("reservation-day"));
-
-  if (reservationUserId !== userId) {
-    return json(null, { status: 403 });
-  }
 
   if (!reservationDate || !reservationUserId || !reservationDay) {
     return json("Reservation information missing", { status: 400 });
@@ -60,7 +56,9 @@ export async function action({ request }: ActionFunctionArgs) {
     await db.delete(reservations).where(
       and(
         // TODO Add deskId to the checks
-        eq(reservations.userId, reservationUserId),
+        role === "admin"
+          ? undefined
+          : eq(reservations.userId, reservationUserId),
         eq(reservations.date, reservationDate),
         eq(reservations.day, reservationDay),
       ),

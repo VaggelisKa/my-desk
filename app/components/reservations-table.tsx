@@ -1,5 +1,5 @@
 import { TrashIcon } from "@radix-ui/react-icons";
-import { Form } from "@remix-run/react";
+import { useFetcher } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { type users } from "~/lib/db/schema.server";
 
@@ -19,6 +19,8 @@ export function ReservationsTable({
     users: typeof users.$inferSelect;
   }[];
 }) {
+  let fetcher = useFetcher();
+
   return (
     <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <div className="overflow-x-auto relative">
@@ -63,7 +65,11 @@ export function ReservationsTable({
                 </td>
 
                 <td className="px-4 py-3">
-                  <Form method="DELETE" className="flex items-center space-x-2">
+                  <fetcher.Form
+                    method="DELETE"
+                    action="/reservations"
+                    className="flex items-center space-x-2"
+                  >
                     {reservation.date && (
                       <input
                         name="reservation-date"
@@ -92,7 +98,7 @@ export function ReservationsTable({
                       <span className="sr-only">Delete reservation</span>
                       <TrashIcon className="h-5 w-5 font-bold" />
                     </Button>
-                  </Form>
+                  </fetcher.Form>
                 </td>
               </tr>
             ))}

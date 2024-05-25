@@ -5,19 +5,20 @@ import {
   type LoaderFunctionArgs,
 } from "@remix-run/server-runtime";
 import type { MetaFunction } from "@vercel/remix";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import {
   jsonWithError,
   redirectWithError,
   redirectWithToast,
 } from "remix-toast";
+import { ReservationsTable } from "~/components/reservations-table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { desks } from "~/lib/db/schema.server";
+import { desks, reservations } from "~/lib/db/schema.server";
 
 export let meta: MetaFunction = () => [
   {
@@ -39,6 +40,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     where: eq(desks.id, Number(params.id)),
     with: {
       user: true,
+      reservations: {
+        with: {
+          desks: {
+            columns: {
+              id: false,
+              userId: false,
+            },
+          },
+          users: true,
+        },
+        columns: {
+          userId: false,
+        },
+        orderBy: [asc(reservations.date)],
+      },
     },
   });
 
@@ -111,6 +127,10 @@ export default function EditDeskPage() {
           Edit
         </Button>
       </Form>
+
+      {data.reservations.length && (
+        <ReservationsTable reservations={data.reservations} />
+      )}
     </section>
   );
 }
