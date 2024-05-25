@@ -1,12 +1,16 @@
 import { Form, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   json,
-  redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "@remix-run/server-runtime";
+import type { MetaFunction } from "@vercel/remix";
 import { eq } from "drizzle-orm";
-import { redirectWithError, redirectWithToast } from "remix-toast";
+import {
+  jsonWithError,
+  redirectWithError,
+  redirectWithToast,
+} from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -15,11 +19,20 @@ import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks } from "~/lib/db/schema.server";
 
+export let meta: MetaFunction = () => [
+  {
+    title: "Edit desk information",
+  },
+];
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
   let { role } = await requireAuthCookie(request);
 
   if (role !== "admin") {
-    return redirect("/");
+    return redirectWithError("/", {
+      message: "Unauthorized!",
+      description: "You cannot access admin routes as a normal user.",
+    });
   }
 
   let deskData = await db.query.desks.findFirst({
@@ -40,7 +53,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
   let { role } = await requireAuthCookie(request);
 
   if (role !== "admin") {
-    return redirect("/", { status: 403 });
+    return redirectWithError("/", {
+      message: "Unauthorized",
+      description: "You cannot access admin routes as a normal user",
+    });
   }
 
   if (isNaN(Number(params.id))) {
@@ -52,7 +68,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   let updatedUserId = String(formData.get("user-id"));
 
   if (!updatedUserId) {
-    return json({ message: "Invalid user id" }, { status: 400 });
+    return jsonWithError(null, { message: "Invalid user id" });
   }
 
   await db

@@ -165,7 +165,7 @@ export function DeskModal({
 
         <DrawerContent>
           <DrawerHeader className="text-left">
-            <DrawerTitle>Desk {`${desk.row}.${desk.column}`}</DrawerTitle>
+            <DrawerTitle>{`Desk ${desk.block}.${desk.row}.${desk.column}`}</DrawerTitle>
             <DrawerDescription>
               View and edit this desk's information
             </DrawerDescription>
@@ -206,7 +206,7 @@ export function DeskModal({
 
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Desk {`${desk.row}.${desk.column}`}</DialogTitle>
+          <DialogTitle>{`Desk ${desk.block}.${desk.row}.${desk.column}`}</DialogTitle>
           <DialogDescription>
             View and edit this desk's information
           </DialogDescription>
