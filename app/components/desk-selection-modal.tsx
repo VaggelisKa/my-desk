@@ -102,12 +102,6 @@ export function DeskModal({
         </div>
       )}
 
-      {/* TODO: Consider if it should be a thing */}
-      {/* <div>
-        <span className="text-sm text-gray-500">Computer type</span>
-        <p>Desktop</p>
-      </div> */}
-
       <div>
         <span className="text-sm text-gray-500">Availability</span>
 

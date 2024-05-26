@@ -17,6 +17,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let url = new URL(request.url);
   let showFree = url.searchParams.get("show-free");
   let column = url.searchParams.get("column");
+  let block = url.searchParams.get("block");
 
   let desksRes = await db.query.desks.findMany({
     columns: {
@@ -37,7 +38,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
-      if (!acc[desk.block]) {
+      if (
+        !acc[desk.block] &&
+        (block === null || block === "all" || block === desk.block.toString())
+      ) {
         acc[desk.block] = [];
       }
 
@@ -48,9 +52,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
           )) ||
         (column !== null && column !== "all" && desk.column !== Number(column))
       ) {
-        acc[desk.block].push({ ...desk, disabled: true });
+        acc[desk.block]?.push({ ...desk, disabled: true });
       } else {
-        acc[desk.block].push(desk);
+        acc[desk.block]?.push(desk);
       }
 
       return acc;

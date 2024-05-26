@@ -56,6 +56,32 @@ export function FiltersForm() {
           </SelectContent>
         </Select>
       </fieldset>
+
+      <fieldset className="space-y-2">
+        <p className="text-sm font-medium capitalize leading-none">Block</p>
+        <Select
+          name="block"
+          defaultValue={searchParams.get("block") ?? "all"}
+          onValueChange={() => {
+            submit(formRef.current);
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Placement of desk" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="all">all</SelectItem>
+              <SelectItem value="1">1</SelectItem>
+              <SelectItem value="2">2</SelectItem>
+              <SelectItem value="3">3</SelectItem>
+              <SelectItem value="4">4</SelectItem>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="6">6</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </fieldset>
     </Form>
   );
 }
