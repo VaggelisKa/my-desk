@@ -157,7 +157,11 @@ export function DeskModal({
           {TriggerElement || <Button variant="outline">Edit Profile</Button>}
         </DrawerTrigger>
 
-        <DrawerContent>
+        <DrawerContent
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+          }}
+        >
           <DrawerHeader className="text-left">
             <DrawerTitle>{`Desk ${desk.block}.${desk.row}.${desk.column}`}</DrawerTitle>
             <DrawerDescription>
