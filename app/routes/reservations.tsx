@@ -47,22 +47,25 @@ export async function action({ request }: ActionFunctionArgs) {
   let reservationDate = String(formData.get("reservation-date"));
   let reservationUserId = String(formData.get("reservation-user-id"));
   let reservationDay = String(formData.get("reservation-day"));
+  let deskId = String(formData.get("desk-id"));
 
   if (!reservationDate || !reservationUserId || !reservationDay) {
     return json("Reservation information missing", { status: 400 });
   }
 
   if (request.method === "DELETE") {
-    await db.delete(reservations).where(
-      and(
-        // TODO Add deskId to the checks
-        role === "admin"
-          ? undefined
-          : eq(reservations.userId, reservationUserId),
-        eq(reservations.date, reservationDate),
-        eq(reservations.day, reservationDay),
-      ),
-    );
+    await db
+      .delete(reservations)
+      .where(
+        and(
+          role === "admin"
+            ? undefined
+            : eq(reservations.userId, reservationUserId),
+          eq(reservations.date, reservationDate),
+          eq(reservations.day, reservationDay),
+          eq(reservations.deskId, Number(deskId)),
+        ),
+      );
   }
 
   return jsonWithSuccess(

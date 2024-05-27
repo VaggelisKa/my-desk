@@ -93,6 +93,13 @@ export function ReservationsTable({
                       readOnly
                       hidden
                     />
+                    <input
+                      name="desk-id"
+                      type="text"
+                      value={String(reservation.deskId)}
+                      readOnly
+                      hidden
+                    />
 
                     <Button type="submit" size="icon" variant="destructive">
                       <span className="sr-only">Delete reservation</span>
