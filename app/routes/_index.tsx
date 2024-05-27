@@ -65,7 +65,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
     >,
   );
 
-  return { desks: desksAggregatedByBlock, userId, role };
+  let sortedDesksOnBlockRowAndColumn = Object.entries(
+    desksAggregatedByBlock,
+  ).reduce(
+    (acc, [block, desks]) => {
+      acc[block] = desks.sort((a, b) => a.row - b.row || a.column - b.column);
+
+      return acc;
+    },
+    {} as Record<
+      string,
+      Array<(typeof desksRes)[number] & { disabled?: boolean }>
+    >,
+  );
+
+  return { desks: sortedDesksOnBlockRowAndColumn, userId, role };
 }
 
 export default function Index() {
