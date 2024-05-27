@@ -148,6 +148,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       />
                     </form>
                   </DropdownMenuItem>
+
+                  <DropdownMenuLabel>External links</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem>
+                      <a
+                        href="https://github.com/VaggelisKa/my-desk"
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="w-full"
+                      >
+                        View source code
+                      </a>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem>
+                      <a
+                        href="https://github.com/VaggelisKa/my-desk/issues/new"
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="w-full"
+                      >
+                        Report a bug
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
