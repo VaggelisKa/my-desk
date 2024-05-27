@@ -49,7 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
   let reservationDay = String(formData.get("reservation-day"));
   let deskId = String(formData.get("desk-id"));
 
-  if (!reservationDate || !reservationUserId || !reservationDay) {
+  if (!reservationDate || !reservationUserId || !reservationDay || !deskId) {
     return json("Reservation information missing", { status: 400 });
   }
 
