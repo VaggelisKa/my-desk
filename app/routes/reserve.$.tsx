@@ -16,7 +16,7 @@ import {
   setHours,
   startOfWeek,
 } from "date-fns";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { useState } from "react";
 import { redirectWithError, redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
@@ -121,6 +121,7 @@ export async function action({ request }: ActionFunctionArgs) {
       deskId,
       userId,
       date: format(getDateByWeekAndDay(day, week), "dd.MM.yyyy"),
+      dateTimestamp: sql`(${getDateByWeekAndDay(day, week).getTime()})`,
     };
   });
 

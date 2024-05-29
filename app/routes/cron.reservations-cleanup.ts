@@ -1,5 +1,5 @@
 import { json, type ActionFunctionArgs } from "@remix-run/server-runtime";
-import { format } from "date-fns";
+import { getTime } from "date-fns";
 import { lt } from "drizzle-orm";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema.server";
@@ -16,10 +16,10 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let today = format(new Date(), "dd.MM.yyyy");
+  let today = getTime(new Date());
 
   try {
-    await db.delete(reservations).where(lt(reservations.date, today));
+    await db.delete(reservations).where(lt(reservations.dateTimestamp, today));
 
     return json({ message: "Subscriptions cleaned up" }, { status: 200 });
   } catch (error: any) {

@@ -46,6 +46,7 @@ export let reservations = sqliteTable(
     day: text("day").notNull(),
     week: integer("week", { mode: "number" }).notNull(),
     date: text("date"),
+    dateTimestamp: integer("date_timestamp", { mode: "number" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
