@@ -53,7 +53,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         columns: {
           userId: false,
         },
-        orderBy: [asc(reservations.date)],
+        orderBy: [asc(reservations.dateTimestamp)],
       },
     },
   });

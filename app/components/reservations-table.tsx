@@ -21,6 +21,17 @@ export function ReservationsTable({
 }) {
   let fetcher = useFetcher();
 
+  function isDeleting(reservation: (typeof reservations)[number]) {
+    return (
+      fetcher.state === "submitting" &&
+      fetcher.formData?.get("desk-id") === String(reservation.deskId) &&
+      fetcher.formData?.get("reservation-date") === String(reservation.date) &&
+      fetcher.formData?.get("reservation-user-id") ===
+        String(reservation.users.id) &&
+      fetcher.formData?.get("reservation-day") === String(reservation.day)
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <div className="overflow-x-auto relative">
@@ -101,7 +112,12 @@ export function ReservationsTable({
                       hidden
                     />
 
-                    <Button type="submit" size="icon" variant="destructive">
+                    <Button
+                      disabled={isDeleting(reservation)}
+                      type="submit"
+                      size="icon"
+                      variant="destructive"
+                    >
                       <span className="sr-only">Delete reservation</span>
                       <TrashIcon className="h-5 w-5 font-bold" />
                     </Button>

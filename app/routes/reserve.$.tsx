@@ -1,4 +1,4 @@
-import { Form, useLoaderData } from "@remix-run/react";
+import { Form, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -18,7 +18,11 @@ import {
 } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { useState } from "react";
-import { redirectWithError, redirectWithSuccess } from "remix-toast";
+import {
+  jsonWithError,
+  redirectWithError,
+  redirectWithSuccess,
+} from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -109,9 +113,17 @@ export async function action({ request }: ActionFunctionArgs) {
   let formValues = Object.fromEntries(formData.entries());
   delete formValues.deskId;
   delete formValues.week;
+  delete formValues.intent;
 
   if (Object.keys(formValues).length === 0) {
-    throw new Error("No days selected");
+    return jsonWithError(
+      null,
+      {
+        message: "Reservation information is missing",
+        description: "Make sure you have selected at least an available day",
+      },
+      { status: 400 },
+    );
   }
 
   let formattedValues = Object.entries(formValues).map(([day]) => {
@@ -131,6 +143,9 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ReserveDeskPage() {
+  let navigation = useNavigation();
+  let isReserving = navigation.formData?.get("intent") === "reserve";
+
   let currentWeek = getWeek(new Date());
   let startOfCurrentWeek = format(startOfWeek(new Date()), "dd.MM");
   let endOfCurrentWeek = format(endOfWeek(new Date()), "dd.MM");
@@ -171,6 +186,7 @@ export default function ReserveDeskPage() {
       <TypographyH1>Reservation form</TypographyH1>
 
       <Form className="flex flex-col gap-8" method="POST">
+        <input type="text" name="intent" value="reserve" hidden />
         <input type="hidden" name="deskId" value={desk?.id} />
 
         <fieldset className="space-y-2">
@@ -219,8 +235,12 @@ export default function ReserveDeskPage() {
               ))}
             </fieldset>
 
-            <Button className="max-w-full sm:max-w-[6rem]" type="submit">
-              Reserve
+            <Button
+              className="max-w-full sm:max-w-[6rem]"
+              type="submit"
+              disabled={isReserving}
+            >
+              {isReserving ? "Reserving..." : "Reserve"}
             </Button>
           </>
         ) : (
