@@ -5,7 +5,8 @@ import {
   type LoaderFunctionArgs,
   type MetaFunction,
 } from "@vercel/remix";
-import { and, asc, eq } from "drizzle-orm";
+import { getTime, subDays } from "date-fns";
+import { and, asc, eq, gte } from "drizzle-orm";
 import { jsonWithSuccess } from "remix-toast";
 import { ReservationsTable } from "~/components/reservations-table";
 import { Button } from "~/components/ui/button";
@@ -34,8 +35,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     columns: {
       userId: false,
     },
-    where: eq(reservations.userId, userId),
-    orderBy: [asc(reservations.date)],
+    where: and(
+      eq(reservations.userId, userId),
+      gte(reservations.dateTimestamp, getTime(subDays(new Date(), 1))),
+    ),
+    orderBy: [asc(reservations.dateTimestamp)],
   });
 
   return { reservations: reservationsRes, external };
