@@ -20,6 +20,7 @@ import { eq, sql } from "drizzle-orm";
 import { useState } from "react";
 import {
   jsonWithError,
+  jsonWithSuccess,
   redirectWithError,
   redirectWithSuccess,
 } from "remix-toast";
@@ -109,6 +110,7 @@ export async function action({ request }: ActionFunctionArgs) {
   let formData = await request.formData();
   let deskId = Number(formData.get("deskId"));
   let week = Number(formData.get("week"));
+  let intent = formData.get("intent");
 
   let formValues = Object.fromEntries(formData.entries());
   delete formValues.deskId;
@@ -139,7 +141,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
   await db.insert(reservations).values(formattedValues);
 
-  return redirectWithSuccess("/", { message: "Reservation added!" });
+  return intent === "reserve-guest"
+    ? jsonWithSuccess(null, { message: "Reservation added!" })
+    : redirectWithSuccess("/", { message: "Reservation added!" });
 }
 
 export default function ReserveDeskPage() {

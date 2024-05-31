@@ -72,6 +72,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       toast({
         title: data.toast?.message,
         description: data.toast?.description,
+        duration: 3000,
       });
     }
 

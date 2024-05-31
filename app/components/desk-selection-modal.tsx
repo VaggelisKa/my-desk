@@ -144,7 +144,13 @@ export function DeskModal({
       <input type="text" name="week" defaultValue={currentWeek} hidden />
       <input type="text" name={todaysDay} defaultValue="on" hidden />
 
-      <Button className="w-full" disabled={isSubmitting} type="submit">
+      <Button
+        className="w-full"
+        disabled={isSubmitting}
+        name="intent"
+        value="reserve-guest"
+        type="submit"
+      >
         Reserve for today
       </Button>
     </fetcher.Form>
