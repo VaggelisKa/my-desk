@@ -40,7 +40,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   let formData = await request.formData();
-  let userId = String(formData.get("user-id"));
+  let userId = String(formData.get("user-id")).toLowerCase();
 
   if (!userId || userId.length !== 6) {
     return json(
