@@ -137,6 +137,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   )}
 
                   <DropdownMenuItem>
+                    <Link
+                      to={`/users/edit/${data.user.id}`}
+                      className="w-full flex"
+                      prefetch="intent"
+                    >
+                      Edit profile
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem>
                     <form
                       method="POST"
                       action="/login/logout"

@@ -79,8 +79,7 @@ export default function UserEditPage() {
           />
 
           <p className="text-xs text-gray-600">
-            You cannot manually edit your id, if something is wrong please
-            contact and admin!
+            You cannot edit your id, if it is wrong please contact an admin!
           </p>
         </fieldset>
 
