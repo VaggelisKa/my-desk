@@ -81,7 +81,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   let deskId = Number(params.id);
   let formData = await request.formData();
-  let updatedUserId = String(formData.get("user-id"));
+  let updatedUserId = String(formData.get("user-id"))?.toLowerCase();
 
   if (!updatedUserId) {
     return jsonWithError(null, { message: "Invalid user id" });
@@ -104,12 +104,12 @@ export default function EditDeskPage() {
   let isSubmitting = navigation.state !== "idle";
 
   return (
-    <section className="flex flex-col gap-16 w-full sm:w-auto items-center ">
+    <section className="flex w-full flex-col items-center gap-16 sm:w-auto ">
       <TypographyH1>Edit desk info</TypographyH1>
 
       <Form
         method="PUT"
-        className="flex flex-col gap-4 max-w-full w-full sm:max-w-xs"
+        className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"
       >
         <fieldset className="flex flex-col gap-2">
           <Label htmlFor="user-id">Assigned user id</Label>
