@@ -26,7 +26,7 @@ export function FiltersForm() {
         />
         <label
           htmlFor="terms"
-          className="text-sm font-medium  peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          className="text-sm font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
         >
           Show free desks only
         </label>
@@ -51,7 +51,7 @@ export function FiltersForm() {
               <SelectItem value="all">all</SelectItem>
               <SelectItem value="1">window</SelectItem>
               <SelectItem value="2">middle</SelectItem>
-              <SelectItem value="3">isle</SelectItem>
+              <SelectItem value="3">aisle</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
