@@ -45,14 +45,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
         acc[desk.block] = [];
       }
 
+      let reserved = !!desk.reservations.find(
+        (r) => r.date === format(new Date(), "dd.MM.yyyy"),
+      );
+
       if (
-        (showFree &&
-          !!desk.reservations.find(
-            (r) => r.date === format(new Date(), "dd.MM.yyyy"),
-          )) ||
+        (showFree && reserved) ||
         (column !== null && column !== "all" && desk.column !== Number(column))
       ) {
-        acc[desk.block]?.push({ ...desk, disabled: true });
+        acc[desk.block]?.push({
+          ...desk,
+          disabled: true,
+          reserved: true,
+        } as any);
+      } else if (reserved && !showFree) {
+        acc[desk.block]?.push({ ...desk, reserved: true });
       } else {
         acc[desk.block]?.push(desk);
       }
@@ -61,7 +68,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
     {} as Record<
       number,
-      Array<(typeof desksRes)[number] & { disabled?: boolean }>
+      Array<
+        (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
+      >
     >,
   );
 
@@ -75,7 +84,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
     {} as Record<
       string,
-      Array<(typeof desksRes)[number] & { disabled?: boolean }>
+      Array<
+        (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
+      >
     >,
   );
 
@@ -89,7 +100,7 @@ export default function Index() {
     <section className="flex flex-col gap-16 md:flex-row md:gap-24">
       <FiltersForm />
 
-      <div className="flex flex-col gap-8 flex-1">
+      <div className="flex flex-1 flex-col gap-8">
         {Object.entries(data.desks).map(([block, desksData]) => {
           return (
             <div key={block} className="flex flex-col gap-2">
@@ -112,6 +123,11 @@ export default function Index() {
                           gridRowStart: desk.row,
                           gridRowEnd: desk.row,
                         }}
+                        className={
+                          desk.reserved
+                            ? "border-b-2 border-b-red-400"
+                            : "border-b-2 border-b-green-400"
+                        }
                         disabled={desk.disabled}
                         name={desk.user?.firstName}
                       />
