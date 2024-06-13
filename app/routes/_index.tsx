@@ -57,7 +57,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           ...desk,
           disabled: true,
           reserved: true,
-        } as any);
+        });
       } else if (reserved && !showFree) {
         acc[desk.block]?.push({ ...desk, reserved: true });
       } else {
