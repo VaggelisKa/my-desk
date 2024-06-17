@@ -120,26 +120,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       to="/reservations"
                       prefetch="render"
                     >
-                      Reservations
+                      Your reservations
                     </Link>
                   </DropdownMenuItem>
 
                   {data.user?.desk?.id && (
-                    <DropdownMenuItem>
-                      <Link
-                        to="/reserve"
-                        className="w-full flex"
-                        prefetch="intent"
-                      >
-                        Add reservation
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem>
+                        <Link
+                          to="/reserve"
+                          className="flex w-full"
+                          prefetch="intent"
+                        >
+                          Add reservation
+                        </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem>
+                        <Link
+                          to="/automatic-reservations"
+                          className="flex w-full"
+                          prefetch="intent"
+                        >
+                          Automatic reservations
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
 
                   <DropdownMenuItem>
                     <Link
                       to={`/users/edit/${data.user.id}`}
-                      className="w-full flex"
+                      className="flex w-full"
                       prefetch="intent"
                     >
                       Edit profile
@@ -153,7 +165,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       className="w-full"
                     >
                       <input
-                        className="appearance-none flex cursor-pointer w-full"
+                        className="flex w-full cursor-pointer appearance-none"
                         type="submit"
                         value="Logout"
                       />
