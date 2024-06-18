@@ -1,4 +1,4 @@
-import { Form } from "@remix-run/react";
+import { Form, useLoaderData } from "@remix-run/react";
 import { redirect, type LoaderFunctionArgs } from "@vercel/remix";
 import { eq } from "drizzle-orm";
 import { Button } from "~/components/ui/button";
@@ -21,10 +21,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect("/");
   }
 
-  return desk;
+  return { desk };
 }
 
 export default function AutomaticReservationsPage() {
+  let data = useLoaderData<typeof loader>();
   let availableDays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
   return (
@@ -32,6 +33,8 @@ export default function AutomaticReservationsPage() {
       <TypographyH1>Automatic reservations</TypographyH1>
 
       <Form method="POST" className="flex flex-col gap-8">
+        <input type="hidden" name="deskId" value={data.desk.id} />
+
         <fieldset className="flex flex-wrap items-center gap-6">
           {availableDays.map((day) => (
             <div key={day} className="flex items-center space-x-2">
