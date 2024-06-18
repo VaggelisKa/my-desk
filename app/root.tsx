@@ -32,9 +32,17 @@ import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema.server";
 import { useToast } from "./components/ui/use-toast";
 
+let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
+
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   { rel: "icon", href: "/favicon.png" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+  ...iconSizes.map((size) => ({
+    rel: "apple-touch-icon",
+    sizes: `${size}x${size}`,
+    href: `/apple-touch-icon-${size}x${size}.png`,
+  })),
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -90,47 +98,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link
-          rel="apple-touch-icon"
-          sizes="57x57"
-          href="/apple-touch-icon-57x57.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="72x72"
-          href="/apple-touch-icon-72x72.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="76x76"
-          href="/apple-touch-icon-76x76.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="114x114"
-          href="/apple-touch-icon-114x114.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="120x120"
-          href="/apple-touch-icon-120x120.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="144x144"
-          href="/apple-touch-icon-144x144.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="152x152"
-          href="/apple-touch-icon-152x152.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/apple-touch-icon-180x180.png"
-        />
         <Meta />
         <Links />
       </head>
