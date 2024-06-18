@@ -32,9 +32,17 @@ import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema.server";
 import { useToast } from "./components/ui/use-toast";
 
+let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
+
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   { rel: "icon", href: "/favicon.png" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+  ...iconSizes.map((size) => ({
+    rel: "apple-touch-icon",
+    sizes: `${size}x${size}`,
+    href: `/apple-touch-icon-${size}x${size}.png`,
+  })),
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
