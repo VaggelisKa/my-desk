@@ -161,7 +161,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       className="w-full"
                     >
                       <input
-                        className="flex w-full cursor-pointer appearance-none"
+                        className="flex w-full cursor-pointer appearance-none text-left"
                         type="submit"
                         value="Logout"
                       />
