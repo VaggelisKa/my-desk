@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `auto_reservations_cron_id` text;
