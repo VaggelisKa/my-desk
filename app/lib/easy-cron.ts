@@ -45,3 +45,18 @@ export async function addCron({
 
   return json;
 }
+
+export async function deleteCron({ cronId }: { cronId: string }): Promise<{
+  status: string;
+  cron_job_id: string;
+}> {
+  let url = new URL(`${BASE_URL}/delete`);
+
+  url.searchParams.set("token", process.env.CRON_TOKEN!);
+  url.searchParams.set("id", cronId);
+
+  let response = await fetch(url.toString(), { method: "DELETE" });
+  let json = await response.json();
+
+  return json;
+}
