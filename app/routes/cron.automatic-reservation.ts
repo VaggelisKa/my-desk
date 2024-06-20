@@ -15,7 +15,7 @@ const automaticReservationsQueryArgsSchema = z.object({
 export async function loader({ request }: LoaderFunctionArgs) {
   let url = new URL(request.url);
 
-  let cronPassword = url.searchParams.get("cron-password");
+  let cronPassword = url.searchParams.get("cronPassword");
 
   if (!cronPassword || cronPassword !== process.env.CRON_PASSWORD) {
     return new Response("Unauthorized", { status: 401 });

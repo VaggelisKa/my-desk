@@ -29,10 +29,7 @@ export async function addCron({
   );
   callbackUrl.searchParams.set("deskId", deskId);
   callbackUrl.searchParams.set("userId", userId);
-  callbackUrl.searchParams.set(
-    "cron-password",
-    process.env.CRON_PASSWORD ?? "",
-  );
+  callbackUrl.searchParams.set("cronPassword", process.env.CRON_PASSWORD ?? "");
   days.forEach((day) => callbackUrl.searchParams.append("day", day));
 
   url.searchParams.set("token", process.env.CRON_TOKEN!);
