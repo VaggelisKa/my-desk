@@ -1,3 +1,4 @@
+import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
 import { Form, useLoaderData, useNavigation } from "@remix-run/react";
 import {
   redirect,
@@ -12,7 +13,16 @@ import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema.server";
-import { addCron, addCronSchema, deleteCron } from "~/lib/easy-cron";
+import {
+  addCron,
+  addCronSchema,
+  deleteCron,
+  disableCron,
+  enableCron,
+  getCronDetails,
+} from "~/lib/easy-cron";
+
+let availableDays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
 export async function loader({ request }: LoaderFunctionArgs) {
   let user = await requireAuthCookie(request);
@@ -30,11 +40,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  if (!desk) {
+  if (!desk?.id) {
     return redirect("/");
   }
 
-  return { desk };
+  let loaderPayload: { desk: typeof desk; cronEnabled?: boolean } = {
+    desk,
+  };
+  let cronId = desk.user?.autoReservationsCronId;
+
+  if (cronId) {
+    let res = await getCronDetails({ cronId });
+    loaderPayload.cronEnabled = res.cron_job.status === 1;
+  }
+
+  return loaderPayload;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -85,6 +105,20 @@ export async function action({ request }: ActionFunctionArgs) {
     return jsonWithSuccess(null, {
       message: "Automatic reservation has been deleted!",
     });
+  } else if (intent === "DISABLE") {
+    let cronId = String(formData.get("cronId"));
+    await disableCron({ cronId });
+
+    return jsonWithSuccess(null, {
+      message: "Automatic reservation has been disabled!",
+    });
+  } else if (intent === "ENABLE") {
+    let cronId = String(formData.get("cronId"));
+    await enableCron({ cronId });
+
+    return jsonWithSuccess(null, {
+      message: "Automatic reservation has been enabled!",
+    });
   }
 
   return null;
@@ -95,25 +129,75 @@ export default function AutomaticReservationsPage() {
   let navigation = useNavigation();
   let isSubmitting = navigation.state !== "idle";
   let userCronId = data.desk.user?.autoReservationsCronId;
-  let availableDays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+
+  function isSubmittingAction(action: string) {
+    return isSubmitting && navigation.formData?.get("intent") === action;
+  }
 
   return (
     <section className="flex max-w-xl flex-col justify-center gap-16">
       <TypographyH1>Automatic reservations</TypographyH1>
 
       {userCronId ? (
-        <Form method="POST">
-          <input type="hidden" name="intent" value="DELETE" />
-          <input type="hidden" name="cronId" value={userCronId} />
+        <>
+          {data.cronEnabled ? (
+            <p>
+              Your automatic reservation is set to run{" "}
+              <span className="italic">every Sunday at 10:00</span> and handle
+              the desk bookings for the upcoming week. Please keep in mind that
+              the interval starts on the first sunday <strong>after</strong> the
+              initial setup.
+            </p>
+          ) : (
+            <p>Automatic reservations are currently disabled.</p>
+          )}
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {data.cronEnabled ? (
+              <Form method="POST">
+                <input type="hidden" name="intent" value="DISABLE" />
+                <input type="hidden" name="cronId" value={userCronId} />
 
-          <Button
-            className="max-w-full md:max-w-[6rem] md:self-center"
-            variant="destructive"
-            type="submit"
-          >
-            {isSubmitting ? "Deleting..." : "Delete"}
-          </Button>
-        </Form>
+                <Button
+                  variant="outline"
+                  className="flex w-full items-center align-middle"
+                  disabled={isSubmitting}
+                >
+                  <PauseIcon className="mr-1 mt-[1px] h-4 w-4" />
+                  {isSubmittingAction("DISABLE") ? "Disabling..." : "Disable"}
+                </Button>
+              </Form>
+            ) : (
+              <Form method="POST">
+                <input type="hidden" name="intent" value="ENABLE" />
+                <input type="hidden" name="cronId" value={userCronId} />
+
+                <Button
+                  variant="outline"
+                  className="flex w-full items-center align-middle"
+                  disabled={isSubmitting}
+                >
+                  <PlayIcon className="mr-1 mt-[1px] h-4 w-4" />
+                  {isSubmittingAction("ENABLE") ? "Enabling..." : "Enable"}
+                </Button>
+              </Form>
+            )}
+
+            <Form method="POST">
+              <input type="hidden" name="intent" value="DELETE" />
+              <input type="hidden" name="cronId" value={userCronId} />
+
+              <Button
+                className="flex w-full items-center"
+                variant="destructive"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                <TrashIcon className="mr-1 mt-[1px] h-4 w-4" />
+                {isSubmittingAction("DELETE") ? "Deleting..." : "Delete"}
+              </Button>
+            </Form>
+          </div>
+        </>
       ) : (
         <Form method="POST" className="flex flex-col gap-8">
           <input type="hidden" name="intent" value="ADD" />
@@ -136,8 +220,9 @@ export default function AutomaticReservationsPage() {
           <Button
             className="max-w-full md:max-w-[6rem] md:self-center"
             type="submit"
+            disabled={isSubmitting}
           >
-            {isSubmitting ? "Setting up..." : "Setup interval"}
+            {isSubmittingAction("ADD") ? "Setting up..." : "Setup interval"}
           </Button>
         </Form>
       )}

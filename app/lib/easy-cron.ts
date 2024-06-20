@@ -60,3 +60,49 @@ export async function deleteCron({ cronId }: { cronId: string }): Promise<{
 
   return json;
 }
+
+export async function getCronDetails({
+  cronId,
+}: {
+  cronId: string;
+}): Promise<{ status: string; cron_job: { status: 0 | 1 | 2 } }> {
+  let url = new URL(`${BASE_URL}/detail`);
+
+  url.searchParams.set("token", process.env.CRON_TOKEN!);
+  url.searchParams.set("id", cronId);
+
+  let response = await fetch(url.toString(), { method: "GET" });
+  let json = await response.json();
+
+  return json;
+}
+
+export async function disableCron({ cronId }: { cronId: string }): Promise<{
+  status: string;
+  cron_job_id: string;
+}> {
+  let url = new URL(`${BASE_URL}/disable`);
+
+  url.searchParams.set("token", process.env.CRON_TOKEN!);
+  url.searchParams.set("id", cronId);
+
+  let response = await fetch(url.toString(), { method: "POST" });
+  let json = await response.json();
+
+  return json;
+}
+
+export async function enableCron({ cronId }: { cronId: string }): Promise<{
+  status: string;
+  cron_job_id: string;
+}> {
+  let url = new URL(`${BASE_URL}/enable`);
+
+  url.searchParams.set("token", process.env.CRON_TOKEN!);
+  url.searchParams.set("id", cronId);
+
+  let response = await fetch(url.toString(), { method: "POST" });
+  let json = await response.json();
+
+  return json;
+}
