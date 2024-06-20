@@ -6,12 +6,9 @@ import {
 } from "@vercel/remix";
 import {
   add,
-  addDays,
-  addWeeks,
   endOfWeek,
   format,
   getWeek,
-  getYear,
   isAfter,
   setHours,
   startOfWeek,
@@ -38,35 +35,13 @@ import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema.server";
+import { getDateByWeekAndDay } from "~/lib/utils";
 
 export let meta: MetaFunction = () => [
   {
     title: "Add a reservation",
   },
 ];
-
-function getDateByWeekAndDay(dayName: string, weekNumber: number) {
-  const startOfWeekOfYearWeek = startOfWeek(
-    new Date(getYear(new Date()), 0, 1),
-  ); // January 1st of the given year
-  const targetDate = addWeeks(startOfWeekOfYearWeek, weekNumber - 1); // Subtracting 1 because weeks are 0-indexed
-
-  const dayIndex = [
-    "sunday",
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-  ].indexOf(dayName.toLowerCase());
-
-  if (dayIndex === -1) {
-    throw new Error("Invalid day name");
-  }
-
-  return addDays(targetDate, dayIndex);
-}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   let { userId } = await requireAuthCookie(request);
