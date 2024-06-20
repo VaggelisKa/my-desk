@@ -20,7 +20,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   console.log("search params => ", url.searchParams);
 
   if (!cronPassword || cronPassword !== process.env.CRON_PASSWORD) {
-    return new Response("Unauthorized", { status: 401 });
+    return new Response("Unauthorized", { status: 402 });
   }
 
   let week = getWeek(new Date());
