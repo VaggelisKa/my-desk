@@ -5,7 +5,7 @@ import {
   type LoaderFunctionArgs,
 } from "@remix-run/server-runtime";
 import type { MetaFunction } from "@vercel/remix";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import {
   jsonWithError,
   redirectWithError,
@@ -18,7 +18,8 @@ import { Label } from "~/components/ui/label";
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { desks, reservations } from "~/lib/db/schema.server";
+import { desks, reservations, users } from "~/lib/db/schema.server";
+import { deleteCron } from "~/lib/easy-cron";
 
 export let meta: MetaFunction = () => [
   {
@@ -82,6 +83,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
   let deskId = Number(params.id);
   let formData = await request.formData();
   let updatedUserId = String(formData.get("user-id"))?.toLowerCase();
+  let currentUserId = String(formData.get("current-user-id"));
+  let currentUserCronId = String(formData.get("current-user-cron-id"));
 
   if (!updatedUserId) {
     return jsonWithError(null, { message: "Invalid user id" });
@@ -91,6 +94,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
     .update(desks)
     .set({ userId: updatedUserId })
     .where(eq(desks.id, deskId));
+
+  if (currentUserCronId) {
+    await Promise.all([
+      db
+        .update(users)
+        .set({ autoReservationsCronId: currentUserCronId })
+        .where(
+          and(
+            eq(users.id, currentUserId),
+            eq(users.autoReservationsCronId, currentUserCronId),
+          ),
+        ),
+      deleteCron({ cronId: currentUserCronId }),
+    ]);
+  }
 
   return redirectWithToast(`/`, {
     message: "Desk updated successfully!",
@@ -104,13 +122,20 @@ export default function EditDeskPage() {
   let isSubmitting = navigation.state !== "idle";
 
   return (
-    <section className="flex w-full flex-col items-center gap-16 sm:w-auto ">
+    <section className="flex w-full flex-col items-center gap-16 sm:w-auto">
       <TypographyH1>Edit desk info</TypographyH1>
 
       <Form
         method="PUT"
         className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"
       >
+        <input
+          type="hidden"
+          name="current-user-cron-id"
+          value={data.user?.autoReservationsCronId || undefined}
+        />
+        <input type="hidden" name="current-user-id" value={data.user?.id} />
+
         <fieldset className="flex flex-col gap-2">
           <Label htmlFor="user-id">Assigned user id</Label>
 
