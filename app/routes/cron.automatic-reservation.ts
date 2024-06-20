@@ -64,7 +64,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   await db.insert(reservations).values(formattedData).onConflictDoNothing();
 
-  return new Response("Automatic reservation has been setup successfully!", {
-    status: 200,
-  });
+  return new Response(
+    "Automatic reservation interval has executed successfully!",
+    {
+      status: 200,
+    },
+  );
 }
