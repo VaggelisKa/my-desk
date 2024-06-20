@@ -17,6 +17,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   let cronPassword = url.searchParams.get("cronPassword");
 
+  console.log("search params => ", url.searchParams);
+
   if (!cronPassword || cronPassword !== process.env.CRON_PASSWORD) {
     return new Response("Unauthorized", { status: 401 });
   }
