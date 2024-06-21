@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations, users } from "~/lib/db/schema.server";
+import { deleteCron } from "~/lib/easy-cron";
 import { getDateByWeekAndDay } from "~/lib/utils";
 
 const automaticReservationsQueryArgsSchema = z.object({
@@ -50,6 +51,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   if (!userInDb?.desk || userInDb.desk.id !== parsedInputs.data.deskId) {
+    await deleteCron({ cronId: userInDb?.autoReservationsCronId ?? "" });
+    await db
+      .update(users)
+      .set({ autoReservationsCronId: null })
+      .where(eq(users.id, parsedInputs.data.userId));
+
     return new Response("Desk does not match user's desk", { status: 401 });
   }
 

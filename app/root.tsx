@@ -144,7 +144,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         </Link>
                       </DropdownMenuItem>
 
-                      <DropdownMenuItem>
+                      {/* <DropdownMenuItem>
                         <Link
                           to="/automatic-reservations"
                           className="flex w-full"
@@ -152,7 +152,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         >
                           Automatic reservations
                         </Link>
-                      </DropdownMenuItem>
+                      </DropdownMenuItem> */}
                     </>
                   )}
 
