@@ -99,7 +99,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     await Promise.all([
       db
         .update(users)
-        .set({ autoReservationsCronId: currentUserCronId })
+        .set({ autoReservationsCronId: null })
         .where(
           and(
             eq(users.id, currentUserId),
