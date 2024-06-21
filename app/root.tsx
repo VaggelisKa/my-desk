@@ -128,20 +128,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       to="/reservations"
                       prefetch="render"
                     >
-                      Reservations
+                      Your reservations
                     </Link>
                   </DropdownMenuItem>
 
                   {data.user?.desk?.id && (
-                    <DropdownMenuItem>
-                      <Link
-                        to="/reserve"
-                        className="flex w-full"
-                        prefetch="intent"
-                      >
-                        Add reservation
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem>
+                        <Link
+                          to="/reserve"
+                          className="flex w-full"
+                          prefetch="intent"
+                        >
+                          Add reservation
+                        </Link>
+                      </DropdownMenuItem>
+
+                      {/* <DropdownMenuItem>
+                        <Link
+                          to="/automatic-reservations"
+                          className="flex w-full"
+                          prefetch="intent"
+                        >
+                          Automatic reservations
+                        </Link>
+                      </DropdownMenuItem> */}
+                    </>
                   )}
 
                   <DropdownMenuItem>
