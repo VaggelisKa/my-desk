@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import {
   json,
   type ActionFunctionArgs,
@@ -9,7 +9,6 @@ import { getTime, subDays } from "date-fns";
 import { and, asc, eq, gte } from "drizzle-orm";
 import { jsonWithSuccess } from "remix-toast";
 import { ReservationsTable } from "~/components/reservations-table";
-import { Button } from "~/components/ui/button";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema.server";
@@ -21,7 +20,7 @@ export let meta: MetaFunction = () => [
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let { userId, external } = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
   let reservationsRes = await db.query.reservations.findMany({
     with: {
       desks: {
@@ -42,7 +41,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     orderBy: [asc(reservations.dateTimestamp)],
   });
 
-  return { reservations: reservationsRes, external };
+  return { reservations: reservationsRes };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -80,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ReservationsPage() {
-  let { reservations, external } = useLoaderData<typeof loader>();
+  let { reservations } = useLoaderData<typeof loader>();
 
   return reservations.length ? (
     <ReservationsTable reservations={reservations} />
@@ -93,13 +92,6 @@ export default function ReservationsPage() {
           You haven't made any reservations yet!
         </p>
       </div>
-      {!external && (
-        <Button className="padding-0 w-full md:w-auto" asChild>
-          <Link className="flex gap-1 p-4" to="/reserve">
-            Make a reservation
-          </Link>
-        </Button>
-      )}
     </div>
   );
 }
