@@ -1,19 +1,14 @@
-import { json, type ActionFunctionArgs } from "@remix-run/server-runtime";
+import { type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { getTime } from "date-fns";
 import { lt } from "drizzle-orm";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema.server";
 
-export async function action({ request }: ActionFunctionArgs) {
-  if (request.method !== "DELETE") {
-    return json({ error: "Method Not Allowed" }, { status: 405 });
-  }
+export async function loader({ request }: LoaderFunctionArgs) {
+  let url = new URL(request.url);
 
-  if (
-    request.headers.get("Authorization") !==
-    `Bearer ${process.env.CRON_PASSWORD}`
-  ) {
-    return json({ error: "Unauthorized" }, { status: 401 });
+  if (url.searchParams.get("cronPassword") !== process.env.CRON_PASSWORD) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   let today = getTime(new Date());
@@ -21,10 +16,10 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     await db.delete(reservations).where(lt(reservations.dateTimestamp, today));
 
-    return json({ message: "Subscriptions cleaned up" }, { status: 200 });
+    return new Response("Subscriptions cleaned up", { status: 200 });
   } catch (error: any) {
-    json(
-      { error: error?.message || "Error while cleaning up subscriptions" },
+    return new Response(
+      error?.message || "Error while cleaning up subscriptions",
       { status: 500 },
     );
   }
