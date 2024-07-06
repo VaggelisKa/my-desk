@@ -163,7 +163,7 @@ export default function AutomaticReservationsPage() {
                   disabled={isSubmitting}
                 >
                   <PauseIcon className="mr-1 mt-[1px] h-4 w-4" />
-                  {isSubmittingAction("DISABLE") ? "Disabling..." : "Disable"}
+                  {isSubmittingAction("DISABLE") ? "Pausing..." : "Pause"}
                 </Button>
               </Form>
             ) : (
@@ -193,7 +193,7 @@ export default function AutomaticReservationsPage() {
                 disabled={isSubmitting}
               >
                 <TrashIcon className="mr-1 mt-[1px] h-4 w-4" />
-                {isSubmittingAction("DELETE") ? "Deleting..." : "Delete"}
+                {isSubmittingAction("DELETE") ? "Stopping..." : "Stop"}
               </Button>
             </Form>
           </div>
