@@ -17,7 +17,7 @@
     "db:studio": "drizzle-kit studio --verbose"
   },
   "dependencies": {
-    "@libsql/client": "0.6.2",
+    "@libsql/client": "0.8.0",
     "@radix-ui/react-avatar": "1.0.4",
     "@radix-ui/react-checkbox": "1.0.4",
     "@radix-ui/react-dialog": "1.0.5",
@@ -65,6 +65,7 @@
     "vite-tsconfig-paths": "4.2.1"
   },
   "overrides": {
-    "@libsql/isomorphic-fetch": "0.1.12"
+    "@libsql/isomorphic-fetch": "0.1.12",
+    "@libsql/hrana-client": "0.5.6"
   }
 }
