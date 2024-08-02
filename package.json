@@ -17,7 +17,7 @@
     "db:studio": "drizzle-kit studio --verbose"
   },
   "dependencies": {
-    "@libsql/client": "0.8.0",
+    "@libsql/client": "0.5.6",
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.1",
@@ -28,10 +28,10 @@
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
-    "@remix-run/node": "2.11.0",
-    "@remix-run/react": "2.11.0",
-    "@remix-run/server-runtime": "2.11.0",
-    "@vercel/remix": "2.11.0",
+    "@remix-run/node": "2.9.2",
+    "@remix-run/react": "2.9.2",
+    "@remix-run/server-runtime": "2.9.2",
+    "@vercel/remix": "2.9.2-patch.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
@@ -46,8 +46,8 @@
     "vaul": "^0.9.1"
   },
   "devDependencies": {
-    "@remix-run/dev": "2.11.0",
-    "@remix-run/eslint-config": "2.11.0",
+    "@remix-run/dev": "2.9.2",
+    "@remix-run/eslint-config": "2.9.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
