@@ -19,6 +19,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let column = url.searchParams.get("column");
   let block = url.searchParams.get("block");
 
+  console.log("before call");
+
   let desksRes = await db.query.desks.findMany({
     columns: {
       block: true,
