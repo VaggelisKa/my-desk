@@ -8,6 +8,8 @@ import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { cn } from "~/lib/utils";
 
+export const maxDuration = 45;
+
 export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];
 };
