@@ -20,32 +20,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let block = url.searchParams.get("block");
   let selectedDayFilter = url.searchParams.get("selected-day");
 
-  let desksRes: any = [];
+  console.log("Starting call to db");
 
-  try {
-    console.log("Starting call to db");
-
-    desksRes = await db.query.desks.findMany({
-      columns: {
-        block: true,
-        row: true,
-        column: true,
-        id: true,
-      },
-      with: {
-        reservations: {
-          with: {
-            users: true,
-          },
+  let desksRes = await db.query.desks.findMany({
+    columns: {
+      block: true,
+      row: true,
+      column: true,
+      id: true,
+    },
+    with: {
+      reservations: {
+        with: {
+          users: true,
         },
-        user: true,
       },
-    });
-
-    console.log("Finished call to db");
-  } catch (error) {
-    console.log(error);
-  }
+      user: true,
+    },
+  });
 
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
