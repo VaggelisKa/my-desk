@@ -1,4 +1,5 @@
 import { Form, useSearchParams, useSubmit } from "@remix-run/react";
+import { format, parse } from "date-fns";
 import { useRef } from "react";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -9,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { DatePicker } from "./ui/datepicker";
 
 export function FiltersForm() {
   let formRef = useRef<HTMLFormElement | null>(null);
@@ -20,7 +22,9 @@ export function FiltersForm() {
       <fieldset className="flex items-center gap-1">
         <Checkbox
           id="terms"
-          onCheckedChange={() => submit(formRef.current)}
+          onCheckedChange={() =>
+            submit(formRef.current, { preventScrollReset: true })
+          }
           name="show-free"
           defaultChecked={searchParams.get("show-free") === "on"}
         />
@@ -40,7 +44,7 @@ export function FiltersForm() {
           name="column"
           defaultValue={searchParams.get("column") ?? "all"}
           onValueChange={() => {
-            submit(formRef.current);
+            submit(formRef.current, { preventScrollReset: true });
           }}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
@@ -81,6 +85,34 @@ export function FiltersForm() {
             </SelectGroup>
           </SelectContent>
         </Select>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <p className="text-sm font-medium capitalize leading-none">Date</p>
+        <DatePicker
+          initialDate={
+            searchParams.get("selected-day")
+              ? parse(
+                  searchParams.get("selected-day")!,
+                  "dd.MM.yyyy",
+                  new Date(),
+                )
+              : undefined
+          }
+          onDateChange={(date) => {
+            if (!formRef.current) return;
+
+            let formData = new FormData(formRef.current);
+
+            if (!date) {
+              formData.delete("selected-day");
+            } else {
+              formData.append("selected-day", format(date, "dd.MM.yyyy"));
+            }
+
+            submit(formData, { preventScrollReset: true });
+          }}
+        />
       </fieldset>
     </Form>
   );

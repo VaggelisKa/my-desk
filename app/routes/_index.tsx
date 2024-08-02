@@ -18,6 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let showFree = url.searchParams.get("show-free");
   let column = url.searchParams.get("column");
   let block = url.searchParams.get("block");
+  let selectedDayFilter = url.searchParams.get("selected-day");
 
   let desksRes = await db.query.desks.findMany({
     columns: {
@@ -45,8 +46,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
         acc[desk.block] = [];
       }
 
-      let reserved = !!desk.reservations.find(
-        (r) => r.date === format(new Date(), "dd.MM.yyyy"),
+      let reserved = !!desk.reservations.find((r) =>
+        selectedDayFilter?.length
+          ? r.date === selectedDayFilter
+          : r.date === format(new Date(), "dd.MM.yyyy"),
       );
 
       if (
