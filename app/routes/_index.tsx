@@ -36,6 +36,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
+  console.log("Desk res => ", desksRes);
+
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
       if (
