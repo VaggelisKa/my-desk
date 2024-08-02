@@ -12,6 +12,10 @@ export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];
 };
 
+export const config = {
+  maxDuration: 20,
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   let { userId, role } = await requireAuthCookie(request);
   let url = new URL(request.url);
