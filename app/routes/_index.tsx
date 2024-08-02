@@ -8,8 +8,6 @@ import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { cn } from "~/lib/utils";
 
-export const maxDuration = 45;
-
 export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];
 };
@@ -104,6 +102,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.log("error => ", error);
   }
 }
+
+export const maxDuration = 30;
 
 export default function Index() {
   let data = useLoaderData<typeof loader>();
