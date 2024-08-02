@@ -96,6 +96,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function Index() {
   let data = useLoaderData<typeof loader>();
 
+  // test
+
   return (
     <section className="flex flex-col gap-16 md:flex-row md:gap-24">
       <FiltersForm />
