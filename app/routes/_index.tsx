@@ -20,6 +20,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let block = url.searchParams.get("block");
   let selectedDayFilter = url.searchParams.get("selected-day");
 
+  console.log("Starting call to db");
+
   let desksRes = await db.query.desks.findMany({
     columns: {
       block: true,
@@ -36,6 +38,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       user: true,
     },
   });
+
+  console.log("Finished call to db");
 
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
