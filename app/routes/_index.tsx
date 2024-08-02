@@ -21,80 +21,86 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   console.log("before call");
 
-  let desksRes = await db.query.desks.findMany({
-    columns: {
-      block: true,
-      row: true,
-      column: true,
-      id: true,
-    },
-    with: {
-      reservations: {
-        with: {
-          users: true,
-        },
+  try {
+    let desksRes = await db.query.desks.findMany({
+      columns: {
+        block: true,
+        row: true,
+        column: true,
+        id: true,
       },
-      user: true,
-    },
-  });
+      with: {
+        reservations: {
+          with: {
+            users: true,
+          },
+        },
+        user: true,
+      },
+    });
 
-  console.log("Desk res => ", desksRes);
+    console.log("Desk res => ", desksRes);
 
-  let desksAggregatedByBlock = desksRes.reduce(
-    (acc, desk) => {
-      if (
-        !acc[desk.block] &&
-        (block === null || block === "all" || block === desk.block.toString())
-      ) {
-        acc[desk.block] = [];
-      }
+    let desksAggregatedByBlock = desksRes.reduce(
+      (acc, desk) => {
+        if (
+          !acc[desk.block] &&
+          (block === null || block === "all" || block === desk.block.toString())
+        ) {
+          acc[desk.block] = [];
+        }
 
-      let reserved = !!desk.reservations.find(
-        (r) => r.date === format(new Date(), "dd.MM.yyyy"),
-      );
+        let reserved = !!desk.reservations.find(
+          (r) => r.date === format(new Date(), "dd.MM.yyyy"),
+        );
 
-      if (
-        (showFree && reserved) ||
-        (column !== null && column !== "all" && desk.column !== Number(column))
-      ) {
-        acc[desk.block]?.push({
-          ...desk,
-          disabled: true,
-          reserved: true,
-        });
-      } else if (reserved && !showFree) {
-        acc[desk.block]?.push({ ...desk, reserved: true });
-      } else {
-        acc[desk.block]?.push(desk);
-      }
+        if (
+          (showFree && reserved) ||
+          (column !== null &&
+            column !== "all" &&
+            desk.column !== Number(column))
+        ) {
+          acc[desk.block]?.push({
+            ...desk,
+            disabled: true,
+            reserved: true,
+          });
+        } else if (reserved && !showFree) {
+          acc[desk.block]?.push({ ...desk, reserved: true });
+        } else {
+          acc[desk.block]?.push(desk);
+        }
 
-      return acc;
-    },
-    {} as Record<
-      number,
-      Array<
-        (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
-      >
-    >,
-  );
+        return acc;
+      },
+      {} as Record<
+        number,
+        Array<
+          (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
+        >
+      >,
+    );
 
-  let sortedDesksOnBlockRowAndColumn = Object.entries(
-    desksAggregatedByBlock,
-  ).reduce(
-    (acc, [block, desks]) => {
-      acc[block] = desks.sort((a, b) => a.row - b.row || a.column - b.column);
+    let sortedDesksOnBlockRowAndColumn = Object.entries(
+      desksAggregatedByBlock,
+    ).reduce(
+      (acc, [block, desks]) => {
+        acc[block] = desks.sort((a, b) => a.row - b.row || a.column - b.column);
 
-      return acc;
-    },
-    {} as Record<
-      string,
-      Array<
-        (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
-      >
-    >,
-  );
+        return acc;
+      },
+      {} as Record<
+        string,
+        Array<
+          (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
+        >
+      >,
+    );
 
-  return { desks: sortedDesksOnBlockRowAndColumn, userId, role };
+    return { desks: sortedDesksOnBlockRowAndColumn, userId, role };
+  } catch (error) {
+    console.log("error => ", error);
+  }
 }
 
 export default function Index() {
