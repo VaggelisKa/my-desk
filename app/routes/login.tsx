@@ -59,7 +59,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
   return redirect("/", {
     headers: {
-      "Set-Cookie": await userCookie.serialize({ userId, role: user.role }),
+      "Set-Cookie": await userCookie.serialize({
+        userId,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      }),
     },
   });
 }
@@ -79,7 +84,7 @@ export default function LoginPage() {
   }, [data?.error, navigation]);
 
   return (
-    <section className="flex flex-col gap-16 w-full sm:w-auto">
+    <section className="flex w-full flex-col gap-16 sm:w-auto">
       <TypographyH1>Login to profile</TypographyH1>
 
       <Form method="POST" className="flex flex-col gap-4">

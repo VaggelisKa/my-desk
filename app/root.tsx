@@ -32,9 +32,17 @@ import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema.server";
 import { useToast } from "./components/ui/use-toast";
 
+let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
+
 export let links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   { rel: "icon", href: "/favicon.png" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+  ...iconSizes.map((size) => ({
+    rel: "apple-touch-icon",
+    sizes: `${size}x${size}`,
+    href: `/apple-touch-icon-${size}x${size}.png`,
+  })),
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -120,26 +128,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       to="/reservations"
                       prefetch="render"
                     >
-                      Reservations
+                      Your reservations
                     </Link>
                   </DropdownMenuItem>
 
                   {data.user?.desk?.id && (
-                    <DropdownMenuItem>
-                      <Link
-                        to="/reserve"
-                        className="w-full flex"
-                        prefetch="intent"
-                      >
-                        Add reservation
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem>
+                        <Link
+                          to="/reserve"
+                          className="flex w-full"
+                          prefetch="intent"
+                        >
+                          Add reservation
+                        </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem>
+                        <Link
+                          to="/automatic-reservations"
+                          className="flex w-full"
+                          prefetch="intent"
+                        >
+                          Automatic reservations
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
 
                   <DropdownMenuItem>
                     <Link
                       to={`/users/edit/${data.user.id}`}
-                      className="w-full flex"
+                      className="flex w-full"
                       prefetch="intent"
                     >
                       Edit profile
@@ -153,7 +173,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       className="w-full"
                     >
                       <input
-                        className="appearance-none flex cursor-pointer w-full"
+                        className="flex w-full cursor-pointer appearance-none text-left"
                         type="submit"
                         value="Logout"
                       />

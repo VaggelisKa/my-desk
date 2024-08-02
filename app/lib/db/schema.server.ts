@@ -12,6 +12,7 @@ export let users = sqliteTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: text("role", { enum: ["user", "admin"] }).default("user"),
+  autoReservationsCronId: text("auto_reservations_cron_id"),
 });
 
 export let desks = sqliteTable(
