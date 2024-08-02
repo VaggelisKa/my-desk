@@ -1,10 +1,5 @@
 {
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "app/lib/db/migrator.mjs",
-    "app/components/desk-selection-modal.tsx"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "app/components/desk-selection-modal.tsx"],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["@vercel/remix", "node", "vite/client"],
@@ -23,8 +18,6 @@
     "paths": {
       "~/*": ["./app/*"]
     },
-
-    // Vite takes care of building everything, not tsc.
     "noEmit": true
   }
 }
