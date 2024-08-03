@@ -31,6 +31,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       reservations: {
         columns: {
           userId: false,
+          dateTimestamp: false,
         },
         with: {
           users: true,
