@@ -30,7 +30,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     with: {
       reservations: {
         columns: {
-          day: false,
+          week: false,
         },
         with: {
           users: true,
