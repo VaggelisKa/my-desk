@@ -1,4 +1,4 @@
-import { useLoaderData } from "@remix-run/react";
+import { json, useLoaderData } from "@remix-run/react";
 import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
 import { format } from "date-fns";
 import { DeskButton } from "~/components/desk-button";
@@ -29,11 +29,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
     with: {
       reservations: {
+        columns: {
+          date: true,
+        },
         with: {
           users: true,
         },
       },
-      user: true,
+      user: {
+        columns: {
+          firstName: true,
+          id: true,
+        },
+      },
     },
   });
 
@@ -93,7 +101,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     >,
   );
 
-  return { desks: sortedDesksOnBlockRowAndColumn, userId, role };
+  return json({ desks: sortedDesksOnBlockRowAndColumn, userId, role });
 }
 
 export default function Index() {
