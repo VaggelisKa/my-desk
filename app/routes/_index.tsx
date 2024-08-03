@@ -5,7 +5,7 @@ import { DeskModal } from "~/components/desk-selection-modal";
 import { FiltersForm } from "~/components/filters-form";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { desks } from "~/lib/db/schema.server";
+import { reservations } from "~/lib/db/schema.server";
 import { cn } from "~/lib/utils";
 
 export const meta: MetaFunction = () => {
@@ -39,7 +39,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   //   },
   // });
 
-  await db.select().from(desks);
+  await db.select().from(reservations);
 
   let desksRes: any = {
     desks: {
