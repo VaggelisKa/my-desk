@@ -30,7 +30,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     with: {
       reservations: {
         columns: {
-          date: true,
+          userId: false,
         },
         with: {
           users: true,
