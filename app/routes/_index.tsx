@@ -32,6 +32,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         columns: {
           userId: false,
           dateTimestamp: false,
+          createdAt: false,
         },
         with: {
           users: true,
