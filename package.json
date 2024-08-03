@@ -60,8 +60,8 @@
     "prettier-plugin-tailwindcss": "0.5.14",
     "tailwindcss": "3.4.3",
     "typescript": "5.1.6",
-    "vite": "5.1.0",
-    "vite-tsconfig-paths": "4.2.1"
+    "vite": "5.3.5",
+    "vite-tsconfig-paths": "4.3.2"
   },
   "overrides": {
     "@libsql/isomorphic-fetch": "0.1.12",
