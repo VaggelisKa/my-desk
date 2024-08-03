@@ -35,6 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           createdAt: false,
           deskId: false,
           week: false,
+          day: false,
         },
         with: {
           users: true,
