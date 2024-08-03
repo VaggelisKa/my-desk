@@ -30,11 +30,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     with: {
       reservations: {
         columns: {
-          userId: false,
-          dateTimestamp: false,
-          createdAt: false,
-          deskId: false,
-          week: false,
           day: false,
         },
         with: {
