@@ -33,6 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           date: true,
           week: true,
           deskId: true,
+          day: true,
         },
         with: {
           users: true,

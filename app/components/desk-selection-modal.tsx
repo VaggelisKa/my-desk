@@ -31,7 +31,10 @@ type DeskModalProps = {
     block: number;
     column: number;
     user: typeof users.$inferSelect;
-    reservations: (typeof reservations.$inferSelect & {
+    reservations: ({
+      day: typeof reservations.$inferSelect.day;
+      week: typeof reservations.$inferSelect.week;
+    } & {
       users: typeof users.$inferSelect;
     })[];
   };
