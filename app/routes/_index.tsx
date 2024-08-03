@@ -20,27 +20,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let block = url.searchParams.get("block");
   let selectedDayFilter = url.searchParams.get("selected-day");
 
-  let desksRes = await db.query.desks.findMany({
-    columns: {
-      block: true,
-      row: true,
-      column: true,
-      id: true,
-    },
-    with: {
-      reservations: {
-        columns: {
-          day: true,
-          week: true,
-          date: true,
-        },
-        with: {
-          users: true,
-        },
+  let desksResPrepared = db.query.desks
+    .findMany({
+      columns: {
+        block: true,
+        row: true,
+        column: true,
+        id: true,
       },
-      user: true,
-    },
-  });
+      with: {
+        reservations: {
+          columns: {
+            day: true,
+            week: true,
+            date: true,
+          },
+          with: {
+            users: true,
+          },
+        },
+        user: true,
+      },
+    })
+    .prepare();
+  let desksRes = await desksResPrepared.execute();
 
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
