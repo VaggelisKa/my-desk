@@ -28,7 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       id: true,
     },
     with: {
-      reservation: {
+      reservations: {
         columns: {
           day: true,
           week: true,
@@ -42,32 +42,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  console.log(
-    db.query.desks
-      .findMany({
-        columns: {
-          block: true,
-          row: true,
-          column: true,
-          id: true,
-        },
-        with: {
-          reservation: {
-            columns: {
-              day: true,
-              week: true,
-              date: true,
-            },
-            with: {
-              users: true,
-            },
-          },
-          user: true,
-        },
-      })
-      .toSQL(),
-  );
-
   let desksAggregatedByBlock = desksRes.reduce(
     (acc, desk) => {
       if (
@@ -77,7 +51,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         acc[desk.block] = [];
       }
 
-      let reserved = !!desk.reservation.find((r) =>
+      let reserved = !!desk.reservations.find((r) =>
         selectedDayFilter?.length
           ? r.date === selectedDayFilter
           : r.date === format(new Date(), "dd.MM.yyyy"),

@@ -31,7 +31,7 @@ type DeskModalProps = {
     block: number;
     column: number;
     user: typeof users.$inferSelect;
-    reservation: ({
+    reservations: ({
       day: typeof reservations.$inferSelect.day;
       week: typeof reservations.$inferSelect.week;
     } & {
@@ -84,7 +84,7 @@ export function DeskModal({
       : null;
 
   function isReserved(day: string, week: number) {
-    return desk.reservation.find(
+    return desk.reservations.find(
       (r) => r.day === (lettersToDays[day] || day) && r.week === week,
     );
   }
