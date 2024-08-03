@@ -50,12 +50,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let userData = await userCookie.parse(cookieHeader);
 
   let { toast, headers } = await getToast(request);
+  console.log("Called root loader => ", userData);
   let user = await db.query.users.findFirst({
     where: eq(users.id, userData?.userId || ""),
     with: {
       desk: true,
     },
   });
+
+  console.log("User => ", user);
 
   return json(
     {
