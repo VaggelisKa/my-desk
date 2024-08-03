@@ -70,7 +70,7 @@ export let usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export let desksRelations = relations(desks, ({ one, many }) => ({
-  reservations: many(reservations),
+  reservation: many(reservations),
   user: one(users, {
     fields: [desks.userId],
     references: [users.id],
