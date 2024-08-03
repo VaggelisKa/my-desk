@@ -29,17 +29,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
         id: true,
       },
       with: {
-        reservations: {
-          columns: {
-            day: true,
-            week: true,
-            date: true,
-          },
-        },
+        reservations: true,
         user: {
           columns: {
             firstName: true,
             lastName: true,
+            id: true,
           },
         },
       },
