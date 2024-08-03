@@ -35,11 +35,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
             week: true,
             date: true,
           },
-          with: {
-            users: true,
+        },
+        user: {
+          columns: {
+            firstName: true,
+            lastName: true,
           },
         },
-        user: true,
       },
     })
     .prepare();
