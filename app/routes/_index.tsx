@@ -32,7 +32,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         columns: {
           date: true,
           week: true,
-          dateTimestamp: true,
+          deskId: true,
         },
         with: {
           users: true,
