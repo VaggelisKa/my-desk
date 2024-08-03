@@ -9,6 +9,7 @@
   "scripts": {
     "build": "remix vite:build",
     "dev": "remix vite:dev",
+    "serve": "remix-serve build/server/nodejs-eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
     "typecheck": "tsc",
     "migrations:generate": "drizzle-kit generate",
     "migrations:run": "drizzle-kit migrate",
@@ -50,6 +51,7 @@
   "devDependencies": {
     "@remix-run/dev": "2.11.0",
     "@remix-run/eslint-config": "2.11.0",
+    "@remix-run/serve": "^2.11.0",
     "@types/react": "18.2.20",
     "@types/react-dom": "18.2.7",
     "autoprefixer": "10.4.19",

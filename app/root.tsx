@@ -91,7 +91,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [data?.toast, toast]);
+  }, [data, toast]);
 
   return (
     <html lang="en">

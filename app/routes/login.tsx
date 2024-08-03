@@ -81,7 +81,7 @@ export default function LoginPage() {
         inputRef.current.focus();
       }
     }
-  }, [data?.error, navigation]);
+  }, [data, navigation]);
 
   return (
     <section className="flex w-full flex-col gap-16 sm:w-auto">
