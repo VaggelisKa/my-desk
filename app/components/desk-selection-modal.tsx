@@ -30,8 +30,14 @@ type DeskModalProps = {
     row: number;
     block: number;
     column: number;
-    user: typeof users.$inferSelect;
-    reservations: (typeof reservations.$inferSelect & {
+    user: Pick<
+      typeof users.$inferSelect,
+      "firstName" | "lastName" | "id"
+    > | null;
+    reservations: (Pick<
+      typeof reservations.$inferSelect,
+      "date" | "week" | "day"
+    > & {
       users: typeof users.$inferSelect;
     })[];
   };
@@ -76,7 +82,7 @@ export function DeskModal({
     !isReserved(todaysDay, currentWeek);
   let isSubmitting = fetcher.state !== "idle";
   let userBorrowingDesk =
-    isReserved(todaysDay, currentWeek)?.users.id !== desk.user.id
+    isReserved(todaysDay, currentWeek)?.users.id !== desk.user?.id
       ? isReserved(todaysDay, currentWeek)?.users
       : null;
 
@@ -91,7 +97,7 @@ export function DeskModal({
       <div>
         <span className="text-sm text-gray-500">Assigned to</span>
         <p className="capitalize">
-          {`${desk.user.firstName} ${desk.user.lastName}`}
+          {`${desk.user?.firstName} ${desk.user?.lastName || ""}`}
         </p>
       </div>
 
