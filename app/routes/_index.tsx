@@ -35,7 +35,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
           day: true,
         },
         with: {
-          users: true,
+          users: {
+            columns: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
         },
       },
       user: {
