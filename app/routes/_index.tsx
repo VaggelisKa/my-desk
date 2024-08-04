@@ -31,6 +31,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       reservations: {
         columns: {
           date: true,
+          week: true,
+          day: true,
         },
         with: {
           users: true,
@@ -39,6 +41,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       user: {
         columns: {
           firstName: true,
+          lastName: true,
           id: true,
         },
       },
@@ -143,7 +146,6 @@ export default function Index() {
                         name={desk.user?.firstName}
                       />
                     }
-                    // @ts-expect-error Fix the type
                     desk={desk}
                     allowedToReserve={desk.user?.id === data.userId}
                     allowedToEdit={data.role === "admin"}
