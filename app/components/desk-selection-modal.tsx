@@ -38,7 +38,7 @@ type DeskModalProps = {
       typeof reservations.$inferSelect,
       "date" | "week" | "day"
     > & {
-      users: typeof users.$inferSelect;
+      users: Pick<typeof users.$inferSelect, "id" | "firstName" | "lastName">;
     })[];
   };
   TriggerElement?: React.ReactNode;
