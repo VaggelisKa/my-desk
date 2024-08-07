@@ -73,6 +73,9 @@ export default function LoginPage() {
   let inputRef = useRef<HTMLInputElement>(null);
   let data = useActionData<typeof action>();
   let navigation = useNavigation();
+  let isSubmitting =
+    navigation.state !== "idle" &&
+    navigation.formData?.get("intent") === "employee-login";
 
   useEffect(() => {
     if (data?.error && navigation.state === "idle") {
@@ -114,8 +117,9 @@ export default function LoginPage() {
             name="intent"
             value="employee-login"
             type="submit"
+            disabled={isSubmitting}
           >
-            Login
+            {isSubmitting ? "Logging in..." : "Login"}
           </Button>
 
           <p className="pt-2 text-center">
