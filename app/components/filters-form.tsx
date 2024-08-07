@@ -17,6 +17,20 @@ export function FiltersForm() {
   let submit = useSubmit();
   let [searchParams] = useSearchParams();
 
+  function handleFilterChange(date?: Date) {
+    if (!formRef.current) return;
+
+    let formData = new FormData(formRef.current);
+
+    if (!date) {
+      formData.delete("selected-day");
+    } else {
+      formData.append("selected-day", format(date, "dd.MM.yyyy"));
+    }
+
+    submit(formData, { preventScrollReset: true });
+  }
+
   return (
     <Form ref={formRef} method="GET" className="flex flex-col gap-8">
       <fieldset className="flex items-center gap-1">
@@ -44,7 +58,7 @@ export function FiltersForm() {
           name="column"
           defaultValue={searchParams.get("column") ?? "all"}
           onValueChange={() => {
-            submit(formRef.current, { preventScrollReset: true });
+            handleFilterChange();
           }}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
@@ -67,7 +81,7 @@ export function FiltersForm() {
           name="block"
           defaultValue={searchParams.get("block") ?? "all"}
           onValueChange={() => {
-            submit(formRef.current);
+            handleFilterChange();
           }}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
@@ -100,17 +114,7 @@ export function FiltersForm() {
               : undefined
           }
           onDateChange={(date) => {
-            if (!formRef.current) return;
-
-            let formData = new FormData(formRef.current);
-
-            if (!date) {
-              formData.delete("selected-day");
-            } else {
-              formData.append("selected-day", format(date, "dd.MM.yyyy"));
-            }
-
-            submit(formData, { preventScrollReset: true });
+            handleFilterChange(date);
           }}
         />
       </fieldset>
