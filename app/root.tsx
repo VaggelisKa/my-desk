@@ -10,6 +10,7 @@ import {
   useRouteError,
   useRouteLoaderData,
 } from "@remix-run/react";
+import { Analytics } from "@vercel/analytics/react";
 import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
@@ -217,6 +218,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {error ? <ErrorCard message={error?.message} /> : children}
         </main>
         <Toaster />
+        <Analytics />
         <ScrollRestoration />
         <Scripts />
       </body>
