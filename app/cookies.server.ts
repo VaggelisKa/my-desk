@@ -5,7 +5,7 @@ export let userCookie = createCookie("user", {
   path: "/",
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
-  maxAge: 60 * 60 * 24 * 5, // 5 days
+  maxAge: 60 * 60 * 24 * 14, // 2 weeks
 });
 
 export async function requireAuthCookie(request: Request) {
