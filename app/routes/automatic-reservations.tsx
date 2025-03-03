@@ -51,7 +51,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   if (cronId) {
     let res = await getCronDetails({ cronId });
-    loaderPayload.cronEnabled = res.cron_job.status === 1;
+    loaderPayload.cronEnabled = res.cron_job?.status === 1;
   }
 
   return loaderPayload;
