@@ -1,4 +1,8 @@
+import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
+import { eq } from "drizzle-orm";
+import { useEffect } from "react";
 import {
+  data,
   Link,
   Links,
   Meta,
@@ -6,13 +10,9 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  json,
   useRouteError,
   useRouteLoaderData,
-} from "@remix-run/react";
-import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
-import { eq } from "drizzle-orm";
-import { useEffect } from "react";
+} from "react-router";
 import { getToast } from "remix-toast";
 import { ErrorCard } from "~/components/error-card";
 import { UserAvatar } from "~/components/ui/avatar";
@@ -57,7 +57,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  return json(
+  return data(
     {
       user,
       toast,

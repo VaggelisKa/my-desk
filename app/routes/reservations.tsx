@@ -1,12 +1,12 @@
-import { useLoaderData } from "@remix-run/react";
+import { getTime, subDays } from "date-fns";
+import { and, asc, eq, gte } from "drizzle-orm";
 import {
-  json,
+  data,
+  useLoaderData,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
   type MetaFunction,
-} from "@vercel/remix";
-import { getTime, subDays } from "date-fns";
-import { and, asc, eq, gte } from "drizzle-orm";
+} from "react-router";
 import { jsonWithSuccess } from "remix-toast";
 import { ReservationsTable } from "~/components/reservations-table";
 import { requireAuthCookie } from "~/cookies.server";
@@ -53,7 +53,7 @@ export async function action({ request }: ActionFunctionArgs) {
   let deskId = String(formData.get("desk-id"));
 
   if (!reservationDate || !reservationUserId || !reservationDay || !deskId) {
-    return json("Reservation information missing", { status: 400 });
+    return data("Reservation information missing", { status: 400 });
   }
 
   if (request.method === "DELETE") {

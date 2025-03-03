@@ -1,5 +1,5 @@
 import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
-import { Form, useLoaderData, useNavigation } from "@remix-run/react";
+import { Form, useLoaderData, useNavigation } from "react-router";
 import {
   redirect,
   type ActionFunctionArgs,

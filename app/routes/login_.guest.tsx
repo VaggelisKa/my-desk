@@ -1,11 +1,10 @@
 import { Label } from "@radix-ui/react-label";
-import { Form, redirect } from "@remix-run/react";
 import {
-  json,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
   type MetaFunction,
 } from "@vercel/remix";
+import { Form, data, redirect } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "~/components/ui/typography";
@@ -54,7 +53,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   if (Object.keys(errors).length) {
-    return json({ ok: false, errors }, { status: 400 });
+    return data({ ok: false, errors }, { status: 400 });
   }
 
   let newUser = await db
@@ -78,7 +77,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function guestLoginPage() {
   return (
-    <section className="flex flex-col gap-16 w-full sm:w-auto">
+    <section className="flex w-full flex-col gap-16 sm:w-auto">
       <TypographyH1>Register new account</TypographyH1>
 
       <Form method="POST" className="flex flex-col gap-4">

@@ -1,4 +1,4 @@
-import { json, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "react-router";
 import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
 import { format } from "date-fns";
 import { DeskButton } from "~/components/desk-button";
@@ -110,7 +110,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     >,
   );
 
-  return json({ desks: sortedDesksOnBlockRowAndColumn, userId, role });
+  return { desks: sortedDesksOnBlockRowAndColumn, userId, role };
 }
 
 export default function Index() {

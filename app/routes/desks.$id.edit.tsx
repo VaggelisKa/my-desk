@@ -1,11 +1,13 @@
-import { Form, useLoaderData, useNavigation } from "@remix-run/react";
-import {
-  json,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-} from "@remix-run/server-runtime";
 import type { MetaFunction } from "@vercel/remix";
 import { and, asc, eq } from "drizzle-orm";
+import {
+  Form,
+  data,
+  useLoaderData,
+  useNavigation,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from "react-router";
 import {
   jsonWithError,
   redirectWithError,
@@ -77,7 +79,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   if (isNaN(Number(params.id))) {
-    return json({ message: "Invalid desk data" }, { status: 400 });
+    return data({ message: "Invalid desk data" }, { status: 400 });
   }
 
   let deskId = Number(params.id);

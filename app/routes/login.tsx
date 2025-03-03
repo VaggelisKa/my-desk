@@ -1,18 +1,16 @@
+import { eq } from "drizzle-orm";
+import { useEffect, useRef } from "react";
 import {
   Form,
   Link,
+  data,
   redirect,
   useActionData,
   useNavigation,
-} from "@remix-run/react";
-import {
-  json,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
   type MetaFunction,
-} from "@vercel/remix";
-import { eq } from "drizzle-orm";
-import { useEffect, useRef } from "react";
+} from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -43,7 +41,7 @@ export async function action({ request }: ActionFunctionArgs) {
   let userId = String(formData.get("user-id")).toLowerCase();
 
   if (!userId || userId.length !== 6) {
-    return json(
+    return data(
       { ok: false, error: "Invalid employee number" },
       { status: 400 },
     );
@@ -54,7 +52,7 @@ export async function action({ request }: ActionFunctionArgs) {
   });
 
   if (!user) {
-    return json({ ok: false, error: "No user found" }, { status: 401 });
+    return data({ ok: false, error: "No user found" }, { status: 401 });
   }
 
   return redirect("/", {

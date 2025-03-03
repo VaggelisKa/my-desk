@@ -1,4 +1,4 @@
-import { createCookie, redirect } from "@remix-run/node";
+import { createCookie, redirect } from "react-router";
 
 export let userCookie = createCookie("user", {
   httpOnly: true,
