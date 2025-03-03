@@ -9,7 +9,7 @@ import {
   type LoaderFunctionArgs,
 } from "react-router";
 import {
-  jsonWithError,
+  dataWithError,
   redirectWithError,
   redirectWithToast,
 } from "remix-toast";
@@ -89,7 +89,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   let currentUserCronId = String(formData.get("current-user-cron-id"));
 
   if (!updatedUserId) {
-    return jsonWithError(null, { message: "Invalid user id" });
+    return dataWithError(null, { message: "Invalid user id" });
   }
 
   await db

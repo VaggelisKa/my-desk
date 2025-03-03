@@ -1,4 +1,3 @@
-import { Form, useLoaderData, useNavigation } from "react-router";
 import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -15,9 +14,10 @@ import {
 } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { useState } from "react";
+import { Form, useLoaderData, useNavigation } from "react-router";
 import {
-  jsonWithError,
-  jsonWithSuccess,
+  dataWithError,
+  dataWithSuccess,
   redirectWithError,
   redirectWithSuccess,
 } from "remix-toast";
@@ -93,7 +93,7 @@ export async function action({ request }: ActionFunctionArgs) {
   delete formValues.intent;
 
   if (Object.keys(formValues).length === 0) {
-    return jsonWithError(
+    return dataWithError(
       null,
       {
         message: "Reservation information is missing",
@@ -117,7 +117,7 @@ export async function action({ request }: ActionFunctionArgs) {
   await db.insert(reservations).values(formattedValues);
 
   return intent === "reserve-guest"
-    ? jsonWithSuccess(null, { message: "Reservation added!" })
+    ? dataWithSuccess(null, { message: "Reservation added!" })
     : redirectWithSuccess("/", { message: "Reservation added!" });
 }
 

@@ -1,12 +1,12 @@
 import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
-import { Form, useLoaderData, useNavigation } from "react-router";
 import {
   redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "@vercel/remix";
 import { and, eq } from "drizzle-orm";
-import { jsonWithSuccess } from "remix-toast";
+import { Form, useLoaderData, useNavigation } from "react-router";
+import { dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { TypographyH1 } from "~/components/ui/typography";
@@ -86,7 +86,7 @@ export async function action({ request }: ActionFunctionArgs) {
       .set({ autoReservationsCronId: res.cron_job_id })
       .where(eq(users.id, user.userId));
 
-    return jsonWithSuccess(null, {
+    return dataWithSuccess(null, {
       message: "Automatic reservation has been setup successfully!",
     });
   } else if (intent === "DELETE") {
@@ -102,21 +102,21 @@ export async function action({ request }: ActionFunctionArgs) {
         ),
       );
 
-    return jsonWithSuccess(null, {
+    return dataWithSuccess(null, {
       message: "Automatic reservation has been deleted!",
     });
   } else if (intent === "DISABLE") {
     let cronId = String(formData.get("cronId"));
     await disableCron({ cronId });
 
-    return jsonWithSuccess(null, {
+    return dataWithSuccess(null, {
       message: "Automatic reservation has been disabled!",
     });
   } else if (intent === "ENABLE") {
     let cronId = String(formData.get("cronId"));
     await enableCron({ cronId });
 
-    return jsonWithSuccess(null, {
+    return dataWithSuccess(null, {
       message: "Automatic reservation has been enabled!",
     });
   }

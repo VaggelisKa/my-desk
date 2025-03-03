@@ -7,7 +7,7 @@ import {
   type LoaderFunctionArgs,
   type MetaFunction,
 } from "react-router";
-import { jsonWithSuccess } from "remix-toast";
+import { dataWithSuccess } from "remix-toast";
 import { ReservationsTable } from "~/components/reservations-table";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
@@ -71,7 +71,7 @@ export async function action({ request }: ActionFunctionArgs) {
       );
   }
 
-  return jsonWithSuccess(
+  return dataWithSuccess(
     null,
     { message: "Reservation deleted!" },
     { status: 200 },
