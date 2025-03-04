@@ -1,6 +1,9 @@
-import { useLoaderData } from "react-router";
-import type { LoaderFunctionArgs, MetaFunction } from "@vercel/remix";
 import { format } from "date-fns";
+import {
+  useLoaderData,
+  type LoaderFunctionArgs,
+  type MetaFunction,
+} from "react-router";
 import { DeskButton } from "~/components/desk-button";
 import { DeskModal } from "~/components/desk-selection-modal";
 import { FiltersForm } from "~/components/filters-form";

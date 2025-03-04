@@ -1,5 +1,5 @@
-import type { MetaFunction } from "@vercel/remix";
 import { and, asc, eq } from "drizzle-orm";
+import type { MetaFunction } from "react-router";
 import {
   Form,
   data,
