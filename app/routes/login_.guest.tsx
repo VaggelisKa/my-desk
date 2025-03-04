@@ -1,10 +1,12 @@
 import { Label } from "@radix-ui/react-label";
 import {
+  Form,
+  data,
+  redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
   type MetaFunction,
-} from "@vercel/remix";
-import { Form, data, redirect } from "react-router";
+} from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "~/components/ui/typography";

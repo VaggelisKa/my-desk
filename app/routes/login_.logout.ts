@@ -1,4 +1,4 @@
-import { redirect } from "@vercel/remix";
+import { redirect } from "react-router";
 import { userCookie } from "~/cookies.server";
 
 export async function action() {

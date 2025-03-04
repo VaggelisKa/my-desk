@@ -1,6 +1,6 @@
-import type { LinksFunction, LoaderFunctionArgs } from "@vercel/remix";
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
+import type { LinksFunction, LoaderFunctionArgs } from "react-router";
 import {
   data,
   Link,

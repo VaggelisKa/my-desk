@@ -1,11 +1,13 @@
 import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
+import { and, eq } from "drizzle-orm";
 import {
+  Form,
   redirect,
+  useLoaderData,
+  useNavigation,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
-} from "@vercel/remix";
-import { and, eq } from "drizzle-orm";
-import { Form, useLoaderData, useNavigation } from "react-router";
+} from "react-router";
 import { dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
