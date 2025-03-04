@@ -7,8 +7,6 @@ import {
   redirect,
   useActionData,
   useNavigation,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
   type MetaFunction,
 } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -18,6 +16,7 @@ import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema.server";
+import { Route } from "./+types/login";
 
 export let meta: MetaFunction = () => [
   {
@@ -25,7 +24,7 @@ export let meta: MetaFunction = () => [
   },
 ];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let cookieHeader = request.headers.get("Cookie");
   let userData = await userCookie.parse(cookieHeader);
 
@@ -36,7 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
   let userId = String(formData.get("user-id")).toLowerCase();
 

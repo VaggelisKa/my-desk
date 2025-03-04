@@ -1,21 +1,18 @@
 import { format } from "date-fns";
-import {
-  useLoaderData,
-  type LoaderFunctionArgs,
-  type MetaFunction,
-} from "react-router";
+import { type MetaFunction } from "react-router";
 import { DeskButton } from "~/components/desk-button";
 import { DeskModal } from "~/components/desk-selection-modal";
 import { FiltersForm } from "~/components/filters-form";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { cn } from "~/lib/utils";
+import { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let { userId, role } = await requireAuthCookie(request);
   let url = new URL(request.url);
   let showFree = url.searchParams.get("show-free");
@@ -116,15 +113,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { desks: sortedDesksOnBlockRowAndColumn, userId, role };
 }
 
-export default function Index() {
-  let data = useLoaderData<typeof loader>();
-
+export default function Index({ loaderData }: Route.ComponentProps) {
   return (
     <section className="flex flex-col gap-16 md:flex-row md:gap-24">
       <FiltersForm />
 
       <div className="flex flex-1 flex-col gap-8">
-        {Object.entries(data.desks).map(([block, desksData]) => {
+        {Object.entries(loaderData.desks).map(([block, desksData]) => {
           return (
             <div key={block} className="flex flex-col gap-2">
               <span className="text-lg font-bold">Block {block}</span>
@@ -156,8 +151,8 @@ export default function Index() {
                       />
                     }
                     desk={desk}
-                    allowedToReserve={desk.user?.id === data.userId}
-                    allowedToEdit={data.role === "admin"}
+                    allowedToReserve={desk.user?.id === loaderData.userId}
+                    allowedToEdit={loaderData.role === "admin"}
                   />
                 ))}
               </div>
