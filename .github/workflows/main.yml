@@ -52,8 +52,8 @@ jobs:
             ${{ steps.npm-cache-dir-path.outputs.dir }}
           key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Run TSC
-        run: npm run types
+      - name: Generate types and run TSC
+        run: npm run typecheck
 
   build:
     name: Build for production
