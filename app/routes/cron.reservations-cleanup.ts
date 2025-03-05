@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from "@remix-run/server-runtime";
+import { type LoaderFunctionArgs } from "react-router";
 import { getTime } from "date-fns";
 import { lt } from "drizzle-orm";
 import { db } from "~/lib/db/drizzle.server";

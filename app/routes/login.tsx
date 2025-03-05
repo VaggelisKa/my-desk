@@ -1,18 +1,14 @@
+import { eq } from "drizzle-orm";
+import { useEffect, useRef } from "react";
 import {
   Form,
   Link,
+  data,
   redirect,
   useActionData,
   useNavigation,
-} from "@remix-run/react";
-import {
-  json,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
   type MetaFunction,
-} from "@vercel/remix";
-import { eq } from "drizzle-orm";
-import { useEffect, useRef } from "react";
+} from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -20,6 +16,7 @@ import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema.server";
+import { Route } from "./+types/login";
 
 export let meta: MetaFunction = () => [
   {
@@ -27,7 +24,7 @@ export let meta: MetaFunction = () => [
   },
 ];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let cookieHeader = request.headers.get("Cookie");
   let userData = await userCookie.parse(cookieHeader);
 
@@ -38,12 +35,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
   let userId = String(formData.get("user-id")).toLowerCase();
 
   if (!userId || userId.length !== 6) {
-    return json(
+    return data(
       { ok: false, error: "Invalid employee number" },
       { status: 400 },
     );
@@ -54,7 +51,7 @@ export async function action({ request }: ActionFunctionArgs) {
   });
 
   if (!user) {
-    return json({ ok: false, error: "No user found" }, { status: 401 });
+    return data({ ok: false, error: "No user found" }, { status: 401 });
   }
 
   return redirect("/", {

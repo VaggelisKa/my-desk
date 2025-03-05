@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from "@remix-run/server-runtime";
+import { type LoaderFunctionArgs } from "react-router";
 import { format, getWeek } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";

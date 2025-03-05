@@ -1,9 +1,3 @@
-import { Form, useLoaderData, useNavigation } from "@remix-run/react";
-import {
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  type MetaFunction,
-} from "@vercel/remix";
 import {
   add,
   endOfWeek,
@@ -16,8 +10,16 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { useState } from "react";
 import {
-  jsonWithError,
-  jsonWithSuccess,
+  Form,
+  useLoaderData,
+  useNavigation,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+  type MetaFunction,
+} from "react-router";
+import {
+  dataWithError,
+  dataWithSuccess,
   redirectWithError,
   redirectWithSuccess,
 } from "remix-toast";
@@ -93,7 +95,7 @@ export async function action({ request }: ActionFunctionArgs) {
   delete formValues.intent;
 
   if (Object.keys(formValues).length === 0) {
-    return jsonWithError(
+    return dataWithError(
       null,
       {
         message: "Reservation information is missing",
@@ -117,7 +119,7 @@ export async function action({ request }: ActionFunctionArgs) {
   await db.insert(reservations).values(formattedValues);
 
   return intent === "reserve-guest"
-    ? jsonWithSuccess(null, { message: "Reservation added!" })
+    ? dataWithSuccess(null, { message: "Reservation added!" })
     : redirectWithSuccess("/", { message: "Reservation added!" });
 }
 

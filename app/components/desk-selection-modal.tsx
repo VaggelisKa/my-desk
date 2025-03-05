@@ -1,5 +1,5 @@
 import { ArrowRightIcon } from "@radix-ui/react-icons";
-import { Link, useFetcher } from "@remix-run/react";
+import { Link, useFetcher } from "react-router";
 import { getWeek } from "date-fns";
 import { useState } from "react";
 import { useMediaQuery } from "usehooks-ts";
