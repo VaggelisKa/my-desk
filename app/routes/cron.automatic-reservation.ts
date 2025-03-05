@@ -1,11 +1,11 @@
-import { type LoaderFunctionArgs } from "react-router";
 import { format, getWeek } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/lib/db/drizzle.server";
-import { reservations, users } from "~/lib/db/schema.server";
+import { reservations, users } from "~/lib/db/schema";
 import { deleteCron } from "~/lib/easy-cron";
 import { getDateByWeekAndDay } from "~/lib/utils";
+import type { Route } from "./+types/cron.automatic-reservation";
 
 const automaticReservationsQueryArgsSchema = z.object({
   deskId: z.number(),
@@ -13,7 +13,7 @@ const automaticReservationsQueryArgsSchema = z.object({
   days: z.array(z.string()),
 });
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let url = new URL(request.url);
 
   let cronPassword = url.searchParams.get("cronPassword");
@@ -63,8 +63,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let formattedData = parsedInputs.data.days.map((day) => ({
     day,
     week,
-    deskId: parsedInputs.data.deskId,
-    userId: parsedInputs.data.userId,
+    deskId: parsedInputs.data!.deskId,
+    userId: parsedInputs.data!.userId,
     date: format(getDateByWeekAndDay(day, week), "dd.MM.yyyy"),
     dateTimestamp: sql`(${getDateByWeekAndDay(day, week).getTime()})`,
   }));

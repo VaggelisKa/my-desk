@@ -1,26 +1,20 @@
 import { Label } from "@radix-ui/react-label";
-import {
-  Form,
-  data,
-  redirect,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  type MetaFunction,
-} from "react-router";
+import { Form, data, redirect } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema.server";
+import { users } from "~/lib/db/schema";
+import type { Route } from "./+types/login_.guest";
 
-export let meta: MetaFunction = () => [
+export let meta: Route.MetaFunction = () => [
   {
     title: "Create new user",
   },
 ];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let cookieHeader = request.headers.get("Cookie");
   let employeeNumber = await userCookie.parse(cookieHeader);
 
@@ -31,7 +25,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
   let employeeNumber = String(formData.get("employee-number"));
   let firstName = String(formData.get("name"));

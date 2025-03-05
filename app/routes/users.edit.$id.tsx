@@ -1,6 +1,5 @@
-import { Form, useLoaderData } from "react-router";
-import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { eq } from "drizzle-orm";
+import { Form } from "react-router";
 import { redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -8,9 +7,10 @@ import { Label } from "~/components/ui/label";
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema.server";
+import { users } from "~/lib/db/schema";
+import type { Route } from "./+types/users.edit.$id";
 
-export async function loader({ params, request }: LoaderFunctionArgs) {
+export async function loader({ params, request }: Route.LoaderArgs) {
   let { userId, role } = await requireAuthCookie(request);
   let paramsUserId = params?.id?.toLowerCase();
 
@@ -33,7 +33,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   return userFromDb;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
   let userId = String(formData.get("user-id"));
   let updatedFirstName = String(formData.get("firstName"));
@@ -53,16 +53,14 @@ export async function action({ request }: ActionFunctionArgs) {
   });
 }
 
-export default function UserEditPage() {
-  let data = useLoaderData<typeof loader>();
-
+export default function UserEditPage({ loaderData }: Route.ComponentProps) {
   return (
-    <section className="flex flex-col gap-16 w-full sm:w-auto items-center ">
+    <section className="flex w-full flex-col items-center gap-16 sm:w-auto ">
       <TypographyH1>Edit profile info</TypographyH1>
 
       <Form
         method="PUT"
-        className="flex flex-col gap-4 max-w-full w-full sm:max-w-xs"
+        className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"
       >
         <fieldset className="flex flex-col gap-2">
           <Label htmlFor="user-id">User id</Label>
@@ -71,7 +69,7 @@ export default function UserEditPage() {
             id="user-id"
             name="user-id"
             type="text"
-            defaultValue={data.id}
+            defaultValue={loaderData.id}
             readOnly
           />
 
@@ -87,7 +85,7 @@ export default function UserEditPage() {
             id="firstName"
             name="firstName"
             type="text"
-            defaultValue={data.firstName}
+            defaultValue={loaderData.firstName}
             autoFocus
             required
           />
@@ -100,7 +98,7 @@ export default function UserEditPage() {
             id="lastName"
             name="lastName"
             type="text"
-            defaultValue={data.lastName}
+            defaultValue={loaderData.lastName}
             required
           />
         </fieldset>

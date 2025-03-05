@@ -1,0 +1,76 @@
+name: My Desk CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+jobs:
+  install_and_cache:
+    name: Install and cache dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            **/node_modules
+            ${{ steps.npm-cache-dir-path.outputs.dir }}
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install packages
+        run: npm install
+
+  type_check:
+    name: Check types
+    runs-on: ubuntu-latest
+    needs: [install_and_cache]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get cached dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ${{ steps.npm-cache-dir-path.outputs.dir }}
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Generate types and run TSC
+        run: npm run typecheck
+
+  build:
+    name: Build for production
+    runs-on: ubuntu-latest
+    needs: [install_and_cache, type_check]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Get cached dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ${{ steps.npm-cache-dir-path.outputs.dir }}
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Build modules
+        run: npm run build

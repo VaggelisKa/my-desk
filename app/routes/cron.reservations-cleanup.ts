@@ -1,10 +1,10 @@
-import { type LoaderFunctionArgs } from "react-router";
 import { getTime } from "date-fns";
 import { lt } from "drizzle-orm";
 import { db } from "~/lib/db/drizzle.server";
-import { reservations } from "~/lib/db/schema.server";
+import { reservations } from "~/lib/db/schema";
+import type { Route } from "./+types/cron.reservations-cleanup";
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let url = new URL(request.url);
 
   if (url.searchParams.get("cronPassword") !== process.env.CRON_PASSWORD) {

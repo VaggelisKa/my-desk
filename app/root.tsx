@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
-import type { LinksFunction, LoaderFunctionArgs } from "react-router";
 import {
   data,
   Link,
@@ -29,12 +28,13 @@ import { Toaster } from "~/components/ui/toaster";
 import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema.server";
+import { users } from "~/lib/db/schema";
+import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
 
 let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
 
-export let links: LinksFunction = () => [
+export let links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   { rel: "icon", href: "/favicon.png" },
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
@@ -45,7 +45,7 @@ export let links: LinksFunction = () => [
   })),
 ];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let cookieHeader = request.headers.get("Cookie");
   let userData = await userCookie.parse(cookieHeader);
 

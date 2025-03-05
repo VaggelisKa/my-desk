@@ -1,7 +1,7 @@
 import { ArrowRightIcon } from "@radix-ui/react-icons";
-import { Link, useFetcher } from "react-router";
 import { getWeek } from "date-fns";
 import { useState } from "react";
+import { Link, useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import type { reservations, users } from "~/lib/db/schema.server";
+import type { reservations, users } from "~/lib/db/schema";
 import {
   Drawer,
   DrawerContent,

@@ -1,20 +1,13 @@
 import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
 import { and, eq } from "drizzle-orm";
-import {
-  Form,
-  redirect,
-  useLoaderData,
-  useNavigation,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-} from "react-router";
+import { Form, redirect, useNavigation } from "react-router";
 import { dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { desks, users } from "~/lib/db/schema.server";
+import { desks, users } from "~/lib/db/schema";
 import {
   addCron,
   addCronSchema,
@@ -23,10 +16,11 @@ import {
   enableCron,
   getCronDetails,
 } from "~/lib/easy-cron";
+import type { Route } from "./+types/automatic-reservations";
 
 let availableDays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let user = await requireAuthCookie(request);
   let desk = await db.query.desks.findFirst({
     where: eq(desks.userId, user.userId),
@@ -59,7 +53,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return loaderPayload;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let user = await requireAuthCookie(request);
   let formData = await request.formData();
   let intent = formData.get("intent");
@@ -126,11 +120,12 @@ export async function action({ request }: ActionFunctionArgs) {
   return null;
 }
 
-export default function AutomaticReservationsPage() {
-  let data = useLoaderData<typeof loader>();
+export default function AutomaticReservationsPage({
+  loaderData,
+}: Route.ComponentProps) {
   let navigation = useNavigation();
   let isSubmitting = navigation.state !== "idle";
-  let userCronId = data.desk.user?.autoReservationsCronId;
+  let userCronId = loaderData.desk.user?.autoReservationsCronId;
 
   function isSubmittingAction(action: string) {
     return isSubmitting && navigation.formData?.get("intent") === action;
@@ -142,7 +137,7 @@ export default function AutomaticReservationsPage() {
 
       {userCronId ? (
         <>
-          {data.cronEnabled ? (
+          {loaderData.cronEnabled ? (
             <p>
               Your automatic reservation is set to run{" "}
               <span className="italic">every Sunday at 10:00</span> and handle
@@ -154,7 +149,7 @@ export default function AutomaticReservationsPage() {
             <p>Automatic reservations are currently disabled.</p>
           )}
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {data.cronEnabled ? (
+            {loaderData.cronEnabled ? (
               <Form method="POST">
                 <input type="hidden" name="intent" value="DISABLE" />
                 <input type="hidden" name="cronId" value={userCronId} />
@@ -203,7 +198,7 @@ export default function AutomaticReservationsPage() {
       ) : (
         <Form method="POST" className="flex flex-col gap-8">
           <input type="hidden" name="intent" value="ADD" />
-          <input type="hidden" name="deskId" value={data.desk.id} />
+          <input type="hidden" name="deskId" value={loaderData.desk.id} />
 
           <fieldset className="flex flex-wrap items-center gap-6">
             {availableDays.map((day) => (

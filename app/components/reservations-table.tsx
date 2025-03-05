@@ -1,7 +1,7 @@
 import { TrashIcon } from "@radix-ui/react-icons";
 import { useFetcher } from "react-router";
 import { Button } from "~/components/ui/button";
-import { type users } from "~/lib/db/schema.server";
+import { type users } from "~/lib/db/schema";
 
 export function ReservationsTable({
   reservations,
@@ -34,7 +34,7 @@ export function ReservationsTable({
 
   return (
     <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-      <div className="overflow-x-auto relative">
+      <div className="relative overflow-x-auto">
         <table className="w-full table-auto">
           <thead className="bg-gray-100 dark:bg-gray-800">
             <tr>
@@ -64,13 +64,13 @@ export function ReservationsTable({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-gray-100 text-nowrap">
+                  <div className="text-nowrap font-medium text-gray-900 dark:text-gray-100">
                     Block {reservation.desks?.block}, Row{" "}
                     {reservation.desks?.row}, Column {reservation.desks?.column}
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                  <div className="font-medium capitalize text-gray-900 dark:text-gray-100">
                     {reservation.users.firstName} {reservation.users.lastName}
                   </div>
                 </td>

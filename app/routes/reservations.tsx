@@ -1,25 +1,20 @@
 import { getTime, subDays } from "date-fns";
 import { and, asc, eq, gte } from "drizzle-orm";
-import {
-  data,
-  useLoaderData,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  type MetaFunction,
-} from "react-router";
+import { data } from "react-router";
 import { dataWithSuccess } from "remix-toast";
 import { ReservationsTable } from "~/components/reservations-table";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { reservations } from "~/lib/db/schema.server";
+import { reservations } from "~/lib/db/schema";
+import type { Route } from "./+types/reservations";
 
-export let meta: MetaFunction = () => [
+export let meta: Route.MetaFunction = () => [
   {
     title: "View Reservations",
   },
 ];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
   let reservationsRes = await db.query.reservations.findMany({
     with: {
@@ -44,7 +39,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { reservations: reservationsRes };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let { role } = await requireAuthCookie(request);
   let formData = await request.formData();
   let reservationDate = String(formData.get("reservation-date"));
@@ -78,9 +73,9 @@ export async function action({ request }: ActionFunctionArgs) {
   );
 }
 
-export default function ReservationsPage() {
-  let { reservations } = useLoaderData<typeof loader>();
-
+export default function ReservationsPage({
+  loaderData: { reservations },
+}: Route.ComponentProps) {
   return reservations.length ? (
     <ReservationsTable reservations={reservations} />
   ) : (
