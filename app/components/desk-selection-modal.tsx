@@ -187,7 +187,7 @@ export function DeskModal({
             {allowedToReserve ? (
               <Button className="padding-0" asChild>
                 <Link className="flex gap-1 p-4" to={`/reserve/${desk.id}`}>
-                  Reserve <ArrowRightIcon className="mt-[2px] h-4 w-4" />
+                  Reserve <ArrowRightIcon className="mt-[1px] h-4 w-4" />
                 </Link>
               </Button>
             ) : showReserveForTodayButton ? (
@@ -198,7 +198,7 @@ export function DeskModal({
               <Button className="padding-0" variant="secondary" asChild>
                 <Link className="flex gap-1 p-4" to={`/desks/${desk.id}/edit`}>
                   Edit desk info
-                  <ArrowRightIcon className="mt-1 h-4 w-4" />
+                  <ArrowRightIcon className="mt-[1px] h-4 w-4" />
                 </Link>
               </Button>
             )}
@@ -232,7 +232,7 @@ export function DeskModal({
                 to={`/reserve/${desk.id}`}
                 prefetch="render"
               >
-                Reserve <ArrowRightIcon className="mt-1 h-4 w-4" />
+                Reserve <ArrowRightIcon className="mt-[1px] h-4 w-4" />
               </Link>
             </Button>
           ) : showReserveForTodayButton ? (
@@ -243,7 +243,7 @@ export function DeskModal({
             <Button className="padding-0" variant="secondary" asChild>
               <Link className="flex gap-1 p-4" to={`/desks/${desk.id}/edit`}>
                 Edit desk info
-                <ArrowRightIcon className="mt-1 h-4 w-4" />
+                <ArrowRightIcon className="mt-[1px] h-4 w-4" />
               </Link>
             </Button>
           )}
