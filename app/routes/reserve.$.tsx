@@ -9,14 +9,7 @@ import {
 } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { useState } from "react";
-import {
-  Form,
-  useLoaderData,
-  useNavigation,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  type MetaFunction,
-} from "react-router";
+import { Form, useLoaderData, useNavigation } from "react-router";
 import {
   dataWithError,
   dataWithSuccess,
@@ -36,16 +29,17 @@ import {
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { desks, reservations } from "~/lib/db/schema.server";
+import { desks, reservations } from "~/lib/db/schema";
 import { getDateByWeekAndDay } from "~/lib/utils";
+import type { Route } from "./+types/reserve.$";
 
-export let meta: MetaFunction = () => [
+export let meta: Route.MetaFunction = () => [
   {
     title: "Add a reservation",
   },
 ];
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
   let deskId = Number(params["*"]);
 
@@ -82,7 +76,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: Route.ActionArgs) {
   let { userId } = await requireAuthCookie(request);
   let formData = await request.formData();
   let deskId = Number(formData.get("deskId"));

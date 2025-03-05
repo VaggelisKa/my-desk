@@ -6,7 +6,7 @@ import { FiltersForm } from "~/components/filters-form";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { cn } from "~/lib/utils";
-import { Route } from "./+types/_index";
+import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];

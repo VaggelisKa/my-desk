@@ -15,6 +15,7 @@
     "allowJs": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
     "baseUrl": ".",
     "paths": {
       "~/*": ["./app/*"]

@@ -7,7 +7,6 @@ import {
   redirect,
   useActionData,
   useNavigation,
-  type MetaFunction,
 } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -15,10 +14,10 @@ import { Label } from "~/components/ui/label";
 import { TypographyH1 } from "~/components/ui/typography";
 import { userCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema.server";
-import { Route } from "./+types/login";
+import { users } from "~/lib/db/schema";
+import type { Route } from "./+types/login";
 
-export let meta: MetaFunction = () => [
+export let meta: Route.MetaFunction = () => [
   {
     title: "Login to your account",
   },

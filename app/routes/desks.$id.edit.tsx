@@ -1,13 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import type { MetaFunction } from "react-router";
-import {
-  Form,
-  data,
-  useLoaderData,
-  useNavigation,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-} from "react-router";
+import { Form, data, useNavigation } from "react-router";
 import {
   dataWithError,
   redirectWithError,
@@ -20,16 +12,17 @@ import { Label } from "~/components/ui/label";
 import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { desks, reservations, users } from "~/lib/db/schema.server";
+import { desks, reservations, users } from "~/lib/db/schema";
 import { deleteCron } from "~/lib/easy-cron";
+import type { Route } from "./+types/desks.$id.edit";
 
-export let meta: MetaFunction = () => [
+export let meta: Route.MetaFunction = () => [
   {
     title: "Edit desk information",
   },
 ];
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
   let { role } = await requireAuthCookie(request);
 
   if (role !== "admin") {
@@ -68,7 +61,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return deskData;
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({ request, params }: Route.ActionArgs) {
   let { role } = await requireAuthCookie(request);
 
   if (role !== "admin") {
@@ -118,8 +111,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   });
 }
 
-export default function EditDeskPage() {
-  let data = useLoaderData<typeof loader>();
+export default function EditDeskPage({ loaderData }: Route.ComponentProps) {
   let navigation = useNavigation();
   let isSubmitting = navigation.state !== "idle";
 
@@ -134,9 +126,13 @@ export default function EditDeskPage() {
         <input
           type="hidden"
           name="current-user-cron-id"
-          value={data.user?.autoReservationsCronId || undefined}
+          value={loaderData.user?.autoReservationsCronId || undefined}
         />
-        <input type="hidden" name="current-user-id" value={data.user?.id} />
+        <input
+          type="hidden"
+          name="current-user-id"
+          value={loaderData.user?.id}
+        />
 
         <fieldset className="flex flex-col gap-2">
           <Label htmlFor="user-id">Assigned user id</Label>
@@ -145,7 +141,7 @@ export default function EditDeskPage() {
             id="user-id"
             name="user-id"
             type="text"
-            defaultValue={data.user?.id}
+            defaultValue={loaderData.user?.id}
             autoFocus
             required
             maxLength={6}
@@ -158,8 +154,8 @@ export default function EditDeskPage() {
         </Button>
       </Form>
 
-      {!!data.reservations.length && (
-        <ReservationsTable reservations={data.reservations} />
+      {!!loaderData.reservations.length && (
+        <ReservationsTable reservations={loaderData.reservations} />
       )}
     </section>
   );
