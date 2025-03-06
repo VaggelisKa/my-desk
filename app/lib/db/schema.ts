@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  index,
   integer,
   primaryKey,
   sqliteTable,
@@ -26,9 +27,10 @@ export let desks = sqliteTable(
       onDelete: "set null",
     }),
   },
-  (t) => ({
-    uniqueRowAndColumnCombo: unique().on(t.block, t.row, t.column),
-  }),
+  (t) => [
+    unique().on(t.block, t.row, t.column),
+    index("idx_desks_user_id").on(t.userId),
+  ],
 );
 
 export let reservations = sqliteTable(
@@ -52,11 +54,12 @@ export let reservations = sqliteTable(
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
   },
-  (t) => ({
-    compositePrimaryKey: primaryKey({
+  (t) => [
+    primaryKey({
       columns: [t.deskId, t.day, t.week],
     }),
-  }),
+    index("idx_reservations_desk_id").on(t.deskId),
+  ],
 );
 
 // relations for query syntax
