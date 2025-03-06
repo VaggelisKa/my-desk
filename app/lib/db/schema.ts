@@ -62,6 +62,15 @@ export let reservations = sqliteTable(
   ],
 );
 
+export let bookingMetrics = sqliteTable("booking_metrics", {
+  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+  metricDate: text("metric_date", { mode: "text" }).notNull(),
+  totalBookings: integer("total_bookings", { mode: "number" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 // relations for query syntax
 export let usersRelations = relations(users, ({ one, many }) => ({
   reservations: many(reservations),
