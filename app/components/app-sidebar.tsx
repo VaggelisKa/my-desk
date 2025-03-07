@@ -1,39 +1,29 @@
 import { LogOut } from "lucide-react";
+import { NavLink } from "react-router";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "~/components/ui/sidebar";
 
-// This is sample data.
-const data = {
-  versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
-  navMain: [
-    {
-      title: "Getting Started",
-      url: "#",
-      items: [
-        {
-          title: "Installation",
-          url: "#",
-          isActive: false,
-        },
-        {
-          title: "Project Structure",
-          url: "#",
-          isActive: true,
-        },
-      ],
-    },
-  ],
-};
+export function AppSidebar({
+  deskId,
+  userId,
+}: {
+  deskId?: number;
+  userId?: string;
+}) {
+  let { setOpenMobile } = useSidebar();
 
-export function AppSidebar({ children }: { children: React.ReactNode }) {
   return (
     <Sidebar>
       <SidebarHeader>
@@ -44,12 +34,131 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </SidebarHeader>
-      <SidebarContent>{children}</SidebarContent>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Reservations</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <NavLink to="/reservations" prefetch="render" tabIndex={-1}>
+                  {({ isActive }) => (
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      My reservations
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+
+              {deskId !== undefined && (
+                <>
+                  <SidebarMenuItem>
+                    <NavLink to="/reserve" prefetch="intent">
+                      {({ isActive }) => (
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          Add reservation
+                        </SidebarMenuButton>
+                      )}
+                    </NavLink>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <NavLink
+                      to="/automatic-reservations"
+                      prefetch="intent"
+                      tabIndex={-1}
+                    >
+                      {({ isActive }) => (
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          Automatic reservations
+                        </SidebarMenuButton>
+                      )}
+                    </NavLink>
+                  </SidebarMenuItem>
+                </>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Profile</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <NavLink
+                  to={`/users/edit/${userId}`}
+                  className="flex w-full"
+                  prefetch="intent"
+                  tabIndex={-1}
+                >
+                  {({ isActive }) => (
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      Edit profile
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>External links</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={false}
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <a
+                    href="https://github.com/VaggelisKa/my-desk"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="w-full"
+                  >
+                    View source code
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={false}
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <a
+                    href="https://github.com/VaggelisKa/my-desk/issues/new"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="w-full"
+                  >
+                    Report a bug
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
       <SidebarRail />
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton asChild isActive={false}>
               <form method="POST" action="/login/logout" className="w-full">
                 <LogOut />
                 <input

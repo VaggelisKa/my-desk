@@ -4,7 +4,6 @@ import {
   data,
   Links,
   Meta,
-  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
@@ -23,13 +22,7 @@ import { AppBreadcrumbs } from "./components/app-breadcrumbs";
 import { AppSidebar } from "./components/app-sidebar";
 import { Separator } from "./components/ui/separator";
 import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
 } from "./components/ui/sidebar";
@@ -107,110 +100,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body className="min-h-screen">
         <SidebarProvider>
           {data?.user?.id && (
-            <AppSidebar>
-              <SidebarGroup>
-                <SidebarGroupLabel>Reservations</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <NavLink
-                        to="/reservations"
-                        prefetch="render"
-                        tabIndex={-1}
-                      >
-                        {({ isActive }) => (
-                          <SidebarMenuButton isActive={isActive}>
-                            My reservations
-                          </SidebarMenuButton>
-                        )}
-                      </NavLink>
-                    </SidebarMenuItem>
-
-                    {data.user?.desk?.id && (
-                      <>
-                        <SidebarMenuItem>
-                          <NavLink to="/reserve" prefetch="intent">
-                            {({ isActive }) => (
-                              <SidebarMenuButton isActive={isActive}>
-                                Add reservation
-                              </SidebarMenuButton>
-                            )}
-                          </NavLink>
-                        </SidebarMenuItem>
-
-                        <SidebarMenuItem>
-                          <NavLink
-                            to="/automatic-reservations"
-                            prefetch="intent"
-                            tabIndex={-1}
-                          >
-                            {({ isActive }) => (
-                              <SidebarMenuButton isActive={isActive}>
-                                Automatic reservations
-                              </SidebarMenuButton>
-                            )}
-                          </NavLink>
-                        </SidebarMenuItem>
-                      </>
-                    )}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              <SidebarGroup>
-                <SidebarGroupLabel>Profile</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <NavLink
-                        to={`/users/edit/${data.user?.id}`}
-                        className="flex w-full"
-                        prefetch="intent"
-                        tabIndex={-1}
-                      >
-                        {({ isActive }) => (
-                          <SidebarMenuButton isActive={isActive}>
-                            Edit profile
-                          </SidebarMenuButton>
-                        )}
-                      </NavLink>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              <SidebarGroup>
-                <SidebarGroupLabel>External links</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={false}>
-                        <a
-                          href="https://github.com/VaggelisKa/my-desk"
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="w-full"
-                        >
-                          View source code
-                        </a>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={false}>
-                        <a
-                          href="https://github.com/VaggelisKa/my-desk/issues/new"
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="w-full"
-                        >
-                          Report a bug
-                        </a>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </AppSidebar>
+            <AppSidebar deskId={data.user?.desk?.id} userId={data.user?.id} />
           )}
 
           <SidebarInset>
@@ -222,7 +112,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </header>
             )}
 
-            <main className="flex w-full justify-center p-12">
+            <main className="flex w-full justify-center p-4 md:p-12">
               {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
               {error ? <ErrorCard message={error?.message} /> : children}
             </main>
