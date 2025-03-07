@@ -64,7 +64,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       toast,
       sidebarState:
         sidebarState === undefined
-          ? undefined
+          ? true
           : sidebarState === "true"
             ? true
             : false,
