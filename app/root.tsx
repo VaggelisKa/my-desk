@@ -112,7 +112,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </header>
             )}
 
-            <main className="flex w-full justify-center p-4 md:p-12">
+            <main className="flex w-full justify-center px-4 py-8">
               {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
               {error ? <ErrorCard message={error?.message} /> : children}
             </main>
