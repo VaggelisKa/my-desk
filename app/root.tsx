@@ -53,10 +53,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
   });
 
+  let sidebarState = cookieHeader
+    ?.split("; ")
+    .find((row) => row.startsWith("sidebar_state="))
+    ?.split("=")[1];
+
   return data(
     {
       user,
       toast,
+      sidebarState:
+        sidebarState === undefined
+          ? undefined
+          : sidebarState === "true"
+            ? true
+            : false,
     },
     { headers },
   );
@@ -98,7 +109,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="min-h-screen">
-        <SidebarProvider>
+        <SidebarProvider defaultOpen={data?.sidebarState ?? true}>
           {data?.user?.id && (
             <AppSidebar deskId={data.user?.desk?.id} userId={data.user?.id} />
           )}

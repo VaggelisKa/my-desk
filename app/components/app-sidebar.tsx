@@ -1,4 +1,13 @@
-import { LogOut } from "lucide-react";
+import {
+  Bug,
+  Calendar,
+  CalendarPlus,
+  CalendarSync,
+  Code,
+  House,
+  LogOut,
+  UserPen,
+} from "lucide-react";
 import { NavLink } from "react-router";
 import {
   Sidebar,
@@ -46,6 +55,7 @@ export function AppSidebar({
                       isActive={isActive}
                       onClick={() => setOpenMobile(false)}
                     >
+                      <House />
                       Homepage
                     </SidebarMenuButton>
                   )}
@@ -66,6 +76,7 @@ export function AppSidebar({
                       isActive={isActive}
                       onClick={() => setOpenMobile(false)}
                     >
+                      <Calendar />
                       My reservations
                     </SidebarMenuButton>
                   )}
@@ -81,6 +92,7 @@ export function AppSidebar({
                           isActive={isActive}
                           onClick={() => setOpenMobile(false)}
                         >
+                          <CalendarPlus />
                           Add reservation
                         </SidebarMenuButton>
                       )}
@@ -98,6 +110,7 @@ export function AppSidebar({
                           isActive={isActive}
                           onClick={() => setOpenMobile(false)}
                         >
+                          <CalendarSync />
                           Automatic reservations
                         </SidebarMenuButton>
                       )}
@@ -125,6 +138,7 @@ export function AppSidebar({
                       isActive={isActive}
                       onClick={() => setOpenMobile(false)}
                     >
+                      <UserPen />
                       Edit profile
                     </SidebarMenuButton>
                   )}
@@ -150,6 +164,7 @@ export function AppSidebar({
                     rel="noreferrer noopener"
                     className="w-full"
                   >
+                    <Code />
                     View source code
                   </a>
                 </SidebarMenuButton>
@@ -166,6 +181,7 @@ export function AppSidebar({
                     rel="noreferrer noopener"
                     className="w-full"
                   >
+                    <Bug />
                     Report a bug
                   </a>
                 </SidebarMenuButton>
