@@ -4,7 +4,6 @@ import { redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
@@ -56,8 +55,6 @@ export async function action({ request }: Route.ActionArgs) {
 export default function UserEditPage({ loaderData }: Route.ComponentProps) {
   return (
     <section className="flex w-full flex-col items-center gap-16 sm:w-auto ">
-      <TypographyH1>Edit profile info</TypographyH1>
-
       <Form
         method="PUT"
         className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"
