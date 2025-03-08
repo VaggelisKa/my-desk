@@ -9,7 +9,6 @@ import { ReservationsTable } from "~/components/reservations-table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
@@ -117,8 +116,6 @@ export default function EditDeskPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <section className="flex w-full flex-col items-center gap-16 sm:w-auto">
-      <TypographyH1>Edit desk info</TypographyH1>
-
       <Form
         method="PUT"
         className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"

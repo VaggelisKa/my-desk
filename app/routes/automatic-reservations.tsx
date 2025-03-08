@@ -4,7 +4,6 @@ import { Form, redirect, useNavigation } from "react-router";
 import { dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
-import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
@@ -133,8 +132,6 @@ export default function AutomaticReservationsPage({
 
   return (
     <section className="flex max-w-xl flex-col justify-center gap-16">
-      <TypographyH1>Automatic reservations</TypographyH1>
-
       {userCronId ? (
         <>
           {loaderData.cronEnabled ? (

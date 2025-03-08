@@ -115,7 +115,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function Index({ loaderData }: Route.ComponentProps) {
   return (
-    <section className="flex flex-col gap-16 md:flex-row md:gap-24">
+    <section className="flex flex-col gap-16 lg:flex-row lg:gap-24">
       <FiltersForm />
 
       <div className="flex flex-1 flex-col gap-8">

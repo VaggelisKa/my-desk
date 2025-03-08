@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { TypographyH1 } from "~/components/ui/typography";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema";
@@ -158,8 +157,6 @@ export default function ReserveDeskPage() {
 
   return (
     <section className="flex max-w-xl flex-col justify-center gap-16">
-      <TypographyH1>Reservation form</TypographyH1>
-
       <Form className="flex flex-col gap-8" method="POST">
         <input type="text" name="intent" value="reserve" hidden />
         <input type="hidden" name="deskId" value={desk?.id} />
