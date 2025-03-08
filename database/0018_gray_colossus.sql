@@ -1,0 +1,1 @@
+ALTER TABLE `booking_metrics` ADD `total_guest_bookings` integer;
