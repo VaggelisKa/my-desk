@@ -7,6 +7,7 @@ import {
   House,
   LogOut,
   UserPen,
+  X,
 } from "lucide-react";
 import { NavLink } from "react-router";
 import {
@@ -23,6 +24,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "~/components/ui/sidebar";
+import { Button } from "./ui/button";
 
 export function AppSidebar({
   deskId,
@@ -36,6 +38,16 @@ export function AppSidebar({
   return (
     <Sidebar>
       <SidebarHeader>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-2 top-2 md:hidden"
+          onClick={() => setOpenMobile(false)}
+          aria-label="Close sidebar"
+        >
+          <X />
+        </Button>
+
         <div className="flex flex-col gap-1 p-2">
           <h1 className="text-lg font-semibold">Share a desk</h1>
           <p className="text-xs text-muted-foreground">
