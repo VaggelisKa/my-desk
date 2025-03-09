@@ -15,6 +15,7 @@ let BREADCRUMB_KEYS: Record<string, string> = {
   "/automatic-reservations": "Automatic reservations",
   "/users/edit/": "Edit your profile",
   "/desks/": "Edit desk",
+  "/metrics": "Desk & booking metrics",
 };
 
 export function AppBreadcrumbs() {
