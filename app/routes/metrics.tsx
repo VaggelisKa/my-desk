@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   Card,
@@ -14,41 +13,26 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
+import { requireAuthCookie } from "~/cookies.server";
+import { db } from "~/lib/db/drizzle.server";
+import { bookingMetrics } from "~/lib/db/schema";
+import type { Route } from "./+types/metrics";
 
-const dailyBookingsData = [
-  { date: "2023-06-01", bookings: 12, guestBookings: 3 },
-  { date: "2023-06-02", bookings: 19, guestBookings: 5 },
-  { date: "2023-06-03", bookings: 8, guestBookings: 2 },
-  { date: "2023-06-04", bookings: 5, guestBookings: 1 },
-  { date: "2023-06-05", bookings: 20, guestBookings: 7 },
-  { date: "2023-06-06", bookings: 32, guestBookings: 9 },
-  { date: "2023-06-07", bookings: 25, guestBookings: 6 },
-  { date: "2023-06-08", bookings: 18, guestBookings: 4 },
-  { date: "2023-06-09", bookings: 21, guestBookings: 8 },
-  { date: "2023-06-10", bookings: 16, guestBookings: 5 },
-  { date: "2023-06-11", bookings: 4, guestBookings: 1 },
-  { date: "2023-06-12", bookings: 9, guestBookings: 2 },
-  { date: "2023-06-13", bookings: 15, guestBookings: 4 },
-  { date: "2023-06-14", bookings: 22, guestBookings: 7 },
-  { date: "2023-06-15", bookings: 30, guestBookings: 10 },
-  { date: "2023-06-16", bookings: 28, guestBookings: 8 },
-  { date: "2023-06-17", bookings: 14, guestBookings: 3 },
-  { date: "2023-06-18", bookings: 7, guestBookings: 2 },
-  { date: "2023-06-19", bookings: 13, guestBookings: 4 },
-  { date: "2023-06-20", bookings: 24, guestBookings: 6 },
-  { date: "2023-06-21", bookings: 29, guestBookings: 9 },
-  { date: "2023-06-22", bookings: 17, guestBookings: 5 },
-  { date: "2023-06-23", bookings: 23, guestBookings: 7 },
-  { date: "2023-06-24", bookings: 11, guestBookings: 3 },
-  { date: "2023-06-25", bookings: 6, guestBookings: 1 },
-  { date: "2023-06-26", bookings: 10, guestBookings: 2 },
-  { date: "2023-06-27", bookings: 26, guestBookings: 8 },
-  { date: "2023-06-28", bookings: 31, guestBookings: 11 },
-  { date: "2023-06-29", bookings: 27, guestBookings: 9 },
-  { date: "2023-06-30", bookings: 20, guestBookings: 6 },
-];
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireAuthCookie(request);
 
-export default function MetricsPage() {
+  let metrics = await db
+    .select({
+      bookings: bookingMetrics.totalBookings,
+      guestBookings: bookingMetrics.totalGuestBookings,
+      date: bookingMetrics.createdAt,
+    })
+    .from(bookingMetrics);
+
+  return metrics;
+}
+
+export default function MetricsPage({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex w-full flex-col gap-4">
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -116,7 +100,7 @@ export default function MetricsPage() {
               }}
             >
               <LineChart
-                data={dailyBookingsData}
+                data={loaderData}
                 margin={{ top: 24, left: 4, right: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -137,17 +121,13 @@ export default function MetricsPage() {
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip
                   cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      indicator="line"
-                      nameKey="bookings"
-                      labelFormatter={(value) => format(value, "ccc dd LLL")}
-                    />
-                  }
+                  labelFormatter={() => "Bookings"}
+                  content={<ChartTooltipContent indicator="line" />}
                 />
                 <Line
                   type="monotone"
                   dataKey="bookings"
+                  name="Total Bookings"
                   stroke="var(--color-bookings)"
                   strokeWidth={2}
                   dot={{ r: 3 }}
