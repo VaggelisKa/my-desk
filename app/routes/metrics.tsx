@@ -28,14 +28,20 @@ export async function loader({ request }: Route.LoaderArgs) {
       bookings: bookingMetrics.totalBookings,
       guestBookings: bookingMetrics.totalGuestBookings,
       date: bookingMetrics.createdAt,
+      officeParticipationPct: bookingMetrics.participation_percentage,
     })
     .from(bookingMetrics);
 
   let previousMonth = toDate(subMonths(new Date(), 1));
 
-  let totalBookingsPreviousMonth = metrics
-    .filter((row) => isSameMonth(new Date(row.date), previousMonth))
-    .reduce((acc, row) => acc + row.bookings, 0);
+  let previousMonthsMetrics = metrics.filter((row) =>
+    isSameMonth(new Date(row.date), previousMonth),
+  );
+
+  let totalBookingsPreviousMonth = previousMonthsMetrics.reduce(
+    (acc, row) => acc + row.bookings,
+    0,
+  );
 
   let totalMonthlyBookings = metrics
     .filter((row) => isSameMonth(new Date(row.date), new Date()))
@@ -50,12 +56,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     totalBookingsPreviousMonth,
   );
 
+  let averageOfficeParticipationPct =
+    metrics.reduce((acc, row) => acc + (row.officeParticipationPct ?? 0), 0) /
+    metrics.length;
+
   return {
     metrics,
     totalMonthlyBookings,
     totalBookings,
-    averageDailyBookings,
+    averageDailyBookings: averageDailyBookings.toFixed(),
     monthlyBookingsPctDiff,
+    averageOfficeParticipationPct: averageOfficeParticipationPct.toFixed(),
   };
 }
 
@@ -109,7 +120,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {((loaderData.averageDailyBookings / 33) * 100).toFixed()}%
+              {loaderData.averageOfficeParticipationPct}%
             </div>
           </CardContent>
         </Card>
@@ -128,7 +139,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
               className="aspect-auto h-[300px] md:h-[350px]"
               config={{
                 bookings: {
-                  label: "Employee Bookings",
+                  label: "Total Bookings",
                   color: "hsl(var(--chart-3))",
                 },
                 guestBookings: {
@@ -165,7 +176,6 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
                 <Line
                   type="monotone"
                   dataKey="bookings"
-                  name="Total Bookings"
                   stroke="var(--color-bookings)"
                   strokeWidth={2}
                   dot={{ r: 3 }}
