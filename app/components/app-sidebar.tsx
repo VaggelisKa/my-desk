@@ -3,6 +3,7 @@ import {
   Calendar,
   CalendarPlus,
   CalendarSync,
+  ChartLine,
   Code,
   House,
   LogOut,
@@ -69,6 +70,20 @@ export function AppSidebar({
                     >
                       <House />
                       Homepage
+                    </SidebarMenuButton>
+                  )}
+                </NavLink>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <NavLink to="/metrics" prefetch="intent" tabIndex={-1}>
+                  {({ isActive }) => (
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      <ChartLine />
+                      Metrics
                     </SidebarMenuButton>
                   )}
                 </NavLink>
