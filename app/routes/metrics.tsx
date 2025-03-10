@@ -1,5 +1,6 @@
 import { isSameMonth, subMonths, toDate } from "date-fns";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { InfoTooltip } from "~/components/info-tooltip";
 import {
   Card,
   CardContent,
@@ -114,8 +115,9 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
 
         <Card className="w-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Office participation percentage
+            <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
+              Office participation percentage{" "}
+              <InfoTooltip text="Take those metrics with a grain of salt, since we are not confirming the booking data." />
             </CardTitle>
           </CardHeader>
           <CardContent>
