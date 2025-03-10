@@ -69,6 +69,9 @@ export let bookingMetrics = sqliteTable("booking_metrics", {
   totalGuestBookings: integer("total_guest_bookings", {
     mode: "number",
   }),
+  participation_percentage: integer("participation_percentage", {
+    mode: "number",
+  }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

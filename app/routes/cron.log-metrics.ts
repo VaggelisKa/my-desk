@@ -39,6 +39,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     metricDate: today,
     totalBookings: todaysReservationsCount,
     totalGuestBookings: todaysGuestReservationsCount[0].value ?? 0,
+    participation_percentage: Math.round((todaysReservationsCount / 33) * 100),
   });
 
   return new Response(`Metrics for ${today} have been successfully created`, {
