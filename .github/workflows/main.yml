@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install packages
-        run: npm install
+        run: npm install --legacy-peer-deps
 
   type_check:
     name: Check types
