@@ -127,9 +127,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
               {error ? <ErrorCard message={error?.message} /> : children}
             </main>
+            <Toaster />
           </SidebarInset>
 
-          <Toaster />
           <ScrollRestoration />
           <Scripts />
         </SidebarProvider>
