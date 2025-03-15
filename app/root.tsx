@@ -2,10 +2,8 @@ import { eq } from "drizzle-orm";
 import { useEffect } from "react";
 import {
   data,
-  Link,
   Links,
   Meta,
-  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
@@ -14,22 +12,20 @@ import {
 } from "react-router";
 import { getToast } from "remix-toast";
 import { ErrorCard } from "~/components/error-card";
-import { UserAvatar } from "~/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { Toaster } from "~/components/ui/toaster";
 import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/root";
+import { AppBreadcrumbs } from "./components/app-breadcrumbs";
+import { AppSidebar } from "./components/app-sidebar";
+import { Separator } from "./components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "./components/ui/sidebar";
 import { useToast } from "./components/ui/use-toast";
 
 let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
@@ -57,10 +53,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
   });
 
+  let sidebarState = cookieHeader
+    ?.split("; ")
+    .find((row) => row.startsWith("sidebar_state="))
+    ?.split("=")[1];
+
   return data(
     {
       user,
       toast,
+      sidebarState:
+        sidebarState === undefined
+          ? true
+          : sidebarState === "true"
+            ? true
+            : false,
     },
     { headers },
   );
@@ -102,123 +109,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="min-h-screen">
-        <header className="flex items-center justify-between bg-gray-800 p-2 text-white">
-          <NavLink to="/" aria-label="To homepage">
-            <span className="text-lg font-bold">Share-a-desk</span>
-            <p className="text-xs text-gray-300">A workspace management app</p>
-          </NavLink>
-
+        <SidebarProvider defaultOpen={data?.sidebarState ?? true}>
           {data?.user?.id && (
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <UserAvatar
-                  className="transition-all hover:scale-105 hover:bg-gray-500"
-                  firstName={data.user.firstName}
-                  lastName={data.user.lastName}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="mr-4" side="bottom">
-                <DropdownMenuLabel>User actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-
-                <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <Link
-                      className="w-full"
-                      to="/reservations"
-                      prefetch="render"
-                    >
-                      Your reservations
-                    </Link>
-                  </DropdownMenuItem>
-
-                  {data.user?.desk?.id && (
-                    <>
-                      <DropdownMenuItem>
-                        <Link
-                          to="/reserve"
-                          className="flex w-full"
-                          prefetch="intent"
-                        >
-                          Add reservation
-                        </Link>
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem>
-                        <Link
-                          to="/automatic-reservations"
-                          className="flex w-full"
-                          prefetch="intent"
-                        >
-                          Automatic reservations
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-
-                  <DropdownMenuItem>
-                    <Link
-                      to={`/users/edit/${data.user.id}`}
-                      className="flex w-full"
-                      prefetch="intent"
-                    >
-                      Edit profile
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem>
-                    <form
-                      method="POST"
-                      action="/login/logout"
-                      className="w-full"
-                    >
-                      <input
-                        className="flex w-full cursor-pointer appearance-none text-left"
-                        type="submit"
-                        value="Logout"
-                      />
-                    </form>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuLabel>External links</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem>
-                      <a
-                        href="https://github.com/VaggelisKa/my-desk"
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="w-full"
-                      >
-                        View source code
-                      </a>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem>
-                      <a
-                        href="https://github.com/VaggelisKa/my-desk/issues/new"
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="w-full"
-                      >
-                        Report a bug
-                      </a>
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AppSidebar deskId={data.user?.desk?.id} userId={data.user?.id} />
           )}
-        </header>
 
-        <main className="container flex w-full justify-center py-24">
-          {/* @ts-expect-error Remix forwards an error message but type is unknown*/}
-          {error ? <ErrorCard message={error?.message} /> : children}
-        </main>
-        <Toaster />
-        <ScrollRestoration />
-        <Scripts />
+          <SidebarInset>
+            {data?.user?.id && (
+              <header className="flex h-16 w-full items-center gap-2 border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-2 h-4" />
+                <AppBreadcrumbs />
+              </header>
+            )}
+
+            <main className="flex w-full justify-center px-4 py-8">
+              {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
+              {error ? <ErrorCard message={error?.message} /> : children}
+            </main>
+            <Toaster />
+          </SidebarInset>
+
+          <ScrollRestoration />
+          <Scripts />
+        </SidebarProvider>
       </body>
     </html>
   );

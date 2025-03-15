@@ -28,3 +28,9 @@ export function getDateByWeekAndDay(dayName: string, weekNumber: number) {
 
   return addDays(targetDate, dayIndex);
 }
+
+export function calculatePercentDiff(value: number, previousValue: number) {
+  return (
+    (Math.abs(value - previousValue) / ((value + previousValue) / 2)) * 100
+  );
+}
