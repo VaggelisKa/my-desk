@@ -3,6 +3,7 @@ import { type MetaFunction } from "react-router";
 import { DeskButton } from "~/components/desk-button";
 import { DeskModal } from "~/components/desk-selection-modal";
 import { FiltersForm } from "~/components/filters-form";
+import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { cn } from "~/lib/utils";
@@ -122,6 +123,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         {Object.entries(loaderData.desks).map(([block, desksData]) => {
           return (
             <div key={block} className="flex flex-col gap-2">
+              {block === "7" && <Wall className="mb-2" />}
+
               <span className="text-lg font-bold">Block {block}</span>
               <div
                 className={cn(
