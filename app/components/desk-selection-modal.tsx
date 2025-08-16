@@ -3,6 +3,7 @@ import { getWeek } from "date-fns";
 import { useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
+import { InfoTooltip } from "~/components/info-tooltip";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -96,8 +97,15 @@ export function DeskModal({
     <div className="flex flex-col gap-4 ">
       <div>
         <span className="text-sm text-gray-500">Assigned to</span>
-        <p className="capitalize">
-          {`${desk.user?.firstName} ${desk.user?.lastName || ""}`}
+        <p className="flex items-center gap-2 capitalize">
+          {desk.user ? (
+            `${desk.user.firstName} ${desk.user.lastName || ""}`
+          ) : (
+            <>
+              None
+              <InfoTooltip text="This desk is not permanently assigned to anyone. You can reserve it for specific days or contact an admin (Christian, Sara, Michael or Vaggelis) to get permanently assigned to it." />
+            </>
+          )}
         </p>
       </div>
 

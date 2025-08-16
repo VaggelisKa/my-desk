@@ -14,7 +14,7 @@ export const DeskButton = React.forwardRef<
     {...rest}
   >
     <DeskIcon />
-    {!!rest.name && <p className="mt-2 text-sm capitalize">{rest.name}</p>}
+    <p className="mt-2 text-sm capitalize">{rest.name || "Unclaimed"}</p>
   </button>
 ));
 
