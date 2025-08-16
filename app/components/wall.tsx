@@ -16,11 +16,12 @@ export function Wall({
   return (
     <div
       className={cn(
-        "w-full border-b border-t-2 border-b-gray-700 border-t-gray-500 bg-gradient-to-b from-gray-600 to-gray-800 shadow-lg",
+        "w-full rounded-lg border-b border-t-2 border-b-gray-700 border-t-gray-500 bg-gradient-to-b from-gray-600 to-gray-800 shadow-lg",
         "relative overflow-hidden",
         heightClasses[height],
         className,
       )}
+      aria-hidden="true"
     >
       {/* Wall texture pattern */}
       <div className="absolute inset-0 opacity-20">
