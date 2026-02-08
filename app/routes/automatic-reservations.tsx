@@ -5,8 +5,6 @@ import { dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { requireAuthCookie } from "~/cookies.server";
-import { db } from "~/lib/db/drizzle.server";
-import { desks, users } from "~/lib/db/schema";
 import {
   addCron,
   addCronSchema,
@@ -14,7 +12,9 @@ import {
   disableCron,
   enableCron,
   getCronDetails,
-} from "~/lib/easy-cron";
+} from "~/lib/cron";
+import { db } from "~/lib/db/drizzle.server";
+import { desks, users } from "~/lib/db/schema";
 import type { Route } from "./+types/automatic-reservations";
 
 let availableDays = ["monday", "tuesday", "wednesday", "thursday", "friday"];
@@ -46,7 +46,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   if (cronId) {
     let res = await getCronDetails({ cronId });
-    loaderPayload.cronEnabled = res.cron_job?.status === 1;
+    loaderPayload.cronEnabled = res.jobDetails?.enabled === true;
   }
 
   return loaderPayload;
@@ -78,7 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
     let res = await addCron(parsedInput.data);
     await db
       .update(users)
-      .set({ autoReservationsCronId: res.cron_job_id })
+      .set({ autoReservationsCronId: String(res.jobId) })
       .where(eq(users.id, user.userId));
 
     return dataWithSuccess(null, {
@@ -86,14 +86,14 @@ export async function action({ request }: Route.ActionArgs) {
     });
   } else if (intent === "DELETE") {
     let cronId = String(formData.get("cronId"));
-    let res = await deleteCron({ cronId });
+    await deleteCron({ cronId });
     await db
       .update(users)
       .set({ autoReservationsCronId: null })
       .where(
         and(
           eq(users.id, user.userId),
-          eq(users.autoReservationsCronId, res.cron_job_id),
+          eq(users.autoReservationsCronId, cronId),
         ),
       );
 

@@ -10,9 +10,9 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { requireAuthCookie } from "~/cookies.server";
+import { deleteCron } from "~/lib/cron";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
-import { deleteCron } from "~/lib/easy-cron";
 import type { Route } from "./+types/desks.$id.edit";
 
 export let meta: Route.MetaFunction = () => [

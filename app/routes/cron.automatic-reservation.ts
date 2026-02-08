@@ -1,9 +1,9 @@
 import { format, getWeek } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { deleteCron } from "~/lib/cron";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations, users } from "~/lib/db/schema";
-import { deleteCron } from "~/lib/easy-cron";
 import { getDateByWeekAndDay } from "~/lib/utils";
 import type { Route } from "./+types/cron.automatic-reservation";
 
