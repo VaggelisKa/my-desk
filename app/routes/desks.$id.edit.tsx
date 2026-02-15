@@ -76,17 +76,18 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   let deskId = Number(params.id);
   let formData = await request.formData();
+  let intent = String(formData.get("intent"));
   let updatedUserId = String(formData.get("user-id"))?.toLowerCase();
   let currentUserId = String(formData.get("current-user-id"));
   let currentUserCronId = String(formData.get("current-user-cron-id"));
 
-  if (!updatedUserId) {
+  if (intent !== "unassign" && !updatedUserId) {
     return dataWithError(null, { message: "Invalid user id" });
   }
 
   await db
     .update(desks)
-    .set({ userId: updatedUserId })
+    .set({ userId: intent === "unassign" ? null : updatedUserId })
     .where(eq(desks.id, deskId));
 
   if (currentUserCronId) {
@@ -148,6 +149,17 @@ export default function EditDeskPage({ loaderData }: Route.ComponentProps) {
 
         <Button className="w-full" type="submit" disabled={isSubmitting}>
           Edit
+        </Button>
+
+        <Button
+          className="w-full"
+          type="submit"
+          name="intent"
+          value="unassign"
+          variant="outline"
+          disabled={isSubmitting || !loaderData.user}
+        >
+          Unassign desk
         </Button>
       </Form>
 
