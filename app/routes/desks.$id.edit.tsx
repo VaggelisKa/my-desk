@@ -76,10 +76,17 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   let deskId = Number(params.id);
   let formData = await request.formData();
-  let intent = String(formData.get("intent"));
-  let updatedUserId = String(formData.get("user-id"))?.toLowerCase();
-  let currentUserId = String(formData.get("current-user-id"));
-  let currentUserCronId = String(formData.get("current-user-cron-id"));
+  let intent = formData.get("intent") === "unassign" ? "unassign" : "assign";
+  let updatedUserIdRaw = formData.get("user-id");
+  let updatedUserId =
+    typeof updatedUserIdRaw === "string"
+      ? updatedUserIdRaw.toLowerCase().trim()
+      : "";
+  let currentUserIdRaw = formData.get("current-user-id");
+  let currentUserId = typeof currentUserIdRaw === "string" ? currentUserIdRaw : "";
+  let currentUserCronIdRaw = formData.get("current-user-cron-id");
+  let currentUserCronId =
+    typeof currentUserCronIdRaw === "string" ? currentUserCronIdRaw : "";
 
   if (intent !== "unassign" && !updatedUserId) {
     return dataWithError(null, { message: "Invalid user id" });
@@ -90,7 +97,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     .set({ userId: intent === "unassign" ? null : updatedUserId })
     .where(eq(desks.id, deskId));
 
-  if (currentUserCronId) {
+  if (currentUserCronId && currentUserId) {
     await Promise.all([
       db
         .update(users)
@@ -150,12 +157,32 @@ export default function EditDeskPage({ loaderData }: Route.ComponentProps) {
         <Button className="w-full" type="submit" disabled={isSubmitting}>
           Edit
         </Button>
+      </Form>
+
+      <Form
+        method="PUT"
+        className="flex w-full max-w-full sm:max-w-xs"
+        onSubmit={(event) => {
+          if (!window.confirm("Are you sure you want to unassign this desk?")) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name="intent" value="unassign" />
+        <input
+          type="hidden"
+          name="current-user-cron-id"
+          value={loaderData.user?.autoReservationsCronId || undefined}
+        />
+        <input
+          type="hidden"
+          name="current-user-id"
+          value={loaderData.user?.id}
+        />
 
         <Button
           className="w-full"
           type="submit"
-          name="intent"
-          value="unassign"
           variant="outline"
           disabled={isSubmitting || !loaderData.user}
         >
