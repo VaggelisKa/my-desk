@@ -30,6 +30,7 @@ import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema";
 import { getDateByWeekAndDay } from "~/lib/utils";
+import { getUserFriendlyErrorMessage } from "~/lib/error-messages";
 import type { Route } from "./+types/reserve.$";
 
 export let meta: Route.MetaFunction = () => [
@@ -109,7 +110,18 @@ export async function action({ request }: Route.ActionArgs) {
     };
   });
 
-  await db.insert(reservations).values(formattedValues);
+  try {
+    await db.insert(reservations).values(formattedValues);
+  } catch (error) {
+    return dataWithError(
+      null,
+      {
+        message: "Could not add reservation",
+        description: getUserFriendlyErrorMessage(error),
+      },
+      { status: 400 },
+    );
+  }
 
   return intent === "reserve-guest"
     ? dataWithSuccess(null, { message: "Reservation added!" })

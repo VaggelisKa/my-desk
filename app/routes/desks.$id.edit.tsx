@@ -13,6 +13,7 @@ import { requireAuthCookie } from "~/cookies.server";
 import { deleteCron } from "~/lib/cron";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
+import { getUserFriendlyErrorMessage } from "~/lib/error-messages";
 import type { Route } from "./+types/desks.$id.edit";
 
 export let meta: Route.MetaFunction = () => [
@@ -92,10 +93,33 @@ export async function action({ request, params }: Route.ActionArgs) {
     return dataWithError(null, { message: "Invalid user id" });
   }
 
-  await db
-    .update(desks)
-    .set({ userId: intent === "unassign" ? null : updatedUserId })
-    .where(eq(desks.id, deskId));
+  if (intent !== "unassign") {
+    let userExists = await db.query.users.findFirst({
+      where: eq(users.id, updatedUserId),
+      columns: {
+        id: true,
+      },
+    });
+
+    if (!userExists) {
+      return dataWithError(null, {
+        message: "User not found",
+        description: `Cannot assign desk to \"${updatedUserId}\" because this user does not exist.`,
+      });
+    }
+  }
+
+  try {
+    await db
+      .update(desks)
+      .set({ userId: intent === "unassign" ? null : updatedUserId })
+      .where(eq(desks.id, deskId));
+  } catch (error) {
+    return dataWithError(null, {
+      message: "Could not update desk",
+      description: getUserFriendlyErrorMessage(error),
+    });
+  }
 
   if (currentUserCronId && currentUserId) {
     await Promise.all([

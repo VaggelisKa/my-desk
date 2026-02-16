@@ -1,10 +1,12 @@
-export function ErrorCard({ message }: { message?: any }) {
+import { getUserFriendlyErrorMessage } from "~/lib/error-messages";
+
+export function ErrorCard({ message }: { message?: unknown }) {
   return (
-    <div className="fixed bg-gray-900/10   inset-0 flex items-center justify-center z-50 px-4">
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg max-w-md w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/10 px-4">
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
           <div className="flex items-center gap-4">
-            <div className="bg-red-500 text-white rounded-full p-2">
+            <div className="rounded-full bg-red-500 p-2 text-white">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -22,9 +24,9 @@ export function ErrorCard({ message }: { message?: any }) {
               </svg>
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-medium">An error has ocurred!</h2>
+              <h2 className="text-lg font-medium">An error has occurred</h2>
               <p className="text-gray-500 dark:text-gray-400">
-                {message || "Something went wrong. Please try again later."}
+                {getUserFriendlyErrorMessage(message)}
               </p>
             </div>
           </div>

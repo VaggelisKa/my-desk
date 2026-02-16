@@ -1,7 +1,7 @@
 import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
 import { and, eq } from "drizzle-orm";
 import { Form, redirect, useNavigation } from "react-router";
-import { dataWithSuccess } from "remix-toast";
+import { dataWithError, dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { requireAuthCookie } from "~/cookies.server";
@@ -70,9 +70,11 @@ export async function action({ request }: Route.ActionArgs) {
     });
 
     if (!parsedInput.success) {
-      throw new Error(
-        "Invalid form input, please try again! If the issue persists contact an admin.",
-      );
+      return dataWithError(null, {
+        message: "Invalid automatic reservation setup",
+        description:
+          "Please choose at least one day and try again. If the issue persists, contact an admin.",
+      });
     }
 
     let res = await addCron(parsedInput.data);
