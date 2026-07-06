@@ -5,11 +5,12 @@
   "sideEffects": false,
   "type": "module",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "^20.19.0 || ^22.13.0 || >=24"
   },
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
+    "generate:cookie-secret": "node -e \"console.log(require('node:crypto').randomBytes(48).toString('base64'))\"",
     "lint": "eslint .",
     "typecheck": "react-router typegen && tsc",
     "typegen:watch": "react-router typegen --watch",

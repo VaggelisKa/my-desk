@@ -4,10 +4,18 @@ import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 
 const fallbackCookieSecret = "my-desk-local-development-cookie-secret";
-const cookieSecret =
-  process.env.COOKIE_SECRET ??
-  process.env.SESSION_SECRET ??
-  fallbackCookieSecret;
+const minimumCookieSecretLength = 32;
+
+function getConfiguredCookieSecret() {
+  return (
+    process.env.COOKIE_SECRET?.trim() ||
+    process.env.SESSION_SECRET?.trim() ||
+    null
+  );
+}
+
+const configuredCookieSecret = getConfiguredCookieSecret();
+const cookieSecret = configuredCookieSecret ?? fallbackCookieSecret;
 
 export let userCookie = createCookie("user", {
   secrets: [cookieSecret],
@@ -19,11 +27,20 @@ export let userCookie = createCookie("user", {
 });
 
 function assertProductionCookieSecret() {
-  if (
-    process.env.NODE_ENV === "production" &&
-    cookieSecret === fallbackCookieSecret
-  ) {
-    throw new Error("COOKIE_SECRET or SESSION_SECRET must be configured");
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  if (!configuredCookieSecret) {
+    throw new Error(
+      "COOKIE_SECRET or SESSION_SECRET must be configured to a non-empty value",
+    );
+  }
+
+  if (configuredCookieSecret.length < minimumCookieSecretLength) {
+    throw new Error(
+      `COOKIE_SECRET or SESSION_SECRET must be at least ${minimumCookieSecretLength} characters`,
+    );
   }
 }
 

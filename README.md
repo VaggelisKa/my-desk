@@ -19,15 +19,13 @@ Extras:
 
 ## How to run
 
-Before running the app, you need to create a `.env` file in the root of the project with the following content:
+Before running the app, copy `.env.example` to `.env` and fill in the values for your environment:
 
 ```bash
-DATABASE_AUTH_TOKEN="paste-your-token-here"
-DATABASE_URL="paste-your-database-url-here"
-COOKIE_SECRET="generate-a-long-random-secret"
+cp .env.example .env
 ```
 
-The actual values for `DATABASE_AUTH_TOKEN` and `DATABASE_URL` can be obtained from the Turso dashboard (talk with admin). `COOKIE_SECRET` is used to sign authentication cookies and should be a long random value that is different per environment.
+The actual values for `DATABASE_AUTH_TOKEN` and `DATABASE_URL` can be obtained from the Turso dashboard (talk with admin). `COOKIE_SECRET` is used to sign authentication cookies and should be a long random value that is different per environment. The `.env.example` file includes commands to generate it on Linux, macOS, and Windows PowerShell.
 
 After that is in place, you can just:
 
