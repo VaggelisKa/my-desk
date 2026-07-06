@@ -3,7 +3,7 @@ import { Form, data, redirect } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { TypographyH1 } from "~/components/ui/typography";
-import { userCookie } from "~/cookies.server";
+import { getAuthUser, serializeAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/login_.guest";
@@ -15,10 +15,9 @@ export let meta: Route.MetaFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let cookieHeader = request.headers.get("Cookie");
-  let employeeNumber = await userCookie.parse(cookieHeader);
+  let user = await getAuthUser(request);
 
-  if (employeeNumber) {
+  if (user) {
     throw redirect("/");
   }
 
@@ -64,9 +63,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   return redirect("/", {
     headers: {
-      "Set-Cookie": await userCookie.serialize({
-        userId: newUser?.[0]?.id || employeeNumber,
-      }),
+      "Set-Cookie": await serializeAuthCookie(newUser?.[0]?.id || employeeNumber),
     },
   });
 }

@@ -19,6 +19,8 @@ type DatepickerProps = {
 
 export function DatePicker({ initialDate, onDateChange }: DatepickerProps) {
   const [date, setDate] = useState<Date | undefined>(initialDate);
+  const today = new Date();
+  const maxDate = addDays(today, 14);
 
   return (
     <Popover>
@@ -42,9 +44,10 @@ export function DatePicker({ initialDate, onDateChange }: DatepickerProps) {
             setDate(date);
             onDateChange(date);
           }}
-          initialFocus
-          fromDate={new Date()}
-          toDate={addDays(new Date(), 14)}
+          autoFocus
+          startMonth={today}
+          endMonth={maxDate}
+          disabled={[{ before: today }, { after: maxDate }]}
         />
       </PopoverContent>
     </Popover>

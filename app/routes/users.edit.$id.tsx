@@ -33,10 +33,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
+  let { userId: authUserId, role } = await requireAuthCookie(request);
   let formData = await request.formData();
-  let userId = String(formData.get("user-id"));
+  let userId = String(formData.get("user-id")).toLowerCase().trim();
   let updatedFirstName = String(formData.get("firstName"));
   let updatedLastName = String(formData.get("lastName"));
+
+  if (authUserId !== userId && role !== "admin") {
+    throw new Error("You are not allowed to edit this information");
+  }
 
   if ((!updatedFirstName && !updatedLastName) || userId == "null") {
     return null;

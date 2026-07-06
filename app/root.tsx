@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { useEffect } from "react";
 import {
   data,
@@ -13,10 +12,8 @@ import {
 import { getToast } from "remix-toast";
 import { ErrorCard } from "~/components/error-card";
 import { Toaster } from "~/components/ui/toaster";
-import { userCookie } from "~/cookies.server";
+import { getAuthUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
-import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/root";
 import { AppBreadcrumbs } from "./components/app-breadcrumbs";
 import { AppSidebar } from "./components/app-sidebar";
@@ -43,15 +40,8 @@ export let links: Route.LinksFunction = () => [
 
 export async function loader({ request }: Route.LoaderArgs) {
   let cookieHeader = request.headers.get("Cookie");
-  let userData = await userCookie.parse(cookieHeader);
-
   let { toast, headers } = await getToast(request);
-  let user = await db.query.users.findFirst({
-    where: eq(users.id, userData?.userId || ""),
-    with: {
-      desk: true,
-    },
-  });
+  let user = await getAuthUser(request);
 
   let sidebarState = cookieHeader
     ?.split("; ")

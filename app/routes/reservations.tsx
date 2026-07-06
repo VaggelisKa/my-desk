@@ -40,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  let { role } = await requireAuthCookie(request);
+  let { role, userId } = await requireAuthCookie(request);
   let formData = await request.formData();
   let reservationDate = String(formData.get("reservation-date"));
   let reservationUserId = String(formData.get("reservation-user-id"));
@@ -58,7 +58,7 @@ export async function action({ request }: Route.ActionArgs) {
         and(
           role === "admin"
             ? undefined
-            : eq(reservations.userId, reservationUserId),
+            : eq(reservations.userId, userId),
           eq(reservations.date, reservationDate),
           eq(reservations.day, reservationDay),
           eq(reservations.deskId, Number(deskId)),

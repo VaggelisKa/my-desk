@@ -24,9 +24,10 @@ Before running the app, you need to create a `.env` file in the root of the proj
 ```bash
 DATABASE_AUTH_TOKEN="paste-your-token-here"
 DATABASE_URL="paste-your-database-url-here"
+COOKIE_SECRET="generate-a-long-random-secret"
 ```
 
-the actual values for `DATABASE_AUTH_TOKEN` and `DATABASE_URL` can be obtained from the Turso dashboard (talk with admin).
+The actual values for `DATABASE_AUTH_TOKEN` and `DATABASE_URL` can be obtained from the Turso dashboard (talk with admin). `COOKIE_SECRET` is used to sign authentication cookies and should be a long random value that is different per environment.
 
 After that is in place, you can just:
 
