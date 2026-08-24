@@ -35,7 +35,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
-  let userId = String(formData.get("user-id")).toLowerCase();
+  let userId = String(formData.get("user-id")).toLowerCase().trim();
 
   if (!userId || userId.length !== 6) {
     return data(

@@ -57,15 +57,29 @@ export async function addCron({
     }),
   });
 
+  if (!response.ok) {
+    throw new Error(
+      `Failed to create the automatic reservation job (status ${response.status})`,
+    );
+  }
+
   let json = await response.json();
   return json;
 }
 
 export async function deleteCron({ cronId }: { cronId: string }) {
-  await fetch(`${BASE_URL}/jobs/${cronId}`, {
+  let response = await fetch(`${BASE_URL}/jobs/${cronId}`, {
     method: "DELETE",
     headers,
   });
+
+  // A job that is already gone remotely should not block clearing our
+  // reference to it, but any other failure would leave it firing forever.
+  if (!response.ok && response.status !== 404) {
+    throw new Error(
+      `Failed to delete the automatic reservation job (status ${response.status})`,
+    );
+  }
 }
 
 export async function getCronDetails({ cronId }: { cronId: string }) {
@@ -79,21 +93,33 @@ export async function getCronDetails({ cronId }: { cronId: string }) {
 }
 
 export async function disableCron({ cronId }: { cronId: string }) {
-  await fetch(`${BASE_URL}/jobs/${cronId}`, {
+  let response = await fetch(`${BASE_URL}/jobs/${cronId}`, {
     method: "PATCH",
     headers,
     body: JSON.stringify({
       job: { enabled: false },
     }),
   });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to disable the automatic reservation job (status ${response.status})`,
+    );
+  }
 }
 
 export async function enableCron({ cronId }: { cronId: string }) {
-  await fetch(`${BASE_URL}/jobs/${cronId}`, {
+  let response = await fetch(`${BASE_URL}/jobs/${cronId}`, {
     method: "PATCH",
     headers,
     body: JSON.stringify({
       job: { enabled: true },
     }),
   });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to enable the automatic reservation job (status ${response.status})`,
+    );
+  }
 }

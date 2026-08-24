@@ -39,6 +39,10 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (!employeeNumber) {
     errors.employeeNumber = "Employee number is required";
+  } else if (employeeNumber.length !== 6) {
+    // Must match the login action's rule, otherwise accounts registered here
+    // could never sign back in once their session expires.
+    errors.employeeNumber = "Employee number must be exactly 6 characters";
   }
 
   if (!firstName) {
@@ -101,6 +105,7 @@ export default function guestLoginPage({ actionData }: Route.ComponentProps) {
             placeholder="g01234"
             autoFocus
             required
+            minLength={6}
             maxLength={6}
           />
 
@@ -141,7 +146,7 @@ export default function guestLoginPage({ actionData }: Route.ComponentProps) {
           value="employee-login"
           type="submit"
         >
-          Login
+          Register
         </Button>
       </Form>
     </section>

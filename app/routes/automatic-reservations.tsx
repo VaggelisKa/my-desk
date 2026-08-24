@@ -58,6 +58,19 @@ export async function action({ request }: Route.ActionArgs) {
   let intent = formData.get("intent");
 
   if (intent === "ADD") {
+    // A second job would overwrite the stored id and leave the first one
+    // firing forever with no way to cancel it from the app.
+    if (user.autoReservationsCronId) {
+      return dataWithError(
+        null,
+        {
+          message:
+            "An automatic reservation is already set up, stop it before creating a new one",
+        },
+        { status: 409 },
+      );
+    }
+
     let days = formData.getAll("day");
     let deskId = String(formData.get("deskId"));
 
@@ -182,7 +195,6 @@ export default function AutomaticReservationsPage({
 
             <Form method="POST">
               <input type="hidden" name="intent" value="DELETE" />
-              <input type="hidden" name="cronId" value={userCronId} />
 
               <Button
                 className="flex w-full items-center"

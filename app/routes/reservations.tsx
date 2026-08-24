@@ -43,11 +43,10 @@ export async function action({ request }: Route.ActionArgs) {
   let { role, userId } = await requireAuthCookie(request);
   let formData = await request.formData();
   let reservationDate = String(formData.get("reservation-date"));
-  let reservationUserId = String(formData.get("reservation-user-id"));
   let reservationDay = String(formData.get("reservation-day"));
   let deskId = String(formData.get("desk-id"));
 
-  if (!reservationDate || !reservationUserId || !reservationDay || !deskId) {
+  if (!reservationDate || !reservationDay || !deskId) {
     return data("Reservation information missing", { status: 400 });
   }
 

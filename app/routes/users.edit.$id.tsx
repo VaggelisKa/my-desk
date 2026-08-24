@@ -32,10 +32,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return userFromDb;
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, params }: Route.ActionArgs) {
   let { userId: authUserId, role } = await requireAuthCookie(request);
   let formData = await request.formData();
-  let userId = String(formData.get("user-id")).toLowerCase().trim();
+  // The edited user comes from the URL, matching the loader, rather than
+  // from a hidden form field.
+  let userId = String(params.id ?? "").toLowerCase().trim();
   let updatedFirstName = String(formData.get("firstName"));
   let updatedLastName = String(formData.get("lastName"));
 
@@ -47,7 +49,7 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  if ((!updatedFirstName && !updatedLastName) || userId == "null") {
+  if ((!updatedFirstName && !updatedLastName) || !userId) {
     return null;
   }
 

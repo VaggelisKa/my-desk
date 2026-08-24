@@ -23,6 +23,19 @@ function getConfiguredCookieSecret() {
 const configuredCookieSecret = getConfiguredCookieSecret();
 const cookieSecret = configuredCookieSecret ?? fallbackCookieSecret;
 
+// Surface a misconfiguration in the deploy logs at boot; the per-request
+// assertion below still fails closed, but without this the first symptom
+// would be users hitting opaque 500s.
+if (
+  !isLocalEnvironment &&
+  (!configuredCookieSecret ||
+    configuredCookieSecret.length < minimumCookieSecretLength)
+) {
+  console.error(
+    `COOKIE_SECRET or SESSION_SECRET is missing or shorter than ${minimumCookieSecretLength} characters; every authenticated request will fail until it is configured.`,
+  );
+}
+
 export let userCookie = createCookie("user", {
   secrets: [cookieSecret],
   httpOnly: true,
@@ -112,6 +125,9 @@ export async function serializeAuthCookie(userId: string) {
   return userCookie.serialize({ userId: userId.toLowerCase() });
 }
 
+// Deliberately does not assert the secret: clearing a cookie must keep
+// working even when the secret is misconfigured, and the serialized value is
+// empty with maxAge 0, so signing it with the fallback secret is harmless.
 export async function clearAuthCookie() {
   return userCookie.serialize("", { maxAge: 0 });
 }
