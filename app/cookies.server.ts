@@ -6,6 +6,12 @@ import { users } from "~/lib/db/schema";
 const fallbackCookieSecret = "my-desk-local-development-cookie-secret";
 const minimumCookieSecretLength = 32;
 
+// The fallback secret is committed to the repo, so cookies signed with it are
+// forgeable. Only development and test runs may fall back to it; any other
+// environment (production, previews, unset NODE_ENV) must configure a secret.
+const isLocalEnvironment =
+  process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+
 function getConfiguredCookieSecret() {
   return (
     process.env.COOKIE_SECRET?.trim() ||
@@ -22,12 +28,12 @@ export let userCookie = createCookie("user", {
   httpOnly: true,
   path: "/",
   sameSite: "lax",
-  secure: process.env.NODE_ENV === "production",
+  secure: !isLocalEnvironment,
   maxAge: 60 * 60 * 24 * 14, // 2 weeks
 });
 
-function assertProductionCookieSecret() {
-  if (process.env.NODE_ENV !== "production") {
+function assertCookieSecretConfigured() {
+  if (isLocalEnvironment) {
     return;
   }
 
@@ -60,7 +66,7 @@ export type AuthUser = NonNullable<
 };
 
 async function parseAuthCookie(request: Request) {
-  assertProductionCookieSecret();
+  assertCookieSecretConfigured();
 
   let cookieHeader = request.headers.get("Cookie");
 
@@ -101,7 +107,7 @@ export async function requireAuthCookie(request: Request) {
 }
 
 export async function serializeAuthCookie(userId: string) {
-  assertProductionCookieSecret();
+  assertCookieSecretConfigured();
 
   return userCookie.serialize({ userId: userId.toLowerCase() });
 }

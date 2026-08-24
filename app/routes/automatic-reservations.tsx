@@ -1,7 +1,7 @@
 import { PauseIcon, PlayIcon, TrashIcon } from "@radix-ui/react-icons";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Form, redirect, useNavigation } from "react-router";
-import { dataWithSuccess } from "remix-toast";
+import { dataWithError, dataWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { requireAuthCookie } from "~/cookies.server";
@@ -84,31 +84,39 @@ export async function action({ request }: Route.ActionArgs) {
     return dataWithSuccess(null, {
       message: "Automatic reservation has been setup successfully!",
     });
-  } else if (intent === "DELETE") {
-    let cronId = String(formData.get("cronId"));
-    await deleteCron({ cronId });
-    await db
-      .update(users)
-      .set({ autoReservationsCronId: null })
-      .where(
-        and(
-          eq(users.id, user.userId),
-          eq(users.autoReservationsCronId, cronId),
-        ),
+  } else if (intent === "DELETE" || intent === "DISABLE" || intent === "ENABLE") {
+    // Only ever operate on the cron job stored on the authenticated user's own
+    // row, never on an id submitted through the form.
+    let cronId = user.autoReservationsCronId;
+
+    if (!cronId) {
+      return dataWithError(
+        null,
+        { message: "No automatic reservation is set up for your user" },
+        { status: 400 },
       );
+    }
 
-    return dataWithSuccess(null, {
-      message: "Automatic reservation has been deleted!",
-    });
-  } else if (intent === "DISABLE") {
-    let cronId = String(formData.get("cronId"));
-    await disableCron({ cronId });
+    if (intent === "DELETE") {
+      await deleteCron({ cronId });
+      await db
+        .update(users)
+        .set({ autoReservationsCronId: null })
+        .where(eq(users.id, user.userId));
 
-    return dataWithSuccess(null, {
-      message: "Automatic reservation has been disabled!",
-    });
-  } else if (intent === "ENABLE") {
-    let cronId = String(formData.get("cronId"));
+      return dataWithSuccess(null, {
+        message: "Automatic reservation has been deleted!",
+      });
+    }
+
+    if (intent === "DISABLE") {
+      await disableCron({ cronId });
+
+      return dataWithSuccess(null, {
+        message: "Automatic reservation has been disabled!",
+      });
+    }
+
     await enableCron({ cronId });
 
     return dataWithSuccess(null, {
@@ -149,8 +157,6 @@ export default function AutomaticReservationsPage({
             {loaderData.cronEnabled ? (
               <Form method="POST">
                 <input type="hidden" name="intent" value="DISABLE" />
-                <input type="hidden" name="cronId" value={userCronId} />
-
                 <Button
                   variant="outline"
                   className="flex w-full items-center align-middle"
@@ -163,8 +169,6 @@ export default function AutomaticReservationsPage({
             ) : (
               <Form method="POST">
                 <input type="hidden" name="intent" value="ENABLE" />
-                <input type="hidden" name="cronId" value={userCronId} />
-
                 <Button
                   variant="outline"
                   className="flex w-full items-center align-middle"

@@ -26,7 +26,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
-  let employeeNumber = String(formData.get("employee-number"));
+  let employeeNumber = String(formData.get("employee-number"))
+    .toLowerCase()
+    .trim();
   let firstName = String(formData.get("name"));
   let lastName = String(formData.get("last-name"));
   let errors: {
@@ -54,21 +56,36 @@ export async function action({ request }: Route.ActionArgs) {
   let newUser = await db
     .insert(users)
     .values({
-      id: employeeNumber.toLowerCase(),
+      id: employeeNumber,
       firstName,
       lastName,
     })
     .onConflictDoNothing()
     .returning({ id: users.id });
 
+  // A conflicting insert means the id belongs to an existing account. Issuing
+  // a cookie for it here would let anyone log in as that user, so reject it.
+  if (!newUser?.[0]?.id) {
+    return data(
+      {
+        ok: false,
+        errors: {
+          employeeNumber:
+            "This user id is already registered, please use the login page instead",
+        },
+      },
+      { status: 409 },
+    );
+  }
+
   return redirect("/", {
     headers: {
-      "Set-Cookie": await serializeAuthCookie(newUser?.[0]?.id || employeeNumber),
+      "Set-Cookie": await serializeAuthCookie(newUser[0].id),
     },
   });
 }
 
-export default function guestLoginPage() {
+export default function guestLoginPage({ actionData }: Route.ComponentProps) {
   return (
     <section className="flex w-full flex-col gap-16 sm:w-auto">
       <TypographyH1>Register new account</TypographyH1>
@@ -86,6 +103,12 @@ export default function guestLoginPage() {
             required
             maxLength={6}
           />
+
+          {actionData?.errors?.employeeNumber ? (
+            <p className="text-sm text-red-500">
+              {actionData.errors.employeeNumber}
+            </p>
+          ) : null}
         </fieldset>
 
         <fieldset className="flex flex-col gap-2">

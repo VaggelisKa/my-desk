@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { Form } from "react-router";
-import { redirectWithSuccess } from "remix-toast";
+import { dataWithError, redirectWithSuccess } from "remix-toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -40,7 +40,11 @@ export async function action({ request }: Route.ActionArgs) {
   let updatedLastName = String(formData.get("lastName"));
 
   if (authUserId !== userId && role !== "admin") {
-    throw new Error("You are not allowed to edit this information");
+    return dataWithError(
+      null,
+      { message: "You are not allowed to edit this information" },
+      { status: 403 },
+    );
   }
 
   if ((!updatedFirstName && !updatedLastName) || userId == "null") {
