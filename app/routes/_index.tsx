@@ -228,7 +228,7 @@ function DesksSkeleton() {
               )}
             >
               {Array.from({ length: singleRow ? 3 : 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-[124px] rounded-lg" />
+                <Skeleton key={i} className="h-[126px] w-[100px] rounded-lg" />
               ))}
             </div>
           </div>
