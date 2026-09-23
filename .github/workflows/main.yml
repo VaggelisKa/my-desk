@@ -44,6 +44,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Get cached dependencies
         uses: actions/cache@v4
         with:
@@ -51,6 +56,9 @@ jobs:
             **/node_modules
             ${{ steps.npm-cache-dir-path.outputs.dir }}
           key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Run authentication security tests
+        run: npm run test:security
 
       - name: Generate types and run TSC
         run: npm run typecheck
