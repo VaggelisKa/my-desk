@@ -29,8 +29,11 @@ export function getDateByWeekAndDay(dayName: string, weekNumber: number) {
   return addDays(targetDate, dayIndex);
 }
 
+/** Signed percent change from `previousValue` to `value`, or null when there is no baseline. */
 export function calculatePercentDiff(value: number, previousValue: number) {
-  return (
-    (Math.abs(value - previousValue) / ((value + previousValue) / 2)) * 100
-  );
+  if (previousValue === 0) {
+    return null;
+  }
+
+  return ((value - previousValue) / previousValue) * 100;
 }

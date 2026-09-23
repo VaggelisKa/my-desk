@@ -1,4 +1,4 @@
-import { isSameMonth, subMonths, toDate } from "date-fns";
+import { isSameMonth, subMonths } from "date-fns";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { InfoTooltip } from "~/components/info-tooltip";
 import {
@@ -31,49 +31,73 @@ export async function loader({ request }: Route.LoaderArgs) {
       date: bookingMetrics.createdAt,
       officeParticipationPct: bookingMetrics.participation_percentage,
     })
-    .from(bookingMetrics);
+    .from(bookingMetrics)
+    .orderBy(bookingMetrics.createdAt);
 
-  let previousMonth = toDate(subMonths(new Date(), 1));
+  let now = new Date();
+  let previousMonth = subMonths(now, 1);
+
+  let currentMonthsMetrics = metrics.filter((row) =>
+    isSameMonth(new Date(row.date), now),
+  );
 
   let previousMonthsMetrics = metrics.filter((row) =>
     isSameMonth(new Date(row.date), previousMonth),
   );
 
-  let totalBookingsPreviousMonth = previousMonthsMetrics.reduce(
-    (acc, row) => acc + row.bookings,
-    0,
+  // Compare month-to-date against the same days of last month, not the full month
+  let previousMonthToDateMetrics = previousMonthsMetrics.filter(
+    (row) => new Date(row.date).getDate() <= now.getDate(),
   );
 
-  let totalMonthlyBookings = metrics
-    .filter((row) => isSameMonth(new Date(row.date), new Date()))
-    .reduce((acc, row) => acc + row.bookings, 0);
-
-  let totalBookings = metrics.reduce((acc, row) => acc + row.bookings, 0);
-
-  let averageDailyBookings = totalBookings / metrics.length;
+  let totalMonthlyBookings = sumBookings(currentMonthsMetrics);
 
   let monthlyBookingsPctDiff = calculatePercentDiff(
     totalMonthlyBookings,
-    totalBookingsPreviousMonth,
+    sumBookings(previousMonthToDateMetrics),
+  );
+
+  let averageDailyBookings = averageBookings(currentMonthsMetrics);
+
+  let averageDailyBookingsPctDiff = calculatePercentDiff(
+    averageDailyBookings,
+    averageBookings(previousMonthsMetrics),
   );
 
   let averageOfficeParticipationPct =
-    metrics.reduce((acc, row) => acc + (row.officeParticipationPct ?? 0), 0) /
-    metrics.length;
+    metrics.length === 0
+      ? 0
+      : metrics.reduce(
+          (acc, row) => acc + (row.officeParticipationPct ?? 0),
+          0,
+        ) / metrics.length;
 
   return {
     metrics,
     totalMonthlyBookings,
-    totalBookings,
     averageDailyBookings: averageDailyBookings.toFixed(),
     monthlyBookingsPctDiff,
+    averageDailyBookingsPctDiff,
     averageOfficeParticipationPct: averageOfficeParticipationPct.toFixed(),
   };
 }
 
+function sumBookings(rows: { bookings: number }[]) {
+  return rows.reduce((acc, row) => acc + row.bookings, 0);
+}
+
+function averageBookings(rows: { bookings: number }[]) {
+  return rows.length === 0 ? 0 : sumBookings(rows) / rows.length;
+}
+
 export default function MetricsPage({ loaderData }: Route.ComponentProps) {
-  function formatPercentage(value: number) {
-    return value > 0 ? `+${value.toFixed()}` : value.toFixed();
+  function formatPercentage(value: number | null) {
+    if (value === null) {
+      return "No data from last month";
+    }
+
+    let rounded = value.toFixed();
+    return `${value > 0 ? `+${rounded}` : rounded}% from last month`;
   }
 
   return (
@@ -90,8 +114,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
               {loaderData.totalMonthlyBookings}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatPercentage(loaderData.monthlyBookingsPctDiff)}% from last
-              month
+              {formatPercentage(loaderData.monthlyBookingsPctDiff)}
             </p>
           </CardContent>
         </Card>
@@ -107,8 +130,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
               {loaderData.averageDailyBookings}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatPercentage(loaderData.monthlyBookingsPctDiff)}% from last
-              month
+              {formatPercentage(loaderData.averageDailyBookingsPctDiff)}
             </p>
           </CardContent>
         </Card>
