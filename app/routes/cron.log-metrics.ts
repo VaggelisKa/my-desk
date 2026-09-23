@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, isNull, ne, or } from "drizzle-orm";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks, reservations } from "~/lib/db/schema";
 import type { Route } from "./+types/cron.log-metrics";
@@ -30,7 +30,11 @@ export async function loader({ url }: Route.LoaderArgs) {
     .from(reservations)
     .innerJoin(desks, eq(reservations.deskId, desks.id))
     .where(
-      and(eq(reservations.date, today), ne(reservations.userId, desks.userId)),
+      and(
+        eq(reservations.date, today),
+        // Bookings on unassigned desks are guest bookings too; `ne` alone drops them since NULL != x is NULL
+        or(isNull(desks.userId), ne(reservations.userId, desks.userId)),
+      ),
     );
 
   await db.insert(bookingMetrics).values({
