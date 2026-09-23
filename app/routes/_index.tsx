@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { Suspense } from "react";
-import { Await, type MetaFunction } from "react-router";
+import { Await, type MetaFunction, useSearchParams } from "react-router";
 import { DeskButton } from "~/components/desk-button";
 import { DeskModal } from "~/components/desk-selection-modal";
 import { ErrorCard } from "~/components/error-card";
@@ -199,21 +199,41 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   );
 }
 
-const skeletonBlocks = [6, 6, 6, 3, 6, 6, 6];
+// Mirrors the office layout rendered above: blocks 1-7 in a 3x2 grid, block 4
+// is a single row, and a wall sits above block 7.
+const skeletonBlocks = ["1", "2", "3", "4", "5", "6", "7"];
 
 function DesksSkeleton() {
+  let [searchParams] = useSearchParams();
+  let blockFilter = searchParams.get("block");
+  let blocks =
+    blockFilter === null || blockFilter === "all"
+      ? skeletonBlocks
+      : skeletonBlocks.filter((block) => block === blockFilter);
+
   return (
     <>
-      {skeletonBlocks.map((deskCount, blockIndex) => (
-        <div key={blockIndex} className="flex flex-col gap-2">
-          <Skeleton className="h-7 w-20" />
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: deskCount }).map((_, deskIndex) => (
-              <Skeleton key={deskIndex} className="h-[124px] rounded-lg" />
-            ))}
+      {blocks.map((block) => {
+        let singleRow = block === "4";
+
+        return (
+          <div key={block} className="flex flex-col gap-2">
+            {block === "7" && <Wall className="mb-2" />}
+
+            <span className="text-lg font-bold">Block {block}</span>
+            <div
+              className={cn(
+                "grid grid-cols-3 grid-rows-2 gap-2",
+                singleRow && "grid-rows-1",
+              )}
+            >
+              {Array.from({ length: singleRow ? 3 : 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-[124px] rounded-lg" />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
