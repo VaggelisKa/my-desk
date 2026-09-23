@@ -1,5 +1,8 @@
 import { isSameMonth, subMonths } from "date-fns";
+import { Suspense } from "react";
+import { Await } from "react-router";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { ErrorCard } from "~/components/error-card";
 import { InfoTooltip } from "~/components/info-tooltip";
 import {
   Card,
@@ -15,15 +18,14 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
+import { Skeleton } from "~/components/ui/skeleton";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics } from "~/lib/db/schema";
 import { calculatePercentDiff } from "~/lib/utils";
 import type { Route } from "./+types/metrics";
 
-export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuthCookie(request);
-
+async function loadMetrics() {
   let metrics = await db
     .select({
       bookings: bookingMetrics.totalBookings,
@@ -82,6 +84,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireAuthCookie(request);
+
+  // Not awaited on purpose: the shell streams immediately and the cards and
+  // chart fill in once the query resolves.
+  return { metrics: loadMetrics() };
+}
+
 function sumBookings(rows: { bookings: number }[]) {
   return rows.reduce((acc, row) => acc + row.bookings, 0);
 }
@@ -91,6 +101,55 @@ function averageBookings(rows: { bookings: number }[]) {
 }
 
 export default function MetricsPage({ loaderData }: Route.ComponentProps) {
+  return (
+    <Suspense fallback={<MetricsSkeleton />}>
+      <Await
+        resolve={loaderData.metrics}
+        errorElement={<ErrorCard message="Could not load metrics." />}
+      >
+        {(metrics) => <MetricsContent data={metrics} />}
+      </Await>
+    </Suspense>
+  );
+}
+
+function MetricsSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-4">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="w-full">
+            <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-40" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-4 w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid grid-cols-1">
+        <Card>
+          <CardHeader className="space-y-2">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-56" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full md:h-[350px]" />
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
+function MetricsContent({
+  data: loaderData,
+}: {
+  data: Awaited<ReturnType<typeof loadMetrics>>;
+}) {
   function formatPercentage(value: number | null) {
     if (value === null) {
       return "No data from last month";
