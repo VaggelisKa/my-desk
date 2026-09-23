@@ -13,9 +13,8 @@ export const meta: MetaFunction = () => {
   return [{ title: "View desks" }];
 };
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, url }: Route.LoaderArgs) {
   let { userId, role } = await requireAuthCookie(request);
-  let url = new URL(request.url);
   let showFree = url.searchParams.get("show-free");
   let column = url.searchParams.get("column");
   let block = url.searchParams.get("block");

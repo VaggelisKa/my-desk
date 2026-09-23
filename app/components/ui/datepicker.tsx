@@ -42,9 +42,13 @@ export function DatePicker({ initialDate, onDateChange }: DatepickerProps) {
             setDate(date);
             onDateChange(date);
           }}
-          initialFocus
-          fromDate={new Date()}
-          toDate={addDays(new Date(), 14)}
+          autoFocus
+          startMonth={new Date()}
+          endMonth={addDays(new Date(), 14)}
+          disabled={[
+            { before: new Date() },
+            { after: addDays(new Date(), 14) },
+          ]}
         />
       </PopoverContent>
     </Popover>
