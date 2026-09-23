@@ -4,9 +4,7 @@ import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks, reservations } from "~/lib/db/schema";
 import type { Route } from "./+types/cron.log-metrics";
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let url = new URL(request.url);
-
+export async function loader({ url }: Route.LoaderArgs) {
   if (url.searchParams.get("cronPassword") !== process.env.CRON_PASSWORD) {
     return new Response("Unauthorized", { status: 401 });
   }

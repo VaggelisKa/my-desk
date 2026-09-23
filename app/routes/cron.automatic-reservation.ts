@@ -13,9 +13,7 @@ const automaticReservationsQueryArgsSchema = z.object({
   days: z.array(z.string()),
 });
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let url = new URL(request.url);
-
+export async function loader({ url }: Route.LoaderArgs) {
   let cronPassword = url.searchParams.get("cronPassword");
 
   console.log("search params => ", url.searchParams);
