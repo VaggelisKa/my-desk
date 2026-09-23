@@ -180,7 +180,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
                   dataKey="bookings"
                   stroke="var(--color-bookings)"
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={false}
                   activeDot={{ r: 5 }}
                 />
                 <Line
@@ -188,7 +188,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
                   dataKey="guestBookings"
                   stroke="var(--color-guestBookings)"
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={false}
                   activeDot={{ r: 5 }}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
