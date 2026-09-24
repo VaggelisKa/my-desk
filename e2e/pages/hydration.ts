@@ -69,8 +69,10 @@ export function trackHydration() {
  * interaction in that window is either lost (Radix triggers) or loses its side
  * effects (toasts). Wait until the page is really interactive.
  */
-export async function waitForHydration(page: Page) {
-  await page.waitForFunction(() => window.__e2eHydrated === true);
+export async function waitForHydration(page: Page, timeout?: number) {
+  await page.waitForFunction(() => window.__e2eHydrated === true, undefined, {
+    timeout,
+  });
 }
 
 /** `page.goto` that resolves only once the page is interactive. */
