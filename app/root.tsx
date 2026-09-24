@@ -12,6 +12,7 @@ import {
 } from "react-router";
 import { getToast } from "remix-toast";
 import { ErrorCard } from "~/components/error-card";
+import { NavigationProgress } from "~/components/navigation-progress";
 import { Toaster } from "~/components/ui/toaster";
 import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
@@ -109,6 +110,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="min-h-screen">
+        <NavigationProgress />
         <SidebarProvider defaultOpen={data?.sidebarState ?? true}>
           {data?.user?.id && (
             <AppSidebar deskId={data.user?.desk?.id} userId={data.user?.id} />
