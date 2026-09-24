@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("SidebarProvider", () => {
-  it("starts in the state restored from the cookie", () => {
+  it("starts in the default state it is given", () => {
     renderProvider({ defaultOpen: false });
 
     expect(sidebarState()).toBe("collapsed");

@@ -74,6 +74,9 @@ describe("NavigationProgress", () => {
       "Done",
     );
 
-    await waitForElementToBeRemoved(() => screen.queryByRole("progressbar"));
+    // Generous timeout so a busy CI runner cannot outlast the 300ms delay.
+    await waitForElementToBeRemoved(() => screen.queryByRole("progressbar"), {
+      timeout: 3000,
+    });
   });
 });

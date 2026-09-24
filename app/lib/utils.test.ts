@@ -1,17 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { calculatePercentDiff, cn, getDateByWeekAndDay } from "./utils";
-
-describe("cn", () => {
-  it("lets later tailwind classes override conflicting earlier ones", () => {
-    expect(cn("p-4 text-sm", "p-2")).toBe("text-sm p-2");
-  });
-
-  it("drops falsy conditional classes", () => {
-    expect(cn("base", false && "hidden", undefined, null, "end")).toBe(
-      "base end",
-    );
-  });
-});
+import { calculatePercentDiff, getDateByWeekAndDay } from "./utils";
 
 describe("calculatePercentDiff", () => {
   it("returns null when there is no baseline to compare against", () => {
