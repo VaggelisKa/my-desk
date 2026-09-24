@@ -92,6 +92,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { metrics: loadMetrics() };
 }
 
+// Client navigations await the query so the navigation stays pending until the
+// data is available; the initial document load still streams.
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  let data = await serverLoader();
+
+  return { metrics: await data.metrics };
+}
+
 function sumBookings(rows: { bookings: number }[]) {
   return rows.reduce((acc, row) => acc + row.bookings, 0);
 }

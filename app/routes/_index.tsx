@@ -137,6 +137,16 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   return { desks, userId, role };
 }
 
+// Client navigations and revalidations (filter changes, reservation fetchers)
+// await the query so `useNavigation` and fetchers stay pending until the
+// refreshed grid is actually available. The initial document load still
+// streams, because `clientLoader.hydrate` is off by default.
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  let data = await serverLoader();
+
+  return { ...data, desks: await data.desks };
+}
+
 export default function Index({ loaderData }: Route.ComponentProps) {
   return (
     <section className="flex flex-col gap-16 lg:flex-row lg:gap-24">
