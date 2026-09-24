@@ -9,6 +9,7 @@ import {
   ScrollRestoration,
   useRouteError,
   useRouteLoaderData,
+  type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { getToast } from "remix-toast";
 import { ErrorCard } from "~/components/error-card";
@@ -72,6 +73,19 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
     { headers },
   );
+}
+
+// Toasts are flashed through this loader. React Router skips revalidation after
+// an action responds with a 4xx/5xx, which would swallow every error toast.
+export function shouldRevalidate({
+  actionStatus,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  if (actionStatus !== undefined && actionStatus >= 400) {
+    return true;
+  }
+
+  return defaultShouldRevalidate;
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {

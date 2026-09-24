@@ -8,3 +8,10 @@ node_modules
 .env*.local
 
 .react-router
+
+# Playwright
+/e2e/.auth
+/e2e/.tmp
+/test-results
+/playwright-report
+/blob-report
