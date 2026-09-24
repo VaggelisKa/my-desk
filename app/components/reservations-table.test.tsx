@@ -120,21 +120,37 @@ describe("ReservationsTable", () => {
     expect(submitted).not.toHaveProperty("reservation-date");
   });
 
-  it("disables only the delete button of the reservation being deleted", async () => {
-    let finishDelete!: () => void;
-    let { user, deleteAction } = renderTable(
-      () => new Promise((resolve) => (finishDelete = () => resolve(null))),
-    );
+  it.each([
+    ["undated reservation", { date: null }],
+    ["different desk", { deskId: 7 }],
+    ["different date", { date: "17.03.2025", week: 12 }],
+    ["different day", { day: "friday" }],
+    ["different user", { users: { ...jane, id: "user-2" }, week: 12 }],
+  ] satisfies [string, Partial<Reservation>][])(
+    "disables only the matching row: %s",
+    async (_, overrides) => {
+      let finishDelete!: () => void;
+      let deleteAction = vi.fn(
+        () =>
+          new Promise<null>((resolve) => (finishDelete = () => resolve(null))),
+      );
+      let { user } = renderWithRouter(
+        <ReservationsTable
+          reservations={[monday, makeReservation({ week: 12, ...overrides })]}
+        />,
+        { path: "/reservations", action: deleteAction },
+      );
 
-    let [first, second] = bodyRows();
-    await user.click(deleteButton(second));
+      let [first, second] = bodyRows();
+      await user.click(deleteButton(second));
 
-    await waitFor(() => expect(deleteButton(second)).toBeDisabled());
-    expect(deleteButton(first)).toBeEnabled();
+      await waitFor(() => expect(deleteButton(second)).toBeDisabled());
+      expect(deleteButton(first)).toBeEnabled();
 
-    finishDelete();
+      finishDelete();
 
-    await waitFor(() => expect(deleteButton(second)).toBeEnabled());
-    expect(deleteAction).toHaveBeenCalledTimes(1);
-  });
+      await waitFor(() => expect(deleteButton(second)).toBeEnabled());
+      expect(deleteAction).toHaveBeenCalledTimes(1);
+    },
+  );
 });

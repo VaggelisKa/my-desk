@@ -26,4 +26,13 @@ describe("DeskButton", () => {
 
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("calls the handler when an enabled desk is clicked", async () => {
+    let onClick = vi.fn();
+    render(<DeskButton name="jane" onClick={onClick} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "jane" }));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
 });

@@ -43,7 +43,7 @@ function setToday(date: Date) {
 async function openModal(props: Omit<DeskModalProps, "TriggerElement">) {
   let reserveAction = vi.fn(async ({ request }: { request: Request }) => {
     let formData = await request.formData();
-    return Object.fromEntries(formData);
+    return { method: request.method, data: Object.fromEntries(formData) };
   });
 
   let utils = renderWithRouter(
@@ -65,7 +65,20 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("DeskModal", () => {
+describe.each(["desktop", "mobile"])("DeskModal on %s", (viewport) => {
+  beforeEach(() => {
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query) =>
+        ({
+          matches: viewport === "mobile" && query.includes("max-width"),
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+        }) as unknown as MediaQueryList,
+    );
+  });
   it("shows the desk location and who it is assigned to", async () => {
     let { dialog } = await openModal({ desk: makeDesk() });
 
@@ -113,6 +126,9 @@ describe("DeskModal", () => {
       expect(
         within(dialog).queryByText("Used for today by"),
       ).not.toBeInTheDocument();
+      expect(
+        within(dialog).getByRole("button", { name: "Reserve for today" }),
+      ).toBeEnabled();
     });
   });
 
@@ -142,10 +158,13 @@ describe("DeskModal", () => {
 
       await waitFor(() => expect(reserveAction).toHaveBeenCalledTimes(1));
       expect(await reserveAction.mock.results[0].value).toEqual({
-        deskId: "12",
-        week: String(getWeek(WEDNESDAY)),
-        wednesday: "on",
-        intent: "reserve-guest",
+        method: "POST",
+        data: {
+          deskId: "12",
+          week: String(getWeek(WEDNESDAY)),
+          wednesday: "on",
+          intent: "reserve-guest",
+        },
       });
     });
 
@@ -159,15 +178,18 @@ describe("DeskModal", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("does not offer a guest reservation on weekends", async () => {
-      setToday(SATURDAY);
+    it.each([SATURDAY, new Date(2025, 2, 16, 10)])(
+      "does not offer a guest reservation on %s",
+      async (date) => {
+        setToday(date);
 
-      let { dialog } = await openModal({ desk: makeDesk() });
+        let { dialog } = await openModal({ desk: makeDesk() });
 
-      expect(
-        within(dialog).queryByRole("button", { name: "Reserve for today" }),
-      ).not.toBeInTheDocument();
-    });
+        expect(
+          within(dialog).queryByRole("button", { name: "Reserve for today" }),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("editing", () => {
@@ -188,41 +210,6 @@ describe("DeskModal", () => {
       expect(
         within(dialog).queryByRole("link", { name: "Edit desk info" }),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("on small screens", () => {
-    beforeEach(() => {
-      vi.spyOn(window, "matchMedia").mockImplementation(
-        (query) =>
-          ({
-            matches: query.includes("max-width"),
-            media: query,
-            addEventListener: () => {},
-            removeEventListener: () => {},
-            addListener: () => {},
-            removeListener: () => {},
-          }) as unknown as MediaQueryList,
-      );
-    });
-
-    it("shows the same desk details and actions in a drawer", async () => {
-      let { dialog } = await openModal({
-        desk: makeDesk(),
-        allowedToReserve: true,
-        allowedToEdit: true,
-      });
-
-      expect(
-        within(dialog).getByRole("heading", { name: "Desk 3.2.1" }),
-      ).toBeInTheDocument();
-      expect(within(dialog).getByText("jane doe")).toBeInTheDocument();
-      expect(
-        within(dialog).getByRole("link", { name: /reserve/i }),
-      ).toHaveAttribute("href", "/reserve/12");
-      expect(
-        within(dialog).getByRole("link", { name: "Edit desk info" }),
-      ).toHaveAttribute("href", "/desks/12/edit");
     });
   });
 });

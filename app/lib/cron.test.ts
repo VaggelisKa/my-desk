@@ -30,6 +30,20 @@ beforeEach(() => {
 });
 
 describe("addCron", () => {
+  it.each([undefined, ""])(
+    "omits an absent last name (%s) from the job title",
+    async (lastName) => {
+      let { addCron } = await importCron();
+      await addCron({
+        deskId: "7",
+        userId: "user-1",
+        firstName: "Jane",
+        lastName,
+        days: ["monday"],
+      });
+      expect(lastRequest().body.job.title).toBe("auto-reservations-for-jane");
+    },
+  );
   it("creates a weekly job that calls back with the desk, user, password and days", async () => {
     let { addCron } = await importCron();
 

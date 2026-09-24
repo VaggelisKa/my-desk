@@ -11,14 +11,12 @@ function CurrentSearch() {
   return <output aria-label="search">{search}</output>;
 }
 
-// The selects have no accessible label, so they are found by position:
-// placement first, then block.
 function placementSelect() {
-  return screen.getAllByRole("combobox")[0];
+  return screen.getByRole("combobox", { name: "Desk placement" });
 }
 
 function blockSelect() {
-  return screen.getAllByRole("combobox")[1];
+  return screen.getByRole("combobox", { name: "Block" });
 }
 
 function calendarDay(name: RegExp) {
@@ -38,8 +36,8 @@ function renderFilters(initialEntry = "/") {
 async function expectSearchParams(expected: Record<string, string>) {
   await waitFor(() => {
     let search = screen.getByRole("status", { name: "search" }).textContent;
-    expect(Object.fromEntries(new URLSearchParams(search ?? ""))).toEqual(
-      expected,
+    expect([...new URLSearchParams(search ?? "")].sort()).toEqual(
+      Object.entries(expected).sort(),
     );
   });
 }
@@ -100,7 +98,7 @@ describe("FiltersForm", () => {
   });
 
   it("filters by a picked date and clears it when unpicked", async () => {
-    let { user } = renderFilters();
+    let { user } = renderFilters("/?show-free=on&column=2&block=4");
 
     await user.click(
       screen.getByRole("button", { name: "View specific date" }),
@@ -108,14 +106,56 @@ describe("FiltersForm", () => {
     await user.click(calendarDay(/March 20th/));
 
     await expectSearchParams({
-      column: "all",
-      block: "all",
+      "show-free": "on",
+      column: "2",
+      block: "4",
       "selected-day": "20.03.2025",
     });
 
     // The popover stays open, so the same day can be clicked again to unpick it.
     await user.click(calendarDay(/March 20th/));
 
-    await expectSearchParams({ column: "all", block: "all" });
+    await expectSearchParams({ "show-free": "on", column: "2", block: "4" });
+  });
+
+  it.each(["placement", "block", "free desks"])(
+    "keeps the selected date when changing %s",
+    async (filter) => {
+      let { user } = renderFilters(
+        "/?show-free=on&column=2&block=4&selected-day=14.03.2025",
+      );
+      if (filter === "free desks") {
+        await user.click(
+          screen.getByRole("checkbox", { name: "Show free desks only" }),
+        );
+      } else {
+        await user.click(
+          filter === "placement" ? placementSelect() : blockSelect(),
+        );
+        await user.click(
+          await screen.findByRole("option", {
+            name: filter === "placement" ? "aisle" : "5",
+          }),
+        );
+      }
+      await expectSearchParams({
+        ...(filter === "free desks" ? {} : { "show-free": "on" }),
+        column: filter === "placement" ? "3" : "2",
+        block: filter === "block" ? "5" : "4",
+        "selected-day": "14.03.2025",
+      });
+    },
+  );
+
+  it("replaces the selected date without submitting duplicate dates", async () => {
+    let { user } = renderFilters("/?column=2&block=4&selected-day=14.03.2025");
+    await user.click(screen.getByRole("button", { name: "March 14th, 2025" }));
+    await user.click(calendarDay(/March 20th/));
+
+    await expectSearchParams({
+      column: "2",
+      block: "4",
+      "selected-day": "20.03.2025",
+    });
   });
 });

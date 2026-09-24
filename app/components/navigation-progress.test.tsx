@@ -1,11 +1,6 @@
-import {
-  act,
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { createRoutesStub, Link, Outlet } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NavigationProgress } from "./navigation-progress";
 
 function renderWithSlowPage() {
@@ -46,6 +41,8 @@ function renderWithSlowPage() {
 }
 
 describe("NavigationProgress", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
   it("is not shown while the app is idle", () => {
     renderWithSlowPage();
 
@@ -67,16 +64,20 @@ describe("NavigationProgress", () => {
       finishLoading();
     });
 
-    expect(await screen.findByText("Slow page")).toBeInTheDocument();
+    expect(screen.getByText("Slow page")).toBeInTheDocument();
     // Lingers briefly so the completion animation can play.
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuetext",
       "Done",
     );
 
-    // Generous timeout so a busy CI runner cannot outlast the 300ms delay.
-    await waitForElementToBeRemoved(() => screen.queryByRole("progressbar"), {
-      timeout: 3000,
+    act(() => {
+      vi.advanceTimersByTime(299);
     });
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 });
