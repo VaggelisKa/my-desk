@@ -1,3 +1,7 @@
+import archivo400 from "@fontsource/archivo/400.css?url";
+import archivo500 from "@fontsource/archivo/500.css?url";
+import archivo600 from "@fontsource/archivo/600.css?url";
+import archivo700 from "@fontsource/archivo/700.css?url";
 import { eq } from "drizzle-orm";
 import { useEffect } from "react";
 import {
@@ -33,6 +37,10 @@ import { useToast } from "./components/ui/use-toast";
 let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
 
 export let links: Route.LinksFunction = () => [
+  { rel: "stylesheet", href: archivo400 },
+  { rel: "stylesheet", href: archivo500 },
+  { rel: "stylesheet", href: archivo600 },
+  { rel: "stylesheet", href: archivo700 },
   { rel: "stylesheet", href: stylesheet },
   { rel: "icon", href: "/favicon.png" },
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
