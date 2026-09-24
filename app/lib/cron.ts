@@ -40,7 +40,7 @@ export async function addCron({
       job: {
         url: callbackUrl.toString(),
         enabled: true,
-        title: `auto-reservations-for-${firstName.toLowerCase()}-${lastName?.toLowerCase()}`,
+        title: `auto-reservations-for-${[firstName, lastName].filter(Boolean).join("-").toLowerCase()}`,
         saveResponses: true,
         folderId: FOLDER_ID,
         schedule: {

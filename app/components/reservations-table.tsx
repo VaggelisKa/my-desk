@@ -25,7 +25,8 @@ export function ReservationsTable({
     return (
       fetcher.state === "submitting" &&
       fetcher.formData?.get("desk-id") === String(reservation.deskId) &&
-      fetcher.formData?.get("reservation-date") === String(reservation.date) &&
+      fetcher.formData?.get("reservation-date") ===
+        (reservation.date || null) &&
       fetcher.formData?.get("reservation-user-id") ===
         String(reservation.users.id) &&
       fetcher.formData?.get("reservation-day") === String(reservation.day)

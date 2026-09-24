@@ -1,8 +1,9 @@
+// @vitest-environment node
 import { createCookie, RouterContextProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { findUser } = vi.hoisted(() => ({ findUser: vi.fn() }));
-vi.mock("../app/lib/db/drizzle.server", () => ({
+vi.mock("./lib/db/drizzle.server", () => ({
   db: { query: { users: { findFirst: findUser } } },
 }));
 
@@ -35,7 +36,7 @@ afterEach(() => {
 
 describe("authentication cookie integrity", () => {
   it("rejects an unsigned legacy cookie claiming an admin role", async () => {
-    const { requireAuthCookie } = await import("../app/cookies.server");
+    const { requireAuthCookie } = await import("./cookies.server");
     const cookie = await createCookie("user").serialize({
       userId: "u00001",
       role: "admin",
@@ -52,7 +53,7 @@ describe("authentication cookie integrity", () => {
     "rejects tampering with %s in a signed cookie",
     async (field) => {
       const { createUserCookie, getAuthenticatedUser } = await import(
-        "../app/cookies.server"
+        "./cookies.server"
       );
       const cookie = await createUserCookie("u00001");
       const encoded = decodeURIComponent(
@@ -77,7 +78,7 @@ describe("authentication cookie integrity", () => {
   );
 
   it("rejects a cookie signed with a different key", async () => {
-    const { getAuthenticatedUser } = await import("../app/cookies.server");
+    const { getAuthenticatedUser } = await import("./cookies.server");
     const cookie = await createCookie("user", {
       secrets: ["another-test-only-key-with-32-characters"],
     }).serialize({
@@ -91,7 +92,7 @@ describe("authentication cookie integrity", () => {
   it.each(["", "user=%ZZ", "user=not-base64", "user="])(
     "treats missing/malformed cookie %j as anonymous",
     async (cookie) => {
-      const { getAuthenticatedUser } = await import("../app/cookies.server");
+      const { getAuthenticatedUser } = await import("./cookies.server");
       expect(await getAuthenticatedUser(requestWithCookie(cookie))).toBeNull();
       expect(findUser).not.toHaveBeenCalled();
     },
@@ -105,7 +106,7 @@ describe("authentication cookie integrity", () => {
     { userId: "u00001" },
   ])("rejects a signed invalid payload %j", async (payload) => {
     const { userCookie, getAuthenticatedUser } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     const cookie = await userCookie.serialize(payload);
     expect(await getAuthenticatedUser(requestWithCookie(cookie))).toBeNull();
@@ -116,7 +117,7 @@ describe("authentication cookie integrity", () => {
 describe("authenticated principal", () => {
   it("signs only identity and expiry and loads the current profile and role", async () => {
     const { createUserCookie, userCookie, requireAuthCookie } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     const cookie = await createUserCookie("u00001");
     expect(await userCookie.parse(cookie)).toEqual({
@@ -134,7 +135,7 @@ describe("authenticated principal", () => {
 
   it("ignores stale cookie roles and reflects an admin demotion immediately", async () => {
     const { userCookie, requireAuthCookie } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     const cookie = await userCookie.serialize({
       userId: "u00001",
@@ -152,7 +153,7 @@ describe("authenticated principal", () => {
 
   it("rejects a deleted user and clears the cookie on the login redirect", async () => {
     const { createUserCookie, requireAuthCookie } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     findUser.mockResolvedValue(undefined);
     const cookie = await createUserCookie("u00001");
@@ -170,7 +171,7 @@ describe("authenticated principal", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-23T10:00:00Z"));
     const { createUserCookie, getAuthenticatedUser } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     const cookie = await createUserCookie("u00001");
     vi.setSystemTime(Date.now() + 14 * 24 * 60 * 60 * 1000 - 1);
@@ -185,7 +186,7 @@ describe("authenticated principal", () => {
 
   it("does not mask database failures as an authentication failure", async () => {
     const { createUserCookie, getAuthenticatedUser } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     findUser.mockRejectedValue(new Error("Test database unavailable"));
     const cookie = await createUserCookie("u00001");
@@ -200,7 +201,7 @@ describe("configuration and logout", () => {
     "fails closed for an invalid SESSION_SECRET",
     async (secret) => {
       vi.stubEnv("SESSION_SECRET", secret);
-      await expect(import("../app/cookies.server")).rejects.toThrow(
+      await expect(import("./cookies.server")).rejects.toThrow(
         "SESSION_SECRET must contain at least 32 characters",
       );
     },
@@ -208,7 +209,7 @@ describe("configuration and logout", () => {
 
   it("retains the production cookie security attributes", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    const { createUserCookie } = await import("../app/cookies.server");
+    const { createUserCookie } = await import("./cookies.server");
     const cookie = await createUserCookie("u00001");
     for (const attribute of [
       "HttpOnly",
@@ -222,8 +223,8 @@ describe("configuration and logout", () => {
   });
 
   it("clears the cookie on logout and rejects that cleared value", async () => {
-    const { action } = await import("../app/routes/login_.logout");
-    const { getAuthenticatedUser } = await import("../app/cookies.server");
+    const { action } = await import("./routes/login_.logout");
+    const { getAuthenticatedUser } = await import("./cookies.server");
     const response = await action();
     expect(response.headers.get("Location")).toBe("/login");
     const cookie = response.headers.get("Set-Cookie")!;
@@ -238,8 +239,8 @@ describe("route integration", () => {
     async (kind) => {
       const { loader } =
         kind === "employee"
-          ? await import("../app/routes/login")
-          : await import("../app/routes/login_.guest");
+          ? await import("./routes/login")
+          : await import("./routes/login_.guest");
       const cookie = await createCookie("user").serialize({
         userId: "u00001",
         role: "admin",
@@ -258,9 +259,9 @@ describe("route integration", () => {
   );
 
   it("employee login issues a signed expiring cookie usable by the guard", async () => {
-    const { action } = await import("../app/routes/login");
+    const { action } = await import("./routes/login");
     const { userCookie, requireAuthCookie } = await import(
-      "../app/cookies.server"
+      "./cookies.server"
     );
     const response = await action({
       request: new Request("https://desk.test/login", {
@@ -287,7 +288,7 @@ describe("route integration", () => {
 });
 
 it("the root loader exposes no user data for an unsigned cookie", async () => {
-  const { loader } = await import("../app/root");
+  const { loader } = await import("./root");
   const cookie = await createCookie("user").serialize({ userId: "u00001" });
   const result = await loader({
     request: requestWithCookie(cookie),
@@ -301,8 +302,8 @@ it("the root loader exposes no user data for an unsigned cookie", async () => {
 });
 
 it("the admin desk action rejects a cookie role that disagrees with the database", async () => {
-  const { action } = await import("../app/routes/desks.$id.edit");
-  const { userCookie } = await import("../app/cookies.server");
+  const { action } = await import("./routes/desks.$id.edit");
+  const { userCookie } = await import("./cookies.server");
   const cookie = await userCookie.serialize({
     userId: "u00001",
     role: "admin",

@@ -61,5 +61,6 @@ This change prevents cookie tampering. Employee-ID-only login and registration's
 existing-account fallback still do not prove account ownership and need a separate
 identity-verification fix; signing does not resolve those login risks.
 
-Run `npm run test:security` for the authentication regression suite. It uses test-only
-keys and a mocked database, and requires no database or scheduler credentials.
+Run `npm test` for the unit suite, including the authentication regression tests.
+The authentication tests use test-only keys and a mocked database, and require no
+database or scheduler credentials.
