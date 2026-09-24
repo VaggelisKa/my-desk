@@ -1,6 +1,6 @@
-import { Form, useSearchParams, useSubmit } from "react-router";
 import { format, parse } from "date-fns";
 import { useRef } from "react";
+import { Form, useSearchParams, useSubmit } from "react-router";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
   Select,
@@ -25,7 +25,7 @@ export function FiltersForm() {
     if (!date) {
       formData.delete("selected-day");
     } else {
-      formData.append("selected-day", format(date, "dd.MM.yyyy"));
+      formData.set("selected-day", format(date, "dd.MM.yyyy"));
     }
 
     submit(formData, { preventScrollReset: true });
@@ -33,6 +33,13 @@ export function FiltersForm() {
 
   return (
     <Form ref={formRef} method="GET" className="flex flex-col gap-8">
+      {searchParams.has("selected-day") && (
+        <input
+          type="hidden"
+          name="selected-day"
+          value={searchParams.get("selected-day")!}
+        />
+      )}
       <fieldset className="flex items-center gap-1">
         <Checkbox
           id="terms"
@@ -51,17 +58,20 @@ export function FiltersForm() {
       </fieldset>
 
       <fieldset className="space-y-2">
-        <p className="text-sm font-medium capitalize leading-none">
+        <label
+          htmlFor="desk-placement"
+          className="text-sm font-medium capitalize leading-none"
+        >
           Desk placement
-        </p>
+        </label>
         <Select
           name="column"
           defaultValue={searchParams.get("column") ?? "all"}
           onValueChange={() => {
-            handleFilterChange();
+            submit(formRef.current, { preventScrollReset: true });
           }}
         >
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger id="desk-placement" className="w-full sm:w-[180px]">
             <SelectValue placeholder="Placement of desk" />
           </SelectTrigger>
           <SelectContent>
@@ -76,15 +86,20 @@ export function FiltersForm() {
       </fieldset>
 
       <fieldset className="space-y-2">
-        <p className="text-sm font-medium capitalize leading-none">Block</p>
+        <label
+          htmlFor="desk-block"
+          className="text-sm font-medium capitalize leading-none"
+        >
+          Block
+        </label>
         <Select
           name="block"
           defaultValue={searchParams.get("block") ?? "all"}
           onValueChange={() => {
-            handleFilterChange();
+            submit(formRef.current, { preventScrollReset: true });
           }}
         >
-          <SelectTrigger className="w-full sm:w-[180px]">
+          <SelectTrigger id="desk-block" className="w-full sm:w-[180px]">
             <SelectValue placeholder="Placement of desk" />
           </SelectTrigger>
           <SelectContent>
