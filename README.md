@@ -15,7 +15,7 @@ SESSION_SECRET="your-generated-secret"
 ```
 
 ```sh
-npm ci --legacy-peer-deps
+npm ci
 npm run dev
 ```
 
