@@ -15,7 +15,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio --verbose",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@daypicker/react": "10.0.1",
@@ -53,6 +55,7 @@
     "zod": "~3.24.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@react-router/dev": "8.4.0",
     "@react-router/fs-routes": "8.4.0",
     "@react-router/remix-routes-option-adapter": "8.4.0",

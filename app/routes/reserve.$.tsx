@@ -38,6 +38,22 @@ export let meta: Route.MetaFunction = () => [
   },
 ];
 
+let notOwnerError = {
+  message: "Not allowed!",
+  description:
+    "Only the person assigned to a desk can reserve it ahead. Others can reserve it for today.",
+};
+
+// Reservations are unique per desk, day and week.
+function isAlreadyReservedError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "SQLITE_CONSTRAINT_PRIMARYKEY"
+  );
+}
+
 export async function loader({ request, params }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
   let deskId = Number(params["*"]);
@@ -52,6 +68,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
     if (!desk) {
       return redirectWithError("/", { message: "Desk not found!" });
+    }
+
+    if (desk.userId !== userId) {
+      return redirectWithError("/", notOwnerError);
     }
 
     return { desk, userId };
@@ -98,6 +118,26 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
+  let desk = await db.query.desks.findFirst({
+    where: eq(desks.id, deskId),
+    columns: { userId: true },
+  });
+
+  if (!desk) {
+    return dataWithError(null, { message: "Desk not found!" }, { status: 404 });
+  }
+
+  // Only the owner plans ahead; anyone else can only take the desk for today,
+  // mirroring the "Reserve for today" button in the desk dialog.
+  let today = format(new Date(), "EEEE").toLowerCase();
+  let onlyToday =
+    week === getWeek(new Date()) &&
+    Object.keys(formValues).every((day) => day === today);
+
+  if (desk.userId !== userId && !onlyToday) {
+    return dataWithError(null, notOwnerError, { status: 403 });
+  }
+
   let formattedValues = Object.entries(formValues).map(([day]) => {
     return {
       day,
@@ -109,7 +149,22 @@ export async function action({ request }: Route.ActionArgs) {
     };
   });
 
-  await db.insert(reservations).values(formattedValues);
+  try {
+    await db.insert(reservations).values(formattedValues);
+  } catch (error) {
+    if (!isAlreadyReservedError(error)) {
+      throw error;
+    }
+
+    return dataWithError(
+      null,
+      {
+        message: "Desk already reserved",
+        description: "Someone else reserved this desk in the meantime.",
+      },
+      { status: 409 },
+    );
+  }
 
   return intent === "reserve-guest"
     ? dataWithSuccess(null, { message: "Reservation added!" })

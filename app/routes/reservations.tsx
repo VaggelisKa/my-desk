@@ -1,7 +1,7 @@
 import { getTime, subDays } from "date-fns";
 import { and, asc, eq, gte } from "drizzle-orm";
 import { data } from "react-router";
-import { dataWithSuccess } from "remix-toast";
+import { dataWithError, dataWithSuccess } from "remix-toast";
 import { ReservationsTable } from "~/components/reservations-table";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
@@ -40,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  let { role } = await requireAuthCookie(request);
+  let { userId, role } = await requireAuthCookie(request);
   let formData = await request.formData();
   let reservationDate = String(formData.get("reservation-date"));
   let reservationUserId = String(formData.get("reservation-user-id"));
@@ -52,18 +52,27 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (request.method === "DELETE") {
-    await db
+    let deleted = await db
       .delete(reservations)
       .where(
         and(
-          role === "admin"
-            ? undefined
-            : eq(reservations.userId, reservationUserId),
+          // Regular users can only delete their own reservations, whichever
+          // user id the form claims.
+          role === "admin" ? undefined : eq(reservations.userId, userId),
           eq(reservations.date, reservationDate),
           eq(reservations.day, reservationDay),
           eq(reservations.deskId, Number(deskId)),
         ),
+      )
+      .returning({ deskId: reservations.deskId });
+
+    if (!deleted.length) {
+      return dataWithError(
+        null,
+        { message: "Reservation not found!" },
+        { status: 404 },
       );
+    }
   }
 
   return dataWithSuccess(
