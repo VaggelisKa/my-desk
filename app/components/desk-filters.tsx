@@ -1,14 +1,23 @@
-import { format, isAfter, startOfDay } from "date-fns";
-import { ChevronDown } from "lucide-react";
+import { addDays, format, isAfter, isWeekend, startOfDay } from "date-fns";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Form, Link, useSearchParams, useSubmit } from "react-router";
 import {
+  Form,
+  Link,
+  useLocation,
+  useNavigation,
+  useSearchParams,
+  useSubmit,
+} from "react-router";
+import {
+  defaultDay,
   formatDate,
   normalizeDay,
   parseDate,
   workdaysOfWeek,
 } from "~/lib/dates";
 import { cn } from "~/lib/utils";
+import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 let COLUMNS = [
   { value: "1", label: "Window" },
@@ -153,7 +162,7 @@ export function DeskFilters() {
 
 /**
  * Mon to Fri as a segmented control, with a link to flip between this week
- * and next. The selected day lives in the `selected-day` search param and
+ * and next (next Monday going forward, this Friday going back). The selected day lives in the `selected-day` search param and
  * defaults to today. On a weekend the strip already shows next week.
  */
 export function DayStrip({
@@ -164,14 +173,27 @@ export function DayStrip({
   today?: string;
   className?: string;
 }) {
-  let [searchParams] = useSearchParams();
+  let [currentParams] = useSearchParams();
+  let { pathname } = useLocation();
+  let navigation = useNavigation();
+  // Follow a day or week you just picked straight away, so the highlight
+  // slides while the desks load instead of after.
+  let searchParams =
+    navigation.location?.pathname === pathname
+      ? new URLSearchParams(navigation.location.search)
+      : currentParams;
   let today = todayParam ? parseDate(todayParam) : new Date();
-  // A missing or malformed param means today, like the route.
+  // A missing or malformed param means today (the coming Monday on a
+  // weekend), like the route.
   let selectedParam = normalizeDay(searchParams.get("selected-day"));
-  let selected = selectedParam ? parseDate(selectedParam) : today;
+  let selected = selectedParam ? parseDate(selectedParam) : defaultDay(today);
 
-  let thisWeek = workdaysOfWeek(today, 0);
-  let nextWeek = workdaysOfWeek(today, 1);
+  // Weeks start on Sunday, so on a Saturday "this week" is already over.
+  // Count from Sunday instead, so the weekend works like Sunday does: the
+  // strip shows the coming week and the arrow reaches the one after.
+  let weekFrom = today.getDay() === 6 ? addDays(today, 1) : today;
+  let thisWeek = workdaysOfWeek(weekFrom, 0);
+  let nextWeek = workdaysOfWeek(weekFrom, 1);
   // Compared by calendar day: the strip's dates are midnight, `selected` is not.
   let inNextWeek = isAfter(startOfDay(selected), thisWeek[4].date);
   let days = inNextWeek ? nextWeek : thisWeek;
@@ -185,27 +207,65 @@ export function DayStrip({
     return `?${params}`;
   }
 
-  // Flipping the week keeps the same weekday (Saturday clamps to Friday,
-  // Sunday to Monday). Once this week is over there is nothing to go back to.
-  let weekdayIndex = Math.max(0, Math.min(4, selected.getDay() - 1));
-  let otherWeek = inNextWeek ? thisWeek : nextWeek;
+  // Going forward lands on next Monday, going back on this Friday, so the
+  // pick sits next to the week you came from. Once this week is over there is
+  // nothing to go back to, so Friday is never in the past here.
+  let otherWeekDay = inNextWeek ? thisWeek[4].date : nextWeek[0].date;
   let thisWeekIsOver = isAfter(startOfDay(today), thisWeek[4].date);
+
+  let canGoBack = inNextWeek && !thisWeekIsOver;
+
+  // Keyed by weekday, so flipping the week slides the pill across too.
+  let selectedWeekday = days.find(
+    ({ date }) => formatDate(date) === selectedKey,
+  )?.day;
+  let { position, animate, itemRef } = useSlidingHighlight(selectedWeekday);
 
   return (
     <nav
       aria-label="Day"
-      className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}
+      className={cn(
+        "flex flex-wrap items-center gap-x-3 gap-y-2 sm:flex-nowrap sm:gap-x-1.5",
+        className,
+      )}
     >
-      <div className="grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
+      <WeekArrow
+        to={canGoBack ? linkTo(otherWeekDay) : undefined}
+        label="Previous week"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </WeekArrow>
+
+      <div className="relative grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
+        {position && (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute left-0 top-0 rounded-lg bg-ink sm:rounded-full",
+              animate && SLIDE,
+            )}
+            style={{
+              width: position.width,
+              height: position.height,
+              transform: `translate(${position.left}px, ${position.top}px)`,
+            }}
+          />
+        )}
         {days.map(({ day, date }) => {
           let key = formatDate(date);
           let isSelected = key === selectedKey;
           let isPast = key !== todayKey && date < today;
           let className = cn(
-            "grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
+            "relative grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors duration-300 sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
             focusRing,
             isSelected
-              ? "border-ink bg-ink text-white sm:bg-ink"
+              ? // The sliding pill draws the fill once it has been measured.
+                cn(
+                  "text-white",
+                  position
+                    ? "border-transparent bg-transparent"
+                    : "border-ink bg-ink sm:bg-ink",
+                )
               : "text-ink-muted hover:text-ink",
           );
 
@@ -215,6 +275,7 @@ export function DayStrip({
             return (
               <span
                 key={day}
+                ref={itemRef(day)}
                 aria-disabled="true"
                 aria-label={`${format(date, "EEEE d MMMM")}, past`}
                 className={cn(
@@ -230,6 +291,7 @@ export function DayStrip({
           return (
             <Link
               key={day}
+              ref={itemRef(day)}
               to={linkTo(date)}
               preventScrollReset
               aria-current={isSelected ? "date" : undefined}
@@ -242,18 +304,64 @@ export function DayStrip({
         })}
       </div>
 
+      <WeekArrow
+        to={inNextWeek ? undefined : linkTo(otherWeekDay)}
+        label="Next week"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </WeekArrow>
+
       {!(inNextWeek && thisWeekIsOver) && (
         <Link
-          to={linkTo(otherWeek[weekdayIndex].date)}
+          to={linkTo(otherWeekDay)}
           preventScrollReset
           className={cn(
-            "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:min-h-0",
+            "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:hidden",
             focusRing,
           )}
         >
-          {inNextWeek ? "← This week" : "Next week →"}
+          {inNextWeek
+            ? `← ${isWeekend(today) ? "Upcoming week" : "This week"}`
+            : "Next week →"}
         </Link>
       )}
     </nav>
+  );
+}
+
+/** A round arrow beside the day strip, desktop only. Greyed out without `to`. */
+function WeekArrow({
+  to,
+  label,
+  children,
+}: {
+  to?: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  let className =
+    "hidden h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-ink-muted sm:grid";
+
+  if (!to) {
+    return (
+      <span aria-hidden="true" className={cn(className, "opacity-40")}>
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      to={to}
+      preventScrollReset
+      aria-label={label}
+      className={cn(
+        className,
+        "hover:bg-paper-muted hover:text-ink",
+        focusRing,
+      )}
+    >
+      {children}
+    </Link>
   );
 }

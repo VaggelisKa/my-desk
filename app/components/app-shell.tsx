@@ -1,13 +1,8 @@
 import { CalendarDays, ChartLine, LayoutGrid } from "lucide-react";
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type MouseEvent,
-} from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useLocation, useNavigation } from "react-router";
 import { cn } from "~/lib/utils";
+import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 // The app chrome (design/design-options.html, "Masthead, in depth"): a 52px
 // masthead from 768px up, a floating dock below that. Both are always in the
@@ -68,11 +63,7 @@ export function activeTab(pathname: string): Tab | undefined {
   ) {
     return "bookings";
   }
-  if (
-    pathname === "/" ||
-    pathname.startsWith("/desks/") ||
-    pathname.startsWith("/reserve")
-  ) {
+  if (pathname === "/" || pathname.startsWith("/desks/")) {
     return "desks";
   }
   return undefined;
@@ -120,60 +111,16 @@ function rememberMenuSource(event: MouseEvent<HTMLElement>) {
 }
 
 /**
- * Tracks where the active tab sits so one indicator can slide between tabs
- * instead of each tab drawing its own. The active tab follows the link you
- * clicked straight away rather than waiting for its page to load.
+ * The tab to highlight follows the link you clicked straight away rather
+ * than waiting for its page to load.
  */
 function useSlidingIndicator() {
   let { pathname } = useLocation();
   let navigation = useNavigation();
   let active = activeTab(navigation.location?.pathname ?? pathname);
-  let items = useRef(new Map<Tab, HTMLAnchorElement>());
-  let [position, setPosition] = useState<{
-    left: number;
-    width: number;
-  } | null>(null);
-  let [animate, setAnimate] = useState(false);
 
-  useLayoutEffect(() => {
-    // Only one of the masthead and the dock is displayed at a time, and a
-    // hidden one measures as zero, so measure again when the window resizes.
-    function measure() {
-      let item = active && items.current.get(active);
-      setPosition(
-        item?.offsetWidth
-          ? { left: item.offsetLeft, width: item.offsetWidth }
-          : null,
-      );
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [active]);
-
-  // The first placement should not slide in from the left edge.
-  useEffect(() => {
-    if (position && !animate) {
-      requestAnimationFrame(() => setAnimate(true));
-    }
-  }, [position, animate]);
-
-  function itemRef(tab: Tab) {
-    return (node: HTMLAnchorElement | null) => {
-      if (node) {
-        items.current.set(tab, node);
-      } else {
-        items.current.delete(tab);
-      }
-    };
-  }
-
-  return { active, position, animate, itemRef };
+  return { active, ...useSlidingHighlight(active) };
 }
-
-// A soft spring: quick, with a small overshoot at the end.
-let SLIDE =
-  "transition-[transform,width] duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none";
 
 export function Masthead({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
@@ -318,7 +265,7 @@ export function Dock({ user }: { user: ShellUser }) {
  */
 export function AppMenu({ user }: { user: ShellUser }) {
   let menu = useRef<HTMLDivElement>(null);
-  let { pathname } = useLocation();
+  let location = useLocation();
 
   useEffect(() => {
     let element = menu.current;
@@ -352,13 +299,14 @@ export function AppMenu({ user }: { user: ShellUser }) {
     return () => element.removeEventListener("beforetoggle", place);
   }, []);
 
-  // Close after following a link from the menu.
+  // Close after following a link from the menu, including "Book my desk",
+  // which stays on the desks page and only changes the search.
   useEffect(() => {
     let element = menu.current;
     if (element?.matches(":popover-open")) {
       element.hidePopover();
     }
-  }, [pathname]);
+  }, [location.key]);
 
   let desk = user.desk
     ? `Desk ${user.desk.block}.${user.desk.row}.${user.desk.column}`
@@ -383,12 +331,12 @@ export function AppMenu({ user }: { user: ShellUser }) {
         </p>
       </div>
 
-      {/* Until Bookings gets its Upcoming and Recurring segments, these two
-      live here so they stay reachable without the sidebar. */}
+      {/* Booking opens your desk's sheet. Automatic reservations lives here
+      until Bookings gets its Recurring segment. */}
       {user.desk && (
         <>
-          <Link to="/reserve" prefetch="intent" className={item}>
-            Add reservation
+          <Link to={`/?desk=${user.desk.id}`} className={item}>
+            Book my desk
           </Link>
           <Link to="/automatic-reservations" prefetch="intent" className={item}>
             Automatic reservations
@@ -482,11 +430,6 @@ let PAGE_HEADINGS: {
     match: (p) => p.startsWith("/automatic-reservations"),
     title: "Automatic reservations",
     back: { to: "/reservations", label: "Bookings" },
-  },
-  {
-    match: (p) => p.startsWith("/reserve"),
-    title: "Add reservation",
-    back: { to: "/", label: "Desks" },
   },
   {
     match: (p) => p.startsWith("/desks/"),

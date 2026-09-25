@@ -15,7 +15,7 @@ test("a guest reserves someone else's desk for today", async ({
   await expect(dialog.title).toHaveText("Desk 1.1.1");
   await expect(dialog.assignedTo).toHaveText("Alice Andersen");
   // Planning ahead is reserved for the desk owner.
-  await expect(dialog.reserveLink).toBeHidden();
+  await expect(dialog.bookableDays()).toHaveCount(0);
 
   await dialog.reserveForTodayButton.click();
 

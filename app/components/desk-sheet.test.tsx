@@ -105,14 +105,19 @@ function setToday(date: Date) {
 async function openSheet(props: Omit<DeskSheetProps, "children">) {
   let reserveAction = vi.fn(async ({ request }: { request: Request }) => {
     let formData = await request.formData();
-    return { method: request.method, data: Object.fromEntries(formData) };
+    return {
+      method: request.method,
+      data: Object.fromEntries(formData),
+      dates: formData.getAll("date"),
+    };
   });
 
   let utils = renderWithRouter(
     <DeskSheet {...props}>
       <button>Open desk</button>
     </DeskSheet>,
-    { routes: [{ path: "/reserve", action: reserveAction }] },
+    // The sheet posts to the desks page, i.e. the index route.
+    { path: "/sheet", routes: [{ index: true, action: reserveAction }] },
   );
 
   await utils.user.click(screen.getByRole("button", { name: "Open desk" }));
@@ -136,9 +141,7 @@ describe("DeskSheet", () => {
     expect(
       within(dialog).getByRole("heading", { name: "Desk 3.2.1" }),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText("Block 3 · row 2 · by the window"),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText("By the window")).toBeInTheDocument();
     expect(within(dialog).getByText("jane doe")).toBeInTheDocument();
   });
 
@@ -244,18 +247,63 @@ describe("DeskSheet", () => {
   });
 
   describe("reserving", () => {
-    it("links the desk owner to the reservation page for the desk", async () => {
+    it("lets the desk owner pick free days from the grid and book them", async () => {
+      let { dialog, user, reserveAction } = await openSheet({
+        desk: makeDesk({ reservations: [reservation("thursday", guest)] }),
+        allowedToReserve: true,
+        userId: owner.id,
+      });
+
+      expect(
+        within(dialog).getByRole("button", { name: "Pick days to book" }),
+      ).toBeDisabled();
+      // Taken and past days stay a readout.
+      expect(
+        within(dialog).getByRole("img", { name: "Thu 13 Mar, taken by john" }),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole("img", { name: "Mon 10 Mar, past" }),
+      ).toBeInTheDocument();
+
+      await user.click(
+        within(dialog).getByRole("checkbox", { name: "Wed 12 Mar, free" }),
+      );
+      await user.click(
+        within(dialog).getByRole("checkbox", { name: "Mon 17 Mar, free" }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Book 2 days" }),
+      );
+
+      await waitFor(() => expect(reserveAction).toHaveBeenCalledTimes(1));
+      let { data, dates } = await reserveAction.mock.results[0].value;
+      expect(data.deskId).toBe("12");
+      expect(dates).toEqual(["12.03.2025", "17.03.2025"]);
+      expect(
+        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("stops offering today to the owner from 11:00", async () => {
+      setToday(new Date(2025, 2, 12, 11));
+
       let { dialog } = await openSheet({
         desk: makeDesk(),
         allowedToReserve: true,
       });
 
       expect(
-        within(dialog).getByRole("link", { name: "Book days" }),
-      ).toHaveAttribute("href", "/reserve/12");
-      expect(
-        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+        within(dialog).queryByRole("checkbox", { name: /12 Mar/ }),
       ).not.toBeInTheDocument();
+      expect(
+        within(dialog).getByRole("checkbox", { name: "Thu 13 Mar, free" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows other users the grid as a readout only", async () => {
+      let { dialog } = await openSheet({ desk: makeDesk() });
+
+      expect(within(dialog).queryAllByRole("checkbox")).toHaveLength(0);
     });
 
     it("lets other users reserve a free desk for today as a guest", async () => {
@@ -270,12 +318,8 @@ describe("DeskSheet", () => {
       await waitFor(() => expect(reserveAction).toHaveBeenCalledTimes(1));
       expect(await reserveAction.mock.results[0].value).toEqual({
         method: "POST",
-        data: {
-          deskId: "12",
-          week: String(getWeek(WEDNESDAY)),
-          wednesday: "on",
-          intent: "reserve-guest",
-        },
+        data: { deskId: "12", date: "12.03.2025" },
+        dates: ["12.03.2025"],
       });
     });
 
@@ -300,6 +344,15 @@ describe("DeskSheet", () => {
       expect(
         within(dialog).queryByRole("img", { name: /10 Mar/ }),
       ).not.toBeInTheDocument();
+      expect(within(dialog).getByText("Upcoming week")).toBeInTheDocument();
+      expect(within(dialog).queryByText("This week")).not.toBeInTheDocument();
+    });
+
+    it("labels the first row this week on a weekday", async () => {
+      let { dialog } = await openSheet({ desk: makeDesk() });
+
+      expect(within(dialog).getByText("This week")).toBeInTheDocument();
+      expect(within(dialog).getByText("Next week")).toBeInTheDocument();
     });
 
     it.each([SATURDAY, new Date(2025, 2, 16, 10)])(
