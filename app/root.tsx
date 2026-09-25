@@ -18,7 +18,13 @@ import {
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { getToast } from "remix-toast";
-import { AppMenu, Dock, Masthead, PageHeading } from "~/components/app-shell";
+import {
+  AppMenu,
+  Dock,
+  Masthead,
+  PAGE_COLUMN,
+  PageHeading,
+} from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { Toaster } from "~/components/ui/toaster";
@@ -150,9 +156,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 user && "pb-[calc(104px+env(safe-area-inset-bottom))] md:pb-8",
               )}
             >
-              {user && !error && <PageHeading />}
-              {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
-              {error ? <ErrorCard message={error?.message} /> : children}
+              {error ? (
+                // @ts-expect-error react-router forwards an error message but type is unknown
+                <ErrorCard message={error?.message} />
+              ) : user ? (
+                <div className={cn(PAGE_COLUMN, "flex flex-col")}>
+                  <PageHeading />
+                  {children}
+                </div>
+              ) : (
+                children
+              )}
             </main>
             {/* An island stays interactive and announced while a Silk sheet
             makes the rest of the page inert, so toasts still get through. */}

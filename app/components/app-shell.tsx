@@ -44,6 +44,13 @@ let TABS: {
 
 let MENU_ID = "app-menu";
 
+/**
+ * The column the masthead and every signed-in page share, so the first tab
+ * sits on the page title's left edge and the avatar on the content's right
+ * edge. Both live inside the same 16px gutter.
+ */
+export let PAGE_COLUMN = "mx-auto w-full max-w-3xl";
+
 /** Secondary pages have no tab of their own; their parent tab stays lit. */
 export function activeTab(pathname: string): Tab | undefined {
   if (pathname.startsWith("/metrics")) {
@@ -111,8 +118,8 @@ export function Masthead({ user }: { user: ShellUser }) {
   let active = activeTab(pathname);
 
   return (
-    <header className="app-masthead sticky top-0 z-30 hidden h-[52px] border-b border-line bg-white/85 font-display text-ink backdrop-blur-md md:block">
-      <div className="mx-auto flex h-full w-full max-w-3xl items-center px-4">
+    <header className="app-masthead sticky top-0 z-30 hidden h-[52px] border-b border-line bg-white/85 px-4 font-display text-ink backdrop-blur-md md:block">
+      <div className={cn(PAGE_COLUMN, "flex h-full items-center")}>
         {/* No wordmark: the first tab's label lines up with the page title. */}
         <nav aria-label="Main" className="-ml-2.5 flex self-stretch">
           {TABS.map((tab) => {
@@ -414,7 +421,7 @@ export function PageHeading() {
   }
 
   return (
-    <div className="mb-6 flex w-full max-w-3xl flex-col gap-1.5 font-display text-ink">
+    <div className="mb-6 flex flex-col gap-1.5 font-display text-ink">
       {heading.back && (
         <Link
           to={heading.back.to}
