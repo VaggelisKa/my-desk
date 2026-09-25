@@ -56,7 +56,7 @@ export class DeskDialog {
     this.editDeskLink = root.getByRole("link", { name: "Edit desk info" });
     this.assignedTo = root
       .getByText("Assigned to", { exact: true })
-      .locator("xpath=following-sibling::p");
+      .locator("xpath=following-sibling::p[1]");
     // The "Today" row: the sitter's name sits in a <p> next to the avatar.
     this.usedTodayBy = root
       .getByText("Today", { exact: true })

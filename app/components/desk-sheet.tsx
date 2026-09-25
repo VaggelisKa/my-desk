@@ -192,44 +192,38 @@ export function DeskSheet({
                 </Sheet.Description>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-                <div className="grid content-start gap-1">
-                  <span className="text-xs text-ink-muted">Assigned to</span>
-                  <p className="flex items-center gap-2 text-[15px] font-semibold capitalize">
-                    {desk.user ? (
-                      <>
-                        <Avatar user={desk.user} />
-                        {`${desk.user.firstName} ${desk.user.lastName || ""}`}
-                      </>
-                    ) : (
-                      "None"
-                    )}
-                  </p>
-                </div>
-
-                <div className="grid content-start gap-1">
-                  <span className="text-xs text-ink-muted">Today</span>
-                  {sitter ? (
-                    <div className="flex items-center gap-2 text-[15px]">
-                      <Avatar
-                        user={sitter}
-                        tone={sitterIsMe ? "moss" : "ink"}
-                      />
-                      <p className="font-semibold capitalize">
-                        {`${sitter.firstName} ${sitter.lastName}`}
-                      </p>
-                      <span className="text-ink-muted">{today}</span>
-                    </div>
+              <div className="grid gap-1">
+                <span className="text-xs text-ink-muted">Assigned to</span>
+                <p className="flex items-center gap-2 text-[15px] font-semibold capitalize">
+                  {desk.user ? (
+                    <>
+                      <Avatar user={desk.user} />
+                      {`${desk.user.firstName} ${desk.user.lastName || ""}`}
+                    </>
                   ) : (
-                    <p className="text-[15px] font-semibold">{today}</p>
+                    "None"
                   )}
-                </div>
-
+                </p>
                 {!desk.user && (
-                  <p className="col-span-2 text-[13px] text-ink-muted">
+                  <p className="text-[13px] text-ink-muted">
                     Ask an admin (Christian, Sara, Michael or Vaggelis) to make
                     it yours.
                   </p>
+                )}
+              </div>
+
+              <div className="grid gap-1">
+                <span className="text-xs text-ink-muted">Today</span>
+                {sitter ? (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[15px]">
+                    <Avatar user={sitter} tone={sitterIsMe ? "moss" : "ink"} />
+                    <p className="font-semibold capitalize">
+                      {`${sitter.firstName} ${sitter.lastName}`}
+                    </p>
+                    <span className="text-ink-muted">{today}</span>
+                  </div>
+                ) : (
+                  <p className="text-[15px] font-semibold">{today}</p>
                 )}
               </div>
 
