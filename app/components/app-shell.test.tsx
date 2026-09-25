@@ -69,12 +69,12 @@ describe("AppShell", () => {
     for (let link of current) {
       expect(link).toHaveTextContent("Bookings");
     }
-    expect(
-      screen.getByRole("link", { name: "Back to Bookings" }),
-    ).toHaveAttribute("href", "/reservations");
-    expect(
-      screen.getByRole("heading", { name: "Automatic reservations" }),
-    ).toBeInTheDocument();
+  });
+
+  it("leaves the Bookings pages to draw their own heading", () => {
+    renderShell("/automatic-reservations");
+
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
   it("gives the desks page no extra heading, it draws its own", () => {
@@ -109,9 +109,13 @@ describe("AppShell", () => {
     expect(
       menu.getByRole("link", { name: "Book my desk", hidden: true }),
     ).toHaveAttribute("href", "/?desk=7");
+    // Recurring bookings live on the Bookings page now.
     expect(
-      menu.getByRole("link", { name: "Automatic reservations", hidden: true }),
-    ).toHaveAttribute("href", "/automatic-reservations");
+      menu.queryByRole("link", {
+        name: "Automatic reservations",
+        hidden: true,
+      }),
+    ).not.toBeInTheDocument();
     expect(
       menu
         .getByRole("button", { name: "Sign out", hidden: true })
@@ -125,12 +129,6 @@ describe("AppShell", () => {
     let menu = within(document.getElementById("app-menu")!);
     expect(
       menu.queryByRole("link", { name: "Book my desk", hidden: true }),
-    ).not.toBeInTheDocument();
-    expect(
-      menu.queryByRole("link", {
-        name: "Automatic reservations",
-        hidden: true,
-      }),
     ).not.toBeInTheDocument();
     expect(document.getElementById("app-menu")).toHaveTextContent("No desk");
   });

@@ -1,0 +1,365 @@
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  isSameMonth,
+  startOfWeek,
+} from "date-fns";
+import { X } from "lucide-react";
+import { Link, NavLink, useFetcher } from "react-router";
+import { buttonVariants } from "~/components/ui/button";
+import { parseDate } from "~/lib/dates";
+import { cn } from "~/lib/utils";
+
+// The Bookings tab (design/design-options.html, "My reservations" and
+// "Bookings"): one heading, an Upcoming · Recurring switch, and "Book days"
+// as the page's one primary action. Upcoming is /reservations and Recurring
+// is /automatic-reservations, so both keep their own loader and action.
+
+export type OwnDesk = {
+  id: number;
+  block: number;
+  row: number;
+  column: number;
+};
+
+export function deskLabel(desk: {
+  block: number;
+  row: number;
+  column: number;
+}) {
+  return `${desk.block}.${desk.row}.${desk.column}`;
+}
+
+let placement: Record<number, string> = {
+  1: "by the window",
+  2: "in the middle",
+  3: "by the aisle",
+};
+
+// One word each, for where a row has little room.
+let shortPlacement: Record<number, string> = {
+  1: "window",
+  2: "middle",
+  3: "aisle",
+};
+
+export function deskPlace(
+  desk: { block: number; column: number },
+  { short = false } = {},
+) {
+  let where = (short ? shortPlacement : placement)[desk.column];
+  return `Block ${desk.block} · ${where ?? `column ${desk.column}`}`;
+}
+
+let focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2";
+
+export function BookingsHeader({ desk }: { desk: OwnDesk | null }) {
+  return (
+    <header className="flex flex-col gap-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
+            Bookings
+          </h1>
+          <p className="text-sm text-ink-muted">
+            {desk ? `Your desk is ${deskLabel(desk)}` : "Days you have a desk"}
+          </p>
+        </div>
+        <Link
+          to={desk ? `/?desk=${desk.id}` : "/"}
+          className={cn(
+            buttonVariants({ variant: "primary", size: "tall" }),
+            "shrink-0 px-5",
+          )}
+        >
+          {desk ? "Book days" : "Find a desk"}
+        </Link>
+      </div>
+
+      {/* Recurring only makes sense with a desk of your own to repeat. */}
+      {desk && (
+        <nav
+          aria-label="Bookings"
+          className="flex self-start rounded-full bg-paper-muted p-1 ring-1 ring-inset ring-line"
+        >
+          {[
+            { to: "/reservations", label: "Upcoming" },
+            { to: "/automatic-reservations", label: "Recurring" },
+          ].map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              prefetch="intent"
+              className={({ isActive }) =>
+                cn(
+                  "inline-flex h-9 min-w-[104px] items-center justify-center rounded-full px-4 text-[13px] font-semibold text-ink-muted transition-colors hover:text-ink",
+                  focusRing,
+                  isActive &&
+                    "bg-paper text-ink shadow-[0_1px_2px_rgb(31_42_46/0.12)] ring-1 ring-line",
+                )
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
+    </header>
+  );
+}
+
+/** The desk as a small slab, the same shapes and colours as the map. */
+export function DeskChip({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "mine" | "taken" | "free";
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-grid h-8 min-w-[48px] shrink-0 place-items-center rounded border-[1.5px] px-1.5 text-[11px] font-bold tracking-[0.03em]",
+        tone === "mine" &&
+          "border-moss-edge bg-moss text-white shadow-[0_3px_0_var(--moss-edge)]",
+        tone === "taken" &&
+          "border-ink bg-taken text-white shadow-[0_3px_0_var(--ink)]",
+        tone === "free" &&
+          "border-ink bg-paper text-ink shadow-[0_3px_0_var(--ink)]",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+export type Booking = {
+  deskId: number;
+  day: string;
+  date: string;
+  userId: string;
+  desk: { block: number; row: number; column: number };
+  /** First name of the desk's owner, when it is not you. */
+  ownerName: string | null;
+  mine: boolean;
+};
+
+type Week = { key: string; label: string; range: string; bookings: Booking[] };
+
+function weekRange(monday: Date) {
+  let friday = addDays(monday, 4);
+  return isSameMonth(monday, friday)
+    ? `${format(monday, "d")}–${format(friday, "d MMM")}`
+    : `${format(monday, "d MMM")} – ${format(friday, "d MMM")}`;
+}
+
+/** Bookings grouped into Sunday-start weeks, like the rest of the app. */
+export function groupByWeek(bookings: Booking[], today: Date): Week[] {
+  let thisWeek = startOfWeek(today);
+  let weeks = new Map<string, Week>();
+
+  for (let booking of bookings) {
+    let sunday = startOfWeek(parseDate(booking.date));
+    let key = format(sunday, "yyyy-MM-dd");
+    let offset = Math.round(differenceInCalendarDays(sunday, thisWeek) / 7);
+    let monday = addDays(sunday, 1);
+
+    if (!weeks.has(key)) {
+      weeks.set(key, {
+        key,
+        label:
+          offset === 0
+            ? "This week"
+            : offset === 1
+              ? "Next week"
+              : `Week of ${format(monday, "d MMM")}`,
+        range: weekRange(monday),
+        bookings: [],
+      });
+    }
+    weeks.get(key)!.bookings.push(booking);
+  }
+
+  return [...weeks.values()];
+}
+
+function capitalize(name: string) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function relativeDay(date: Date, today: Date) {
+  let diff = differenceInCalendarDays(date, today);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return format(date, "EEEE");
+}
+
+export function BookingList({
+  bookings,
+  today,
+}: {
+  bookings: Booking[];
+  /** Today in `dd.MM.yyyy`, from the loader so server and client agree. */
+  today: string;
+}) {
+  let todayDate = parseDate(today);
+
+  return (
+    <div className="flex flex-col gap-8">
+      {groupByWeek(bookings, todayDate).map((week) => (
+        <section
+          key={week.key}
+          aria-labelledby={`week-${week.key}`}
+          className="flex flex-col gap-2.5"
+        >
+          <h2
+            id={`week-${week.key}`}
+            className="flex items-baseline gap-2 px-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-muted"
+          >
+            {week.label}
+            <span className="font-medium normal-case tracking-normal text-dim">
+              {week.range}
+            </span>
+          </h2>
+          <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-paper">
+            {week.bookings.map((booking) => (
+              <BookingRow
+                key={`${booking.deskId}-${booking.date}`}
+                booking={booking}
+                today={todayDate}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
+  let fetcher = useFetcher();
+  let date = parseDate(booking.date);
+  let isToday = differenceInCalendarDays(date, today) === 0;
+  let removing = fetcher.state !== "idle";
+  let label = deskLabel(booking.desk);
+  let title = booking.mine
+    ? "Your desk"
+    : booking.ownerName
+      ? `${capitalize(booking.ownerName)}'s desk`
+      : `Desk ${label}`;
+  // Only today can be borrowed, so a borrowed row needs no date of its own.
+  let detail = (short: boolean) =>
+    booking.mine
+      ? deskPlace(booking.desk, { short })
+      : short
+        ? `Borrowed · block ${booking.desk.block}`
+        : `${deskPlace(booking.desk)} · borrowed for today`;
+
+  // Hidden straight away; if the delete fails the loader brings it back.
+  if (removing) {
+    return null;
+  }
+
+  return (
+    <li
+      data-date={booking.date}
+      className={cn(
+        "grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line px-4 py-3.5 last:border-b-0 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:gap-x-5 sm:px-5",
+        isToday && "bg-moss-soft",
+      )}
+    >
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[15px] font-bold leading-tight">
+          {format(date, "EEE d")}
+        </span>
+        <span
+          className={cn(
+            "text-xs leading-tight text-ink-muted",
+            isToday && "font-semibold text-moss-edge",
+          )}
+        >
+          {relativeDay(date, today)}
+        </span>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-3">
+        <DeskChip label={label} tone={booking.mine ? "mine" : "taken"} />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-sm font-semibold leading-tight">
+            {title}
+          </span>
+          <span className="truncate text-xs leading-tight text-ink-muted">
+            <span className="sm:hidden">{detail(true)}</span>
+            <span className="hidden sm:inline">{detail(false)}</span>
+          </span>
+        </div>
+      </div>
+
+      <fetcher.Form method="DELETE" action="/reservations">
+        <input type="hidden" name="reservation-date" value={booking.date} />
+        <input
+          type="hidden"
+          name="reservation-user-id"
+          value={booking.userId}
+        />
+        <input type="hidden" name="reservation-day" value={booking.day} />
+        <input type="hidden" name="desk-id" value={booking.deskId} />
+        <button
+          type="submit"
+          aria-label={`Remove ${format(date, "EEE d MMM")}`}
+          className={cn(
+            "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
+            focusRing,
+          )}
+        >
+          {/* A quiet cross on phones, where the row has no room for a word. */}
+          <X aria-hidden="true" className="size-[18px] sm:hidden" />
+          <span aria-hidden="true" className="hidden sm:inline">
+            Remove
+          </span>
+        </button>
+      </fetcher.Form>
+    </li>
+  );
+}
+
+export function EmptyBookings({ desk }: { desk: OwnDesk | null }) {
+  return (
+    <div className="flex flex-col items-start gap-5 rounded-xl border border-dashed border-line bg-paper px-5 py-8 sm:px-8 sm:py-10">
+      <div className="flex flex-col gap-1.5">
+        <h2 className="text-[15px] font-bold">Nothing booked yet</h2>
+        <p className="max-w-[46ch] text-pretty text-sm leading-relaxed text-ink-muted">
+          {desk
+            ? "Pick days in your desk's sheet on the map, or set up a weekly booking so your usual days are taken care of."
+            : "Pick a free desk on the map for today. Past days drop off this list on their own."}
+        </p>
+      </div>
+      <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
+        <Link
+          to="/"
+          className={cn(
+            buttonVariants({ variant: "quiet", size: "tall" }),
+            "px-5",
+          )}
+        >
+          Open the desk map
+        </Link>
+        {desk && (
+          <Link
+            to="/automatic-reservations"
+            className={cn(
+              buttonVariants({ variant: "quiet", size: "tall" }),
+              "px-5",
+            )}
+          >
+            Set up weekly booking
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
