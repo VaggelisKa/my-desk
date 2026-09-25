@@ -117,6 +117,24 @@
   }
 }
 
+@layer components {
+  /* The page wrapper Silk pushes back behind a bottom sheet. On phones it is
+     the scroll container rather than the window: the depth effect scales it
+     around its own top edge, so if the window scrolled instead, a scrolled
+     page would lurch by a share of the scroll offset every time a sheet
+     opened. Desktop keeps window scrolling (and scroll restoration). */
+  .app-outlet {
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+  @media (max-width: 767px) {
+    .app-outlet {
+      height: 100dvh;
+      overflow-y: auto;
+    }
+  }
+}
+
 /* Desk detail sheet (Silk). Sized here because Silk ships unstyled. */
 @layer components {
   .desk-sheet-view {

@@ -5,7 +5,7 @@ import archivo700 from "@fontsource/archivo/700.css?url";
 import { Island, SheetStack } from "@silk-hq/components";
 import silkStyles from "@silk-hq/components/unlayered-styles.css?url";
 import { eq } from "drizzle-orm";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   data,
   Links,
@@ -13,6 +13,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useRouteError,
   useRouteLoaderData,
   type ShouldRevalidateFunctionArgs,
@@ -122,6 +123,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let data = useRouteLoaderData<typeof loader>("root");
   let error = useRouteError();
   let { toast } = useToast();
+  let { pathname } = useLocation();
+  let outlet = useRef<HTMLDivElement>(null);
+
+  // On phones the page scrolls inside the outlet (see `.app-outlet`), which
+  // the window-based <ScrollRestoration> cannot see; start each page at the
+  // top. On desktop the outlet does not scroll and this is a no-op.
+  useEffect(() => {
+    outlet.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
     if (!data?.toast) {
@@ -160,7 +170,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <NavigationProgress />
         <SheetStack.Root>
           <SheetStack.Outlet
-            className="min-h-screen overflow-hidden bg-background"
+            ref={outlet}
+            className="app-outlet bg-background"
             stackingAnimation={depth}
           >
             <SidebarProvider defaultOpen={data?.sidebarState ?? true}>
