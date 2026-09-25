@@ -175,6 +175,59 @@
   }
 }
 
+/* Toasts (Silk). Silk stretches a sheet's content to the full view, so the
+   view itself is sized to a short strip at the top (phones) or bottom right
+   (desktop). Only the card takes pointer events, so the page around it
+   stays clickable. */
+.toast-view {
+  z-index: 60;
+}
+.toast-view-top {
+  height: calc(168px + env(safe-area-inset-top));
+}
+.toast-view-right {
+  top: auto;
+  bottom: 0;
+  height: 200px;
+}
+.toast-content,
+.toast-frame {
+  pointer-events: none;
+  background: transparent;
+}
+.toast-frame {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.toast-view-top .toast-content {
+  width: 100%;
+}
+.toast-view-top .toast-frame {
+  justify-content: flex-start;
+  padding: calc(12px + env(safe-area-inset-top)) 12px 0;
+}
+.toast-view-right .toast-content {
+  width: min(92vw, 400px);
+}
+.toast-view-right .toast-frame {
+  justify-content: flex-end;
+  padding: 0 calc(24px + env(safe-area-inset-right)) 24px 24px;
+}
+.toast-card {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow:
+    0 1px 2px rgb(31 42 46 / 0.06),
+    0 10px 30px rgb(31 42 46 / 0.12);
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -71,24 +71,18 @@ declare global {
  * renders instead, so assertions do not race the auto-dismiss timer.
  */
 function recordToasts() {
-  let selector = "[role='region'][aria-label^='Notifications'] li";
   window.__e2eToasts = [];
+  let last = "";
 
-  new MutationObserver((mutations) => {
-    for (let mutation of mutations) {
-      for (let node of mutation.addedNodes) {
-        if (!(node instanceof Element)) continue;
-
-        let toasts = node.matches(selector)
-          ? [node]
-          : Array.from(node.querySelectorAll(selector));
-
-        for (let toast of toasts) {
-          window.__e2eToasts.push(toast.textContent ?? "");
-        }
-      }
+  // A new toast can replace the one on screen in place, so look at the
+  // toast's text after every change rather than only at added nodes.
+  new MutationObserver(() => {
+    let text = document.querySelector("[data-toast]")?.textContent ?? "";
+    if (text && text !== last) {
+      window.__e2eToasts.push(text);
     }
-  }).observe(document, { childList: true, subtree: true });
+    last = text;
+  }).observe(document, { childList: true, subtree: true, characterData: true });
 }
 
 function shownToasts(page: Page) {

@@ -30,7 +30,10 @@ test("a guest reserves someone else's desk for today", async ({
   await reservationsPage.goto();
   await expect(reservationsPage.rows).toHaveCount(1);
   await expect(reservationsPage.row(bookingDay("monday").date)).toContainText(
-    "Block 1, Row 1, Column 1",
+    "Alice's desk",
+  );
+  await expect(reservationsPage.row(bookingDay("monday").date)).toContainText(
+    "borrowed",
   );
 });
 
