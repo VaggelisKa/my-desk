@@ -65,7 +65,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function UserEditPage({ loaderData }: Route.ComponentProps) {
   return (
-    <section className="flex w-full flex-col items-center gap-16 sm:w-auto ">
+    <section className="flex w-full flex-col gap-16">
       <Form
         method="PUT"
         className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"

@@ -2,13 +2,15 @@ import type { Locator, Page } from "@playwright/test";
 import { gotoHydrated } from "./hydration";
 
 export class DesksPage {
-  readonly sidebar;
-  readonly logoutButton;
+  readonly accountMenu;
+  readonly signOutButton;
   readonly showFreeDesksOnly;
 
   constructor(private readonly page: Page) {
-    this.sidebar = page.locator("[data-sidebar='sidebar']");
-    this.logoutButton = page.getByRole("button", { name: "Logout" });
+    this.accountMenu = page.locator("#app-menu");
+    this.signOutButton = this.accountMenu.getByRole("button", {
+      name: "Sign out",
+    });
     this.showFreeDesksOnly = page.getByRole("checkbox", {
       name: "Free only",
     });
@@ -23,8 +25,21 @@ export class DesksPage {
     return this.page.getByRole("button", { name: label, exact: true });
   }
 
-  sidebarLink(name: string) {
-    return this.sidebar.getByRole("link", { name });
+  /** Opens the avatar menu in the masthead (the tests run at desktop size). */
+  async openAccountMenu() {
+    await this.page.getByRole("button", { name: /^Account menu/ }).click();
+    await this.accountMenu.waitFor();
+  }
+
+  async menuLink(name: string) {
+    await this.openAccountMenu();
+    return this.accountMenu.getByRole("link", { name });
+  }
+
+  tab(name: string) {
+    return this.page
+      .locator(".app-masthead")
+      .getByRole("link", { name, exact: true });
   }
 
   async openDesk(label: string) {
