@@ -26,6 +26,7 @@ Never commit credentials.
 
 ```sh
 npm test
+npm run test:e2e
 npm run typecheck
 npm run build
 ```
@@ -45,3 +46,16 @@ before expiry; deleting its user or rotating the secret invalidates it.
 
 Employee-ID-only login and registration's existing-account fallback still need
 identity verification. Cookie signing does not resolve those separate risks.
+
+## Testing
+
+- Unit tests: `npm test` (Vitest)
+- End-to-end tests: `npm run test:e2e` (Playwright), or `npm run test:e2e:ui` for the interactive UI mode. Run `npx playwright install chromium` once beforehand.
+
+The e2e suite never touches the shared Turso database or any third party service:
+
+- Playwright starts its own dev server on port 5199 (override with `E2E_PORT`) against a throwaway SQLite file in `e2e/.tmp/`, built from the migrations in `database/`. Every test starts from the same seed (`e2e/support/db.ts`).
+- `e2e/support/server-preload.mjs` is loaded into that server only. It refuses to start without a local `file:` database, stubs the cron-job.org API, and blocks every other outbound request.
+- The server and browser clocks are both pinned to an upcoming Monday at 08:00 (Europe/Copenhagen), so date-dependent flows behave the same whatever day the suite runs.
+
+Specs live in `e2e/`, one file per flow, with page objects in `e2e/pages/` and shared fixtures in `e2e/fixtures.ts`.

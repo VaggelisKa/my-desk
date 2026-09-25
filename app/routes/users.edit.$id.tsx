@@ -32,13 +32,24 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return userFromDb;
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, params }: Route.ActionArgs) {
+  let { userId: sessionUserId, role } = await requireAuthCookie(request);
+  // The user comes from the URL the loader authorized, not the form.
+  let userId = params.id?.toLowerCase();
+
+  if (!userId) {
+    throw new Error("User id is required");
+  }
+
+  if (userId !== sessionUserId && role !== "admin") {
+    throw new Error("You are not allowed to edit this information");
+  }
+
   let formData = await request.formData();
-  let userId = String(formData.get("user-id"));
   let updatedFirstName = String(formData.get("firstName"));
   let updatedLastName = String(formData.get("lastName"));
 
-  if ((!updatedFirstName && !updatedLastName) || userId == "null") {
+  if (!updatedFirstName && !updatedLastName) {
     return null;
   }
 
