@@ -123,7 +123,7 @@ export default function EditDeskPage({ loaderData }: Route.ComponentProps) {
   let isSubmitting = navigation.state !== "idle";
 
   return (
-    <section className="flex w-full flex-col items-center gap-16 sm:w-auto">
+    <section className="flex w-full flex-col gap-16">
       <Form
         method="PUT"
         className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"

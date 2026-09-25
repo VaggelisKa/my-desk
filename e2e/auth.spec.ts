@@ -22,12 +22,18 @@ test.describe("logged out", () => {
     await loginPage.login(users.alice.id.toUpperCase());
 
     await expect(page).toHaveURL("/");
-    await expect(desksPage.logoutButton).toBeVisible();
-    await expect(desksPage.sidebarLink("Add reservation")).toBeVisible();
-    await expect(desksPage.sidebarLink("Edit profile")).toHaveAttribute(
-      "href",
-      `/users/edit/${users.alice.id}`,
+    await expect(desksPage.tab("Desks")).toHaveAttribute(
+      "aria-current",
+      "page",
     );
+    await desksPage.openAccountMenu();
+    await expect(desksPage.signOutButton).toBeVisible();
+    await expect(
+      desksPage.accountMenu.getByRole("link", { name: "Add reservation" }),
+    ).toBeVisible();
+    await expect(
+      desksPage.accountMenu.getByRole("link", { name: "Edit profile" }),
+    ).toHaveAttribute("href", `/users/edit/${users.alice.id}`);
   });
 
   test("an unknown user id is rejected", async ({ page, loginPage }) => {
@@ -73,9 +79,12 @@ test.describe("logged out", () => {
     });
 
     await expect(page).toHaveURL("/");
-    await expect(desksPage.logoutButton).toBeVisible();
+    await desksPage.openAccountMenu();
+    await expect(desksPage.signOutButton).toBeVisible();
     // Guests have no permanent desk, so they cannot plan reservations ahead.
-    await expect(desksPage.sidebarLink("Add reservation")).toBeHidden();
+    await expect(
+      desksPage.accountMenu.getByRole("link", { name: "Add reservation" }),
+    ).toBeHidden();
     await expect(db.user("gst777")).resolves.toMatchObject({
       firstName: "Grace",
       lastName: "Visitor",
@@ -99,7 +108,8 @@ test.describe("logged in", () => {
     loginPage,
   }) => {
     await desksPage.goto();
-    await desksPage.logoutButton.click();
+    await desksPage.openAccountMenu();
+    await desksPage.signOutButton.click();
 
     await expect(page).toHaveURL("/login");
     await expect(loginPage.heading).toBeVisible();
