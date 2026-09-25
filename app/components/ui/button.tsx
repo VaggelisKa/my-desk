@@ -19,12 +19,18 @@ let buttonVariants = cva(
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Redesign variants, see design/design-options.html.
+        primary:
+          "rounded-[10px] bg-moss font-display font-semibold text-white shadow-none hover:bg-moss-edge focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2",
+        quiet:
+          "rounded-[10px] border border-line bg-paper font-display font-semibold text-ink shadow-none hover:bg-paper-muted focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9",
+        tall: "h-11 px-4 text-sm",
       },
     },
     defaultVariants: {

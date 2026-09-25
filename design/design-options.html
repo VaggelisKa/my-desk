@@ -391,7 +391,7 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
       <span>Scope: desk view, desk detail, reserve, login and register, logout, plus peeks at metrics, automatic reservations and my reservations</span>
       <span>Stack stays: React Router 7, Tailwind, shadcn primitives</span>
       <span>Palette: Slate &amp; Moss</span>
-      <span>Revision 9 · 24 Sep 2026</span>
+      <span>Revision 10 · 24 Sep 2026</span>
     </div>
   </div>
 </header>
@@ -424,8 +424,8 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
     <div class="grid-2 plan">
       <div>
         <ol>
-          <li><b>Day strip replaces the date picker.</b> Mon–Fri for this week and next, as a segmented control at the top of the page. Today is preselected. The URL param stays so links still work.</li>
-          <li><b>Filters become chips under the day strip.</b> "Free only", "Window", "Middle", "Aisle", and block chips. Filtering dims desks instead of colouring them red.</li>
+          <li><b>Day strip replaces the date picker.</b> Mon–Fri as a segmented control at the top of the page, with a small "Next week →" text link to flip to the following week. Today is preselected; past days are shown but not offered, since their bookings are cleaned up. On phones the strip becomes five full-width cells. The URL param stays so links still work.</li>
+          <li><b>Filters become chips under the day strip.</b> "Free only", "Window", "Middle", "Aisle", and a "Block" chip that opens the native select. Filtering dims desks instead of colouring them red. On phones the row scrolls sideways rather than wrapping.</li>
           <li><b>Three desk states, always readable without colour.</b> Free, taken (with who), yours. Each has a distinct fill, a label, and an icon or avatar. Dimmed is a fourth, purely for filtering.</li>
           <li><b>Desk detail is a bottom sheet on mobile and a side sheet on desktop, both built with Silk.</b> One component, two placements; the Radix dialog and the vaul drawer go away. The panel shows the two-week availability with real dates and one primary action. The booking rules stay as they are: someone else's desk can only be borrowed for today, and only your own desk can be booked ahead.</li>
         </ol>
@@ -450,7 +450,7 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
       <div>
         <p class="kicker" style="color:#6e655b">The direction</p>
         <h2 style="font-family:Archivo">The Floor</h2>
-        <p class="thesis">The layout you have today, drawn properly. Blocks stay stacked in order, each a 3 by 2 grid, block 4 a single row, the wall before block 7. Each desk is a tile with an outline and a solid lower edge, so it reads as a slab on the page rather than a grey button. No perspective, no rotation, so it renders identically everywhere. Every desk carries its owner's first name, with the desk number small underneath, because the name is what people actually look for. A free desk is white with the name muted, a taken one is dark with the name in white, yours is the one moss tile, and an unassigned desk is a dashed outline. Buttons and cards are flat; the raised edge is reserved for desks, so a raised thing always means a desk. Chairs sit on the outside of each block, which makes row 1 and row 2 tell apart at a glance. A window strip runs down the left and a dashed aisle line down the right.</p>
+        <p class="thesis">The layout you have today, drawn properly. Blocks stay stacked in order, each a 3 by 2 grid, block 4 a single row, the wall before block 7. Each desk is a tile with an outline and a solid lower edge, so it reads as a slab on the page rather than a grey button. No perspective, no rotation, so it renders identically everywhere. Every desk carries its owner's first name, with the desk number small underneath, because the name is what people actually look for. A free desk is white with the name muted, a taken one is dark with the name in white, yours is the one moss tile, and an unclaimed desk is a dashed outline. Buttons and cards are flat; the raised edge is reserved for desks, so a raised thing always means a desk. Chairs sit on the outside of each block, which makes row 1 and row 2 tell apart at a glance. A window strip runs down the left and a dashed aisle line down the right.</p>
       </div>
       <div class="tokens">
         <div class="row"><i class="sw" style="background:#ffffff"></i><span class="k">Paper</span> #FFFFFF</div>
@@ -507,7 +507,7 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
                 <span><i></i>Free</span>
                 <span><i class="t"></i>Taken</span>
                 <span><i class="m"></i>Yours</span>
-                <span><i class="o"></i>Filtered out / unassigned</span>
+                <span><i class="o"></i>Filtered out or unclaimed</span>
               </div>
             </div>
           </div>
@@ -774,7 +774,7 @@ function buildFloor(el){
       const st = deskState(rnd, b, r, c);
       const d = document.createElement("div");
       d.className = "desk r" + r + " " + st.st + (st.sel ? " sel" : "") + ((c === 2 && st.st === "free" && b === 5) ? " off" : "");
-      d.innerHTML = `<div class="top-face"><span class="nm">${st.who ? first(st.who) : "Unassigned"}</span><span class="id">${b}.${r}.${c}</span></div><div class="chair"></div>`;
+      d.innerHTML = `<div class="top-face"><span class="nm">${st.who ? first(st.who) : "Unclaimed"}</span><span class="id">${b}.${r}.${c}</span></div><div class="chair"></div>`;
       d.addEventListener("click", () => { el.querySelectorAll(".desk.sel").forEach(e => e.classList.remove("sel")); d.classList.add("sel"); });
       grid.appendChild(d);
     }

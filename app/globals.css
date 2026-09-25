@@ -117,6 +117,64 @@
   }
 }
 
+/* Desk detail sheet (Silk). Sized here because Silk ships unstyled. */
+@layer components {
+  .desk-sheet-view {
+    z-index: 40;
+    height: var(--silk-100-lvh-dvh-pct);
+  }
+  .desk-sheet-backdrop {
+    background: rgb(31 42 46 / 0.35);
+  }
+  .desk-sheet-content {
+    box-sizing: border-box;
+  }
+  .desk-sheet-content-bottom {
+    height: auto;
+    padding: 10px 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  /* Scrolls inside the sheet; the side padding keeps focus rings from
+     being clipped by the overflow. */
+  .desk-sheet-body {
+    margin: 0 -4px;
+    padding: 0 4px;
+  }
+  .desk-sheet-content-bottom .desk-sheet-body {
+    max-height: calc(92dvh - 40px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .desk-sheet-content-side {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(92vw, 360px);
+    height: 100%;
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom))
+      calc(20px + env(safe-area-inset-right));
+    border-left: 1px solid var(--line);
+  }
+  .desk-sheet-content-side .desk-sheet-body {
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  .desk-sheet-bg {
+    background: var(--paper);
+  }
+  .desk-sheet-bg-bottom {
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -8px 30px rgb(0 0 0 / 0.12);
+  }
+  .desk-sheet-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 16px;
+    border-radius: 2px;
+    background: var(--line);
+    cursor: pointer;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
