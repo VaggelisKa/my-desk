@@ -18,9 +18,9 @@ type DeskTileProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 let stateWords: Record<DeskTileState, string> = {
-  free: "free",
-  taken: "taken",
-  mine: "yours",
+  free: "Free",
+  taken: "Taken",
+  mine: "Yours",
 };
 
 /**
@@ -28,6 +28,9 @@ let stateWords: Record<DeskTileState, string> = {
  * the design. The accessible name is the owner's first name (or "Unclaimed"),
  * which the desk map, tests and screen readers all key on; the number, state
  * and who is sitting there are read out as the description.
+ *
+ * The state is written on the tile as well as coloured, so it reads without
+ * telling the colours apart. The desk number lives in the sheet instead.
  */
 export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
   (
@@ -45,10 +48,11 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
     ref,
   ) => {
     let unclaimed = !name;
+    let status = dimmed ? "Filtered out" : stateWords[state];
     let descriptionId = React.useId();
     let description = [
       `Desk ${label}`,
-      dimmed ? "filtered out" : stateWords[state],
+      status.toLowerCase(),
       sitter ? `${sitter} is sitting here` : null,
     ]
       .filter(Boolean)
@@ -96,13 +100,13 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
               "border-ink bg-paper text-ink-muted shadow-[0_6px_0_var(--edge)]",
             state === "free" &&
               unclaimed &&
-              "border-line text-dim shadow-[0_6px_0_var(--line)]",
+              "border-line shadow-[0_6px_0_var(--line)]",
             state === "taken" &&
               "border-ink bg-taken text-white shadow-[0_6px_0_var(--edge)]",
             state === "mine" &&
               "border-moss-edge bg-moss text-white shadow-[0_6px_0_var(--edge)] [--edge:var(--moss-edge)]",
             dimmed &&
-              "border-dashed border-dim bg-transparent text-dim shadow-none",
+              "border-dashed border-dim bg-transparent text-ink-muted shadow-none",
           )}
         >
           <span
@@ -113,13 +117,8 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
           >
             {name || "Unclaimed"}
           </span>
-          <span
-            className={cn(
-              "text-[9.5px] font-semibold leading-none tracking-[0.04em]",
-              state === "free" ? "opacity-70" : "opacity-[0.65]",
-            )}
-          >
-            {label}
+          <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-[0.02em] sm:text-[10.5px]">
+            {status}
           </span>
         </span>
       </button>

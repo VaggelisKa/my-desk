@@ -8,8 +8,22 @@ describe("DeskTile", () => {
     render(<DeskTile name="jane" label="1.1.1" row={1} />);
 
     expect(screen.getByRole("button", { name: "jane" })).toBeInTheDocument();
-    expect(screen.getByText("1.1.1")).toBeInTheDocument();
   });
+
+  it.each([
+    [{ state: "free" as const }, "Free"],
+    [{ state: "taken" as const }, "Taken"],
+    [{ state: "mine" as const }, "Yours"],
+    [{ dimmed: true }, "Filtered out"],
+  ])(
+    "writes the state on the tile instead of the number (%o)",
+    (props, word) => {
+      render(<DeskTile name="jane" label="1.1.1" row={1} {...props} />);
+
+      expect(screen.getByText(word)).toBeInTheDocument();
+      expect(screen.queryByText("1.1.1")).not.toBeInTheDocument();
+    },
+  );
 
   it("is labelled as unclaimed when the desk has no owner", () => {
     render(<DeskTile label="2.1.1" row={1} />);
