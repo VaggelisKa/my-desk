@@ -4,7 +4,6 @@ import archivo600 from "@fontsource/archivo/600.css?url";
 import archivo700 from "@fontsource/archivo/700.css?url";
 import { Island, SheetStack } from "@silk-hq/components";
 import silkStyles from "@silk-hq/components/unlayered-styles.css?url";
-import { eq } from "drizzle-orm";
 import { useEffect, useRef } from "react";
 import {
   data,
@@ -23,10 +22,8 @@ import { AppMenu, Dock, Masthead, PageHeading } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { Toaster } from "~/components/ui/toaster";
-import { userCookie } from "~/cookies.server";
+import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
-import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -69,16 +66,8 @@ export let links: Route.LinksFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let cookieHeader = request.headers.get("Cookie");
-  let userData = await userCookie.parse(cookieHeader);
-
   let { toast, headers } = await getToast(request);
-  let user = await db.query.users.findFirst({
-    where: eq(users.id, userData?.userId || ""),
-    with: {
-      desk: true,
-    },
-  });
+  let user = await getAuthenticatedUser(request);
 
   return data({ user, toast }, { headers });
 }

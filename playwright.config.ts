@@ -59,6 +59,7 @@ export default defineConfig({
       DATABASE_AUTH_TOKEN: "e2e-local",
       CRON_TOKEN: "e2e-cron-token",
       CRON_PASSWORD: "e2e-cron-password",
+      SESSION_SECRET: "e2e-session-secret-for-local-tests-only",
       E2E_NOW: process.env.E2E_NOW!,
       TZ: TIMEZONE,
       // Through NODE_OPTIONS rather than a CLI flag: the react-router CLI

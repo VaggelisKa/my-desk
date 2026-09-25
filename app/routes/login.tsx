@@ -7,7 +7,11 @@ import {
   AuthSubmit,
   CodeField,
 } from "~/components/auth-card";
-import { signedOutCookie, userCookie } from "~/cookies.server";
+import {
+  createUserCookie,
+  getAuthenticatedUser,
+  signedOutCookie,
+} from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/login";
@@ -19,14 +23,15 @@ export let meta: Route.MetaFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let cookieHeader = request.headers.get("Cookie");
-  let userData = await userCookie.parse(cookieHeader);
+  let user = await getAuthenticatedUser(request);
 
-  if (userData?.userId) {
+  if (user) {
     throw redirect("/");
   }
 
-  let signedOut = Boolean(await signedOutCookie.parse(cookieHeader));
+  let signedOut = Boolean(
+    await signedOutCookie.parse(request.headers.get("Cookie")),
+  );
 
   return data(
     { signedOut },
@@ -61,12 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   return redirect("/", {
     headers: {
-      "Set-Cookie": await userCookie.serialize({
-        userId,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      }),
+      "Set-Cookie": await createUserCookie(user.id),
     },
   });
 }

@@ -1,6 +1,11 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { action } from "./login_.logout";
+
+vi.hoisted(() => {
+  process.env.SESSION_SECRET = "test-only-session-secret-with-32-characters";
+});
+vi.mock("../lib/db/drizzle.server", () => ({ db: {} }));
 
 describe("logout action", () => {
   it("clears the session and flags the login page to show the signed-out line", async () => {

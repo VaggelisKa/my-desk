@@ -7,7 +7,7 @@ import {
   AuthSubmit,
   CodeField,
 } from "~/components/auth-card";
-import { userCookie } from "~/cookies.server";
+import { createUserCookie, getAuthenticatedUser } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/login_.guest";
@@ -19,10 +19,9 @@ export let meta: Route.MetaFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let cookieHeader = request.headers.get("Cookie");
-  let employeeNumber = await userCookie.parse(cookieHeader);
+  let user = await getAuthenticatedUser(request);
 
-  if (employeeNumber) {
+  if (user) {
     throw redirect("/");
   }
 
@@ -68,9 +67,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   return redirect("/", {
     headers: {
-      "Set-Cookie": await userCookie.serialize({
-        userId: newUser?.[0]?.id || employeeNumber,
-      }),
+      "Set-Cookie": await createUserCookie(newUser?.[0]?.id || employeeNumber),
     },
   });
 }
