@@ -121,12 +121,12 @@ describe("DeskFilters", () => {
     ).toHaveAttribute("href", "/?column=1&selected-day=14.03.2025");
   });
 
-  it("switches to the same weekday next week", () => {
+  it("switches to Monday of next week", () => {
     renderFilters();
 
     expect(screen.getByRole("link", { name: "Next week →" })).toHaveAttribute(
       "href",
-      "/?selected-day=19.03.2025",
+      "/?selected-day=17.03.2025",
     );
   });
 
@@ -167,7 +167,7 @@ describe("DeskFilters", () => {
     ).toHaveAttribute("aria-current", "date");
     expect(screen.getByRole("link", { name: "Next week →" })).toHaveAttribute(
       "href",
-      "/?selected-day=21.03.2025",
+      "/?selected-day=17.03.2025",
     );
   });
 
@@ -179,7 +179,7 @@ describe("DeskFilters", () => {
     ).toHaveAttribute("aria-current", "date");
     expect(screen.getByRole("link", { name: "← This week" })).toHaveAttribute(
       "href",
-      "/?selected-day=11.03.2025",
+      "/?selected-day=14.03.2025",
     );
     expect(
       screen.queryByRole("link", { name: "Tuesday 11 March" }),

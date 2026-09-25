@@ -153,7 +153,7 @@ export function DeskFilters() {
 
 /**
  * Mon to Fri as a segmented control, with a link to flip between this week
- * and next. The selected day lives in the `selected-day` search param and
+ * and next (next Monday going forward, this Friday going back). The selected day lives in the `selected-day` search param and
  * defaults to today. On a weekend the strip already shows next week.
  */
 export function DayStrip({
@@ -185,10 +185,10 @@ export function DayStrip({
     return `?${params}`;
   }
 
-  // Flipping the week keeps the same weekday (Saturday clamps to Friday,
-  // Sunday to Monday). Once this week is over there is nothing to go back to.
-  let weekdayIndex = Math.max(0, Math.min(4, selected.getDay() - 1));
-  let otherWeek = inNextWeek ? thisWeek : nextWeek;
+  // Going forward lands on next Monday, going back on this Friday, so the
+  // pick sits next to the week you came from. Once this week is over there is
+  // nothing to go back to, so Friday is never in the past here.
+  let otherWeekDay = inNextWeek ? thisWeek[4].date : nextWeek[0].date;
   let thisWeekIsOver = isAfter(startOfDay(today), thisWeek[4].date);
 
   return (
@@ -244,7 +244,7 @@ export function DayStrip({
 
       {!(inNextWeek && thisWeekIsOver) && (
         <Link
-          to={linkTo(otherWeek[weekdayIndex].date)}
+          to={linkTo(otherWeekDay)}
           preventScrollReset
           className={cn(
             "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:min-h-0",
