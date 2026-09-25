@@ -331,17 +331,11 @@ export function AppMenu({ user }: { user: ShellUser }) {
         </p>
       </div>
 
-      {/* Booking opens your desk's sheet. Automatic reservations lives here
-      until Bookings gets its Recurring segment. */}
+      {/* A shortcut to your desk's sheet, where booking happens. */}
       {user.desk && (
-        <>
-          <Link to={`/?desk=${user.desk.id}`} className={item}>
-            Book my desk
-          </Link>
-          <Link to="/automatic-reservations" prefetch="intent" className={item}>
-            Automatic reservations
-          </Link>
-        </>
+        <Link to={`/?desk=${user.desk.id}`} className={item}>
+          Book my desk
+        </Link>
       )}
       <Link to={`/users/edit/${user.id}`} prefetch="intent" className={item}>
         Edit profile
@@ -425,12 +419,6 @@ let PAGE_HEADINGS: {
   title: string;
   back?: { to: string; label: string };
 }[] = [
-  { match: (p) => p === "/reservations", title: "My reservations" },
-  {
-    match: (p) => p.startsWith("/automatic-reservations"),
-    title: "Automatic reservations",
-    back: { to: "/reservations", label: "Bookings" },
-  },
   {
     match: (p) => p.startsWith("/desks/"),
     title: "Edit desk",

@@ -21,14 +21,21 @@ export class ReservationsTable {
   }
 }
 
-export class ReservationsPage extends ReservationsTable {
+/** The Bookings page's Upcoming list, grouped by week. */
+export class ReservationsPage {
+  readonly rows;
   readonly emptyState;
 
   constructor(private readonly currentPage: Page) {
-    super(currentPage);
+    this.rows = currentPage.getByRole("listitem");
     this.emptyState = currentPage.getByRole("heading", {
-      name: "No Reservations Yet",
+      name: "Nothing booked yet",
     });
+  }
+
+  /** `date` in the app's `dd.MM.yyyy` format. */
+  row(date: string) {
+    return this.currentPage.locator(`li[data-date="${date}"]`);
   }
 
   async goto() {

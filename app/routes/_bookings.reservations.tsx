@@ -1,42 +1,62 @@
-import { getTime, subDays } from "date-fns";
+import { getTime, startOfDay } from "date-fns";
 import { and, asc, eq, gte } from "drizzle-orm";
-import { data } from "react-router";
+import { data, useRouteLoaderData } from "react-router";
 import { dataWithError, dataWithSuccess } from "remix-toast";
-import { ReservationsTable } from "~/components/reservations-table";
+import {
+  BookingList,
+  EmptyBookings,
+  type Booking,
+} from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
+import { formatDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema";
-import type { Route } from "./+types/reservations";
+import type { Route } from "./+types/_bookings.reservations";
+import type { loader as bookingsLoader } from "./_bookings";
 
 export let meta: Route.MetaFunction = () => [
   {
-    title: "View Reservations",
+    title: "Bookings",
   },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
-  let reservationsRes = await db.query.reservations.findMany({
+  let now = new Date();
+  let rows = await db.query.reservations.findMany({
     with: {
       desks: {
-        columns: {
-          id: false,
-          userId: false,
-        },
+        columns: { id: true, block: true, row: true, column: true },
+        with: { user: { columns: { id: true, firstName: true } } },
       },
-      users: true,
-    },
-    columns: {
-      userId: false,
     },
     where: and(
       eq(reservations.userId, userId),
-      gte(reservations.dateTimestamp, getTime(subDays(new Date(), 1))),
+      gte(reservations.dateTimestamp, getTime(startOfDay(now))),
     ),
     orderBy: [asc(reservations.dateTimestamp)],
   });
 
-  return { reservations: reservationsRes };
+  let bookings: Booking[] = rows.flatMap((r) =>
+    r.desks && r.date && r.deskId !== null
+      ? [
+          {
+            deskId: r.deskId,
+            day: r.day,
+            date: r.date,
+            userId: r.userId,
+            desk: r.desks,
+            mine: r.desks.user?.id === userId,
+            ownerName: r.desks.user?.firstName ?? null,
+          },
+        ]
+      : [],
+  );
+
+  return {
+    bookings,
+    today: formatDate(now),
+  };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -83,42 +103,14 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ReservationsPage({
-  loaderData: { reservations },
+  loaderData: { bookings, today },
 }: Route.ComponentProps) {
-  return reservations.length ? (
-    <ReservationsTable reservations={reservations} />
-  ) : (
-    <div className="flex flex-col items-center justify-center gap-6">
-      <CalendarCheckIcon className="h-16 w-16 text-gray-400 dark:text-gray-500" />
-      <div className="space-y-2 text-center">
-        <h3 className="text-2xl font-semibold">No Reservations Yet</h3>
-        <p className="text-gray-500 dark:text-gray-500">
-          You haven't made any reservations yet!
-        </p>
-      </div>
-    </div>
-  );
-}
+  let desk =
+    useRouteLoaderData<typeof bookingsLoader>("routes/_bookings")?.desk;
 
-function CalendarCheckIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-      <line x1="16" x2="16" y1="2" y2="6" />
-      <line x1="8" x2="8" y1="2" y2="6" />
-      <line x1="3" x2="21" y1="10" y2="10" />
-      <path d="m9 16 2 2 4-4" />
-    </svg>
+  return bookings.length ? (
+    <BookingList bookings={bookings} today={today} />
+  ) : (
+    <EmptyBookings desk={desk ?? null} />
   );
 }

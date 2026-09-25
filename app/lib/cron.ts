@@ -97,3 +97,20 @@ export async function enableCron({ cronId }: { cronId: string }) {
     }),
   });
 }
+
+/**
+ * The weekdays a job books, read back from its callback URL. Only the days
+ * leave this function: the URL also carries the cron password.
+ */
+export function daysFromJob(jobDetails: { url?: unknown } | undefined) {
+  if (typeof jobDetails?.url !== "string") {
+    return [];
+  }
+
+  try {
+    let days = new URL(jobDetails.url).searchParams.getAll("day");
+    return addCronSchema.shape.days.catch([]).parse(days);
+  } catch {
+    return [];
+  }
+}
