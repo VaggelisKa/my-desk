@@ -184,7 +184,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
   return (
     <section className="flex w-full max-w-3xl flex-col gap-5 font-display text-ink">
-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
             Desks
@@ -202,9 +202,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         </div>
 
         <DayStrip today={today} />
+        <DeskFilters />
       </header>
-
-      <DeskFilters />
 
       <Legend />
 

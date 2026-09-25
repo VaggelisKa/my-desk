@@ -185,4 +185,25 @@ describe("DeskFilters", () => {
       screen.queryByRole("link", { name: "Tuesday 11 March" }),
     ).not.toBeInTheDocument();
   });
+
+  it("has desktop arrows that flip the week", () => {
+    let { unmount } = renderFilters();
+    expect(screen.getByRole("link", { name: "Next week" })).toHaveAttribute(
+      "href",
+      "/?selected-day=17.03.2025",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Previous week" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    renderFilters("/?selected-day=18.03.2025");
+    expect(screen.getByRole("link", { name: "Previous week" })).toHaveAttribute(
+      "href",
+      "/?selected-day=14.03.2025",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Next week" }),
+    ).not.toBeInTheDocument();
+  });
 });

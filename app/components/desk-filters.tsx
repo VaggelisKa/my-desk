@@ -1,5 +1,5 @@
 import { format, isAfter, startOfDay } from "date-fns";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, Link, useSearchParams, useSubmit } from "react-router";
 import {
@@ -191,11 +191,23 @@ export function DayStrip({
   let otherWeekDay = inNextWeek ? thisWeek[4].date : nextWeek[0].date;
   let thisWeekIsOver = isAfter(startOfDay(today), thisWeek[4].date);
 
+  let canGoBack = inNextWeek && !thisWeekIsOver;
+
   return (
     <nav
       aria-label="Day"
-      className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}
+      className={cn(
+        "flex flex-wrap items-center gap-x-3 gap-y-2 sm:flex-nowrap sm:gap-x-1.5",
+        className,
+      )}
     >
+      <WeekArrow
+        to={canGoBack ? linkTo(otherWeekDay) : undefined}
+        label="Previous week"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </WeekArrow>
+
       <div className="grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
         {days.map(({ day, date }) => {
           let key = formatDate(date);
@@ -242,12 +254,19 @@ export function DayStrip({
         })}
       </div>
 
+      <WeekArrow
+        to={inNextWeek ? undefined : linkTo(otherWeekDay)}
+        label="Next week"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </WeekArrow>
+
       {!(inNextWeek && thisWeekIsOver) && (
         <Link
           to={linkTo(otherWeekDay)}
           preventScrollReset
           className={cn(
-            "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:min-h-0",
+            "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:hidden",
             focusRing,
           )}
         >
@@ -255,5 +274,42 @@ export function DayStrip({
         </Link>
       )}
     </nav>
+  );
+}
+
+/** A round arrow beside the day strip, desktop only. Greyed out without `to`. */
+function WeekArrow({
+  to,
+  label,
+  children,
+}: {
+  to?: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  let className =
+    "hidden h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-ink-muted sm:grid";
+
+  if (!to) {
+    return (
+      <span aria-hidden="true" className={cn(className, "opacity-40")}>
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      to={to}
+      preventScrollReset
+      aria-label={label}
+      className={cn(
+        className,
+        "hover:bg-paper-muted hover:text-ink",
+        focusRing,
+      )}
+    >
+      {children}
+    </Link>
   );
 }
