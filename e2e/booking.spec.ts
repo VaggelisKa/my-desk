@@ -11,7 +11,7 @@ test("an employee books their desk for several days across both weeks", async ({
   reservationsPage,
 }) => {
   await desksPage.goto();
-  await desksPage.sidebarLink("Add reservation").click();
+  await (await desksPage.menuLink("Add reservation")).click();
   await expect(page).toHaveURL("/reserve");
 
   // Current week
