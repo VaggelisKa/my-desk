@@ -1,25 +1,24 @@
 import { eq } from "drizzle-orm";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Form, data, redirect, useNavigation } from "react-router";
 import {
-  Form,
-  Link,
-  data,
-  redirect,
-  useActionData,
-  useNavigation,
-} from "react-router";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { TypographyH1 } from "~/components/ui/typography";
-import { createUserCookie, getAuthenticatedUser } from "~/cookies.server";
+  AuthCard,
+  AuthLink,
+  AuthSubmit,
+  CodeField,
+} from "~/components/auth-card";
+import {
+  createUserCookie,
+  getAuthenticatedUser,
+  signedOutCookie,
+} from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/login";
 
 export let meta: Route.MetaFunction = () => [
   {
-    title: "Login to your account",
+    title: "Sign in",
   },
 ];
 
@@ -30,7 +29,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw redirect("/");
   }
 
-  return null;
+  let signedOut = Boolean(
+    await signedOutCookie.parse(request.headers.get("Cookie")),
+  );
+
+  return data(
+    { signedOut },
+    signedOut
+      ? {
+          headers: {
+            "Set-Cookie": await signedOutCookie.serialize("", { maxAge: 0 }),
+          },
+        }
+      : undefined,
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -59,70 +71,68 @@ export async function action({ request }: Route.ActionArgs) {
   });
 }
 
-export default function LoginPage() {
+export default function LoginPage({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   let inputRef = useRef<HTMLInputElement>(null);
-  let data = useActionData<typeof action>();
+  let [userId, setUserId] = useState("");
   let navigation = useNavigation();
   let isSubmitting =
     navigation.state !== "idle" &&
     navigation.formData?.get("intent") === "employee-login";
 
   useEffect(() => {
-    if (data?.error && navigation.state === "idle") {
-      if (inputRef.current) {
-        inputRef.current.value = "";
-        inputRef.current.focus();
-      }
+    if (actionData?.error && navigation.state === "idle") {
+      setUserId("");
+      inputRef.current?.focus();
     }
-  }, [data, navigation]);
+  }, [actionData, navigation]);
 
   return (
-    <section className="flex w-full flex-col gap-16 sm:w-auto">
-      <TypographyH1>Login to profile</TypographyH1>
+    <AuthCard
+      title="Sign in"
+      description="Enter your six-character user ID, for example emp001."
+      notice={
+        loaderData.signedOut && !actionData?.error
+          ? "You're signed out. Sign in again when you're back."
+          : undefined
+      }
+    >
+      <Form method="POST" noValidate className="flex flex-col gap-5">
+        <CodeField
+          ref={inputRef}
+          id="user-id"
+          name="user-id"
+          label="User ID"
+          error={actionData?.error}
+          value={userId}
+          onChange={setUserId}
+          autoFocus
+          required
+          autoComplete="username"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
+        />
 
-      <Form method="POST" className="flex flex-col gap-4">
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="user-id">User ID</Label>
-
-          <Input
-            ref={inputRef}
-            id="user-id"
-            name="user-id"
-            type="text"
-            autoFocus
-            required
-            maxLength={6}
-          />
-
-          {data?.error && (
-            <p aria-live="polite" className="text-sm text-red-400">
-              {data?.error}
-            </p>
-          )}
-        </fieldset>
-
-        <div className="w-full">
-          <Button
-            className="w-full"
+        <div className="flex flex-col gap-3.5">
+          <AuthSubmit
             name="intent"
             value="employee-login"
-            type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Logging in..." : "Login"}
-          </Button>
+            {isSubmitting ? "Signing in…" : "Sign in"}
+          </AuthSubmit>
 
-          <p className="pt-2 text-center">
-            Don't have an account?{" "}
-            <Link
-              className="text-blue-400 underline outline-blue-300"
-              to="/login/guest"
-            >
-              Click here
-            </Link>
+          <p className="text-[13px] text-ink-muted">
+            First time here?{" "}
+            <AuthLink to="/login/guest">Create an account</AuthLink> with your
+            ID and name.
           </p>
         </div>
       </Form>
-    </section>
+    </AuthCard>
   );
 }
