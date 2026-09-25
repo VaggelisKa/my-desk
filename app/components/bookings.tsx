@@ -6,21 +6,15 @@ import {
   startOfWeek,
 } from "date-fns";
 import { X } from "lucide-react";
-import {
-  Link,
-  NavLink,
-  useFetcher,
-  useLocation,
-  useNavigation,
-} from "react-router";
-import { buttonVariants } from "~/components/ui/button";
+import { NavLink, useFetcher, useLocation, useNavigation } from "react-router";
 import { parseDate } from "~/lib/dates";
 import { cn } from "~/lib/utils";
 
 // The Bookings tab (design/design-options.html, "My reservations" and
-// "Bookings"): one heading, an Upcoming · Recurring switch, and "Book days"
-// as the page's one primary action. Upcoming is /reservations and Recurring
-// is /automatic-reservations, so both keep their own loader and action.
+// "Bookings"): one heading and an Upcoming · Recurring switch. The tab is
+// self-contained, with no actions that send you to another tab. Upcoming is
+// /reservations and Recurring is /automatic-reservations, so both keep their
+// own loader and action.
 
 export type OwnDesk = {
   id: number;
@@ -64,24 +58,14 @@ let focusRing =
 export function BookingsHeader({ desk }: { desk: OwnDesk | null }) {
   return (
     <header className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
-            Bookings
-          </h1>
-          <p className="text-sm text-ink-muted">
-            {desk ? `Your desk is ${deskLabel(desk)}` : "Days you have a desk"}
-          </p>
-        </div>
-        <Link
-          to={desk ? `/?desk=${desk.id}` : "/"}
-          className={cn(
-            buttonVariants({ variant: "primary", size: "tall" }),
-            "shrink-0 px-5",
-          )}
-        >
-          {desk ? "Book days" : "Find a desk"}
-        </Link>
+      {/* No actions that jump to another tab: booking happens on Desks. */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
+          Bookings
+        </h1>
+        <p className="text-sm text-ink-muted">
+          {desk ? `Your desk is ${deskLabel(desk)}` : "Days you have a desk"}
+        </p>
       </div>
 
       {/* Recurring only makes sense with a desk of your own to repeat. */}
@@ -356,37 +340,13 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
 
 export function EmptyBookings({ desk }: { desk: OwnDesk | null }) {
   return (
-    <div className="flex flex-col items-start gap-5 rounded-xl border border-dashed border-line bg-paper px-5 py-8 sm:px-8 sm:py-10">
-      <div className="flex flex-col gap-1.5">
-        <h2 className="text-[15px] font-bold">Nothing booked yet</h2>
-        <p className="max-w-[46ch] text-pretty text-sm leading-relaxed text-ink-muted">
-          {desk
-            ? "Pick days in your desk's sheet on the map, or set up a weekly booking so your usual days are taken care of."
-            : "Pick a free desk on the map for today. Past days drop off this list on their own."}
-        </p>
-      </div>
-      <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
-        <Link
-          to="/"
-          className={cn(
-            buttonVariants({ variant: "quiet", size: "tall" }),
-            "px-5",
-          )}
-        >
-          Open the desk map
-        </Link>
-        {desk && (
-          <Link
-            to="/automatic-reservations"
-            className={cn(
-              buttonVariants({ variant: "quiet", size: "tall" }),
-              "px-5",
-            )}
-          >
-            Set up weekly booking
-          </Link>
-        )}
-      </div>
+    <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-line bg-paper px-5 py-8 sm:px-8 sm:py-10">
+      <h2 className="text-[15px] font-bold">Nothing booked yet</h2>
+      <p className="max-w-[46ch] text-pretty text-sm leading-relaxed text-ink-muted">
+        {desk
+          ? "Days you book on the Desks tab show up here, along with the ones your weekly booking under Recurring takes care of."
+          : "When you take a free desk on the Desks tab, it shows up here."}
+      </p>
     </div>
   );
 }

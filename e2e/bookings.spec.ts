@@ -37,10 +37,11 @@ test.describe("an employee with a desk", () => {
     await expect(reservationsPage.row(bookingDay("monday").date)).toContainText(
       "Today",
     );
-    await expect(page.getByRole("link", { name: "Book days" })).toHaveAttribute(
-      "href",
-      `/?desk=${desks.alice.id}`,
-    );
+    // Each tab is self-contained: booking happens on Desks, not from here.
+    await expect(page.getByRole("main").getByRole("link")).toHaveText([
+      "Upcoming",
+      "Recurring",
+    ]);
 
     await reservationsPage
       .row(bookingDay("monday").date)
@@ -54,18 +55,15 @@ test.describe("an employee with a desk", () => {
     );
   });
 
-  test("gets pointed to the map and weekly booking when nothing is booked", async ({
-    page,
+  test("says where bookings come from when nothing is booked", async ({
     reservationsPage,
   }) => {
     await reservationsPage.goto();
 
     await expect(reservationsPage.emptyState).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Open the desk map" }),
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Set up weekly booking" }).click();
-    await expect(page).toHaveURL("/automatic-reservations");
+    await expect(reservationsPage.emptyState.locator("..")).toContainText(
+      "Desks tab",
+    );
   });
 
   test("sets up, pauses and stops a weekly booking from Recurring", async ({
