@@ -59,14 +59,9 @@ export function BookingsHeader({ desk }: { desk: OwnDesk | null }) {
   return (
     <header className="flex flex-col gap-5">
       {/* No actions that jump to another tab: booking happens on Desks. */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
-          Bookings
-        </h1>
-        <p className="text-sm text-ink-muted">
-          {desk ? `Your desk is ${deskLabel(desk)}` : "Days you have a desk"}
-        </p>
-      </div>
+      <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
+        Bookings
+      </h1>
 
       {/* Recurring only makes sense with a desk of your own to repeat. */}
       {desk && <SegmentSwitch />}
