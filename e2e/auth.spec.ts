@@ -35,6 +35,9 @@ test.describe("logged out", () => {
     await loginPage.login("zzz999");
 
     await expect(page.getByText("No user found")).toBeVisible();
+    await expect(loginPage.userIdInput).toHaveAccessibleDescription(
+      "No user found",
+    );
     await expect(page).toHaveURL("/login");
     await expect(loginPage.userIdInput).toBeEmpty();
     await expect(loginPage.userIdInput).toBeFocused();
@@ -81,6 +84,27 @@ test.describe("logged out", () => {
   });
 });
 
+test.describe("registration", () => {
+  test("rejects a user id that could never be used to sign in", async ({
+    page,
+    db,
+  }) => {
+    let registration = new GuestRegistrationPage(page);
+
+    await page.goto("/login/guest");
+    await registration.register({
+      id: "abc",
+      firstName: "Short",
+      lastName: "Id",
+    });
+
+    await expect(
+      page.getByText("Employee number must be 6 characters"),
+    ).toBeVisible();
+    await expect(db.user("abc")).resolves.toBeUndefined();
+  });
+});
+
 test.describe("logged in", () => {
   test.use({ storageState: authFile("alice") });
 
@@ -100,8 +124,11 @@ test.describe("logged in", () => {
 
     await expect(page).toHaveURL("/login");
     await expect(loginPage.heading).toBeVisible();
+    await expect(loginPage.signedOutNotice).toBeVisible();
 
     await page.goto("/");
     await expect(page).toHaveURL("/login");
+    // The notice is shown once, right after logging out.
+    await expect(loginPage.signedOutNotice).toBeHidden();
   });
 });

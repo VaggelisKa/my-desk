@@ -6,12 +6,16 @@ export class LoginPage {
   readonly userIdInput;
   readonly loginButton;
   readonly registerLink;
+  readonly signedOutNotice;
 
   constructor(private readonly page: Page) {
-    this.heading = page.getByRole("heading", { name: "Login to profile" });
+    this.heading = page.getByRole("heading", { name: "Sign in" });
     this.userIdInput = page.getByLabel("User ID");
-    this.loginButton = page.getByRole("button", { name: "Login" });
-    this.registerLink = page.getByRole("link", { name: "Click here" });
+    this.loginButton = page.getByRole("button", { name: "Sign in" });
+    this.registerLink = page.getByRole("link", { name: "Create an account" });
+    this.signedOutNotice = page
+      .getByRole("status")
+      .filter({ hasText: "You're signed out" });
   }
 
   async goto() {
@@ -32,11 +36,11 @@ export class GuestRegistrationPage {
   readonly submitButton;
 
   constructor(private readonly page: Page) {
-    this.heading = page.getByRole("heading", { name: "Register new account" });
+    this.heading = page.getByRole("heading", { name: "Create an account" });
     this.userIdInput = page.getByLabel("User ID");
     this.firstNameInput = page.getByLabel("First name");
     this.lastNameInput = page.getByLabel("Last name");
-    this.submitButton = page.getByRole("button", { name: "Login" });
+    this.submitButton = page.getByRole("button", { name: "Create account" });
   }
 
   async register(user: { id: string; firstName: string; lastName: string }) {
