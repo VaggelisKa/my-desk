@@ -470,6 +470,48 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
 .c .ia ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
 .c .ia li { margin: 4px 0; }
 .c .ia h4 { font-size: 15px; font-weight: 600; }
+
+/* masthead in depth */
+.c .deep { margin-top: 56px; padding-top: 40px; border-top: 1px solid var(--line); }
+.c .deep h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.c .deep .sub { margin-top: 8px; color: var(--ink-2); max-width: 66ch; }
+.c .deep .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 28px; align-items: start; }
+.c .deep .phone { max-width: 320px; }
+.c .spec { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 32px; margin-top: 32px; }
+@media (max-width: 800px) { .c .spec { grid-template-columns: 1fr; } }
+.c .spec h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.c .spec ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+.c .spec li { margin: 5px 0; }
+.c .spec li b { color: var(--ink); font-weight: 600; }
+.c-ph-top .back { display: block; font-size: 12px; font-weight: 600; color: var(--c-ink-2); margin-bottom: 4px; }
+.c-seg { margin: 10px 16px 0; display: flex; border: 1px solid var(--c-line); border-radius: 999px; padding: 2px; }
+.c-seg span { flex: 1; text-align: center; font-size: 12px; font-weight: 700; padding: 6px 0; border-radius: 999px; color: var(--c-ink-2); }
+.c-seg span.on { background: var(--c-ink); color: #fff; }
+.c-list { padding: 8px 16px 0; }
+.c-list .row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--c-line); font-size: 13px; }
+.c-list .row .tile { width: 40px; height: 26px; border-radius: 4px; border: 1.5px solid var(--c-ink); box-shadow: 0 3px 0 var(--c-ink); background: #fff; display: grid; place-items: center; font-size: 9px; font-weight: 700; flex: none; }
+.c-list .row .tile.m { background: var(--c-moss); border-color: var(--c-moss-edge); box-shadow: 0 3px 0 var(--c-moss-edge); color: #fff; }
+.c-list .row .tile.t { background: var(--c-taken); color: #fff; }
+.c-list .row b { display: block; font-weight: 700; }
+.c-list .row span { color: var(--c-ink-2); font-size: 12px; }
+.c-list .row .x { margin-left: auto; color: var(--c-ink-2); font-size: 12px; font-weight: 600; }
+.c-list .row .chev { margin-left: auto; color: var(--c-ink-2); }
+.c-list .row.out b { color: #b3402c; }
+.c-ph-btn { position: absolute; left: 16px; right: 16px; bottom: 86px; height: 44px; border-radius: 10px; background: var(--c-moss); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+.c-me { padding: 8px 16px 4px; display: flex; align-items: center; gap: 12px; }
+.c-me .c-av { width: 44px; height: 44px; font-size: 14px; }
+.c-me b { display: block; font-size: 16px; font-weight: 700; }
+.c-me span { color: var(--c-ink-2); font-size: 12px; }
+.c-form { padding: 8px 16px; display: grid; gap: 12px; }
+.c-form label { font-size: 12px; color: var(--c-ink-2); display: grid; gap: 4px; }
+.c-form .in { height: 40px; border: 1px solid var(--c-line); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; font-size: 14px; color: var(--c-ink); font-weight: 600; }
+.c-page .back { font-size: 12px; font-weight: 600; color: var(--c-ink-2); margin-bottom: 6px; display: block; }
+.c-desk-form { margin-top: 16px; max-width: 320px; display: grid; gap: 12px; }
+.c-desk-form label { font-size: 12px; color: var(--c-ink-2); display: grid; gap: 4px; }
+.c-desk-form .in { height: 36px; border: 1px solid var(--c-line); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; font-weight: 600; }
+.c-desk-form .btns { display: flex; gap: 8px; margin-top: 4px; }
+.c-desk-form .btn { height: 36px; padding: 0 16px; border-radius: 10px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--c-moss); color: #fff; }
+.c-desk-form .btn.q { background: #fff; color: var(--c-ink); border: 1px solid var(--c-line); }
 </style>
 </head>
 <body>
@@ -911,7 +953,7 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
             <div class="c-dock"><a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><span class="c-av">VK</span></div>
           </div>
         </div>
-        <p class="verdict"><b>Why it works.</b> The page is the whole window, and one control does the same job on a phone, a tablet and a desktop, so there is no breakpoint logic at all. Dark on light, it is unmistakably the app's one piece of chrome. <b>Watch for.</b> It floats over content, so every page needs bottom padding and the floor plan's last block has to clear it. It is also the most fashionable of the four, which means it will date the fastest.</p>
+        <p class="verdict"><b>Why it works.</b> The page is the whole window, and one control does the same job on a phone, a tablet and a desktop, so there is no breakpoint logic at all. Dark on light, it is unmistakably the app's one piece of chrome. <b>Watch for.</b> It floats over content, so every page needs bottom padding and the floor plan's last block has to clear it. It is also the most fashionable of the four, which means it will date the fastest. And on iPhone, Safari's address bar sits at the bottom too, so the pill floats directly over it and bobs as that bar grows and shrinks; only a home-screen install avoids that. If the look appeals, the version that survives is a hybrid: the masthead on desktop and, on phones, the tab bar drawn dark and inset like the dock but pinned flush to the bottom edge.</p>
       </div>
 
       <div>
@@ -975,8 +1017,128 @@ table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
       </div>
       <div>
         <p class="mock-caption"><b>Phones, options 1 and 2.</b> A bottom tab bar with the three places and "You". No hamburger, no drawer, no header: the page title is the first thing on screen and the day strip sits right under it. The bar is translucent over the scrolling floor plan and respects the home indicator. The desk sheet slides up over it, and the depth effect already in place pushes the whole screen, bar included, back. Option 3 uses its dock here instead; option 4 keeps a drawer.</p>
-        <p class="mock-caption"><b>Recommendation: option 1, Masthead.</b> It removes the most (a sidebar, a header, five group labels, a tagline) for the least risk, and its phone form is the one people already know from every native app. Option 2 is the fallback if the top bar reads too much like a website after a day of use; the two share the phone treatment and the avatar menu, so switching between them later is a one-component change. Option 3 is worth a prototype only if you want the app to feel deliberately unusual. Option 4 is the safe choice if the vertical list must stay.</p>
+        <p class="mock-caption"><b>Recommendation: option 1, Masthead</b> (<a href="#masthead">detailed below</a>). It removes the most (a sidebar, a header, five group labels, a tagline) for the least risk, and its phone form is the one people already know from every native app. Option 2 is the fallback if the top bar reads too much like a website after a day of use; the two share the phone treatment and the avatar menu, so switching between them later is a one-component change. Option 3 is worth a prototype only if you want the app to feel deliberately unusual. Option 4 is the safe choice if the vertical list must stay.</p>
         <p class="mock-caption"><b>Build.</b> One <code>AppShell</code> component replaces <code>AppSidebar</code>, <code>AppBreadcrumbs</code> and the shadcn sidebar files. Routes do not change; <code>/reserve</code> and <code>/automatic-reservations</code> keep working, they just stop being top-level entries. The <code>sidebar_state</code> cookie goes. This becomes step 5 in the build order, before the reserve calendar, so the remaining pages are built into the final shell.</p>
+      </div>
+    </div>
+
+    <div class="deep" id="masthead">
+      <h3>Masthead, in depth</h3>
+      <p class="sub">What option 1 is like to use on every screen, and the details that decide whether the phone version feels like an app or like a website with a bar stuck to the bottom.</p>
+
+      <div class="spec">
+        <div>
+          <h4>Desktop and tablet (768px and up)</h4>
+          <ul>
+            <li><b>One bar, 52px, sticky.</b> Translucent paper with a hairline underneath, so the day strip and floor plan scroll under it. Its content is aligned to the same max width as the page, so the wordmark sits on the page title's left edge.</li>
+            <li><b>Wordmark.</b> The moss mark (a tiny desk slab, 18px, with its 3px edge) and "Share a desk" in Archivo 700. It links to Desks. No tagline.</li>
+            <li><b>Three tabs.</b> Desks, Bookings, Metrics. 13px, semibold, muted ink at rest, ink when active with a 2px moss underline flush with the bar's bottom edge. Hover darkens the text, focus shows the moss ring. They are plain links with <code>aria-current="page"</code>, so keyboard and screen-reader behaviour comes for free.</li>
+            <li><b>Avatar menu.</b> 26px initials on the right. Opens a small popover: a header with the name, desk and role, then Edit profile, Source code, Report a bug, and Sign out below a divider. Sign out opens the existing confirmation. Built with the native Popover API and anchored under the avatar; no dropdown library.</li>
+            <li><b>Secondary pages.</b> Reserve, Edit desk, Edit profile have no tab of their own. The parent tab stays underlined (Reserve and Edit desk under Desks, Edit profile under nothing) and the page shows a small "← Desks" link above its title. That replaces the breadcrumb trail.</li>
+            <li><b>Tablets.</b> Nothing special; the bar is short enough that an iPad in portrait gets the desktop treatment. The switch to the tab bar is at the existing 768px breakpoint, in CSS, so both shells are in the DOM and there is no hydration flash.</li>
+            <li><b>Admins.</b> No extra entry. "Edit desk info" stays in the desk sheet, where the desk is.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Phones (under 768px)</h4>
+          <ul>
+            <li><b>The bar.</b> Four items: Desks, Bookings, Metrics, You. 22px icon over a 10px label, 49px tall plus the home-indicator inset, translucent paper with blur and a hairline on top. Active: ink label, moss icon. Nothing else on screen belongs to the shell; the page title is the first thing you see.</li>
+            <li><b>Scrolling.</b> The page already scrolls inside the sheet stack outlet on phones; the bar is pinned to the bottom of that outlet, above the scrolling content, and pages get bottom padding equal to the bar so the last block of desks clears it. Tapping the active tab again scrolls its page to the top.</li>
+            <li><b>Sheets.</b> The desk sheet rises over the bar. The depth effect pushes the whole screen back, bar included, because the bar lives inside the outlet's scaled layer. While a sheet is up the bar is inert, as the rest of the page is.</li>
+            <li><b>Keyboard.</b> When an input has focus (Edit desk, Edit profile, the code field on login) the bar hides, so it never rides up on top of the keyboard. It returns when focus leaves.</li>
+            <li><b>Safari's own bar.</b> Safari on iPhone puts its address bar at the bottom too. A flush, full-width tab bar is the same shape, so the two stack into one toolbar, which is how every web app that does this looks. Add a web manifest with <code>display: standalone</code> so people who put the app on their home screen get the bar on the home indicator alone.</li>
+            <li><b>Secondary pages</b> keep the bar with the parent tab lit and show the "← Desks" (or "← Bookings") link above the title, so there is never a screen with no way back. Reserve opens as a bottom sheet from the desk anyway; the page form is for direct links.</li>
+            <li><b>Signed out.</b> Login and register have no bar, as now.</li>
+            <li><b>Landscape.</b> The bar stays at the bottom with labels; four items fit easily.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phones">
+        <div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="c-ph-top"><h3>Bookings</h3><span class="date">Desk 2.1.2 · yours</span></div>
+              <div class="c-seg"><span class="on">Upcoming</span><span>Recurring</span></div>
+              <div class="c-list">
+                <div class="row"><span class="tile m">2.1.2</span><div><b>Wed 23 Sep</b><span>Today</span></div><span class="x">Release</span></div>
+                <div class="row"><span class="tile m">2.1.2</span><div><b>Thu 24 Sep</b><span>Tomorrow</span></div><span class="x">Remove</span></div>
+                <div class="row"><span class="tile t">3.2.1</span><div><b>Fri 25 Sep</b><span>Borrowing Sara's desk</span></div><span class="x">Remove</span></div>
+                <div class="row"><span class="tile m">2.1.2</span><div><b>Mon 28 Sep</b><span>Next week</span></div><span class="x">Remove</span></div>
+              </div>
+              <div class="c-ph-btn">Book days</div>
+              <div class="c-tabbar"><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><a class=""><span class="c-av">VK</span>You</a></div>
+            </div>
+            <div class="home"></div>
+          </div>
+          <p class="mock-caption"><b>Bookings.</b> "My reservations" and "Automatic reservations" become two segments of one tab. Rows carry a small desk tile so a borrowed desk is obvious. "Book days" is the page's one primary action, pinned above the bar; it opens the reserve calendar for your own desk. "Add reservation" stops being a destination.</p>
+        </div>
+        <div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="c-ph-top"><h3>You</h3></div>
+              <div class="c-me"><span class="c-av">VK</span><div><b>Vaggelis Karavasileiadis</b><span>emp042 · Desk 2.1.2 · admin</span></div></div>
+              <div class="c-list">
+                <div class="row"><div><b>Edit profile</b><span>Name and desk</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="m9 18 6-6-6-6"/></svg></div>
+                <div class="row"><div><b>Source code</b><span>github.com/VaggelisKa/my-desk</span></div><span class="x">↗</span></div>
+                <div class="row"><div><b>Report a bug</b><span>Opens a GitHub issue</span></div><span class="x">↗</span></div>
+                <div class="row out"><div><b>Sign out</b></div></div>
+              </div>
+              <div class="c-tabbar"><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><a class="on"><span class="c-av">VK</span>You</a></div>
+            </div>
+            <div class="home"></div>
+          </div>
+          <p class="mock-caption"><b>You.</b> The fourth tab is what the avatar menu is on desktop: who you are, then the four items that used to be two sidebar groups. Sign out opens the confirmation sheet. On desktop this is a popover, not a page, so the route only exists on phones and redirects to Desks on wide screens.</p>
+        </div>
+        <div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="c-ph-top"><span class="back">← Desks</span><h3>Edit desk 3.2.1</h3><span class="date">Block 3 · row 2 · by the window</span></div>
+              <div class="c-form">
+                <label>Assigned to<span class="in">Sara Kristensen</span></label>
+                <label>Block<span class="in">3</span></label>
+                <label>Row<span class="in">2</span></label>
+                <label>Column<span class="in">1</span></label>
+              </div>
+              <div class="c-ph-btn">Save</div>
+              <div class="c-tabbar"><a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><a class=""><span class="c-av">VK</span>You</a></div>
+            </div>
+            <div class="home"></div>
+          </div>
+          <p class="mock-caption"><b>A secondary page.</b> Edit desk lives under Desks, so that tab stays lit and a "← Desks" link sits above the title. This is the whole replacement for the breadcrumb bar. When a field is focused the tab bar hides so the keyboard has the bottom of the screen.</p>
+        </div>
+      </div>
+
+      <div class="mock-row" style="margin-top:32px">
+        <div>
+          <div class="frame">
+            <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app/desks/17/edit</span></div>
+            <div class="c-app c-masthead">
+              <div class="c-top">
+                <span class="c-brand"><i class="c-mark"></i>Share a desk</span>
+                <nav class="c-tabs"><a class="on">Desks</a><a>Bookings</a><a>Metrics</a></nav>
+                <span class="c-av">VK</span>
+              </div>
+              <div class="c-page">
+                <span class="back">← Desks</span>
+                <div class="ttl"><h3>Edit desk 3.2.1</h3><span class="date">Block 3 · row 2 · by the window</span></div>
+                <div class="c-desk-form">
+                  <label>Assigned to<span class="in">Sara Kristensen</span></label>
+                  <label>Block<span class="in">3</span></label>
+                  <div class="btns"><span class="btn">Save</span><span class="btn q">Unassign desk</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="mock-caption"><b>The same page on desktop.</b> Desks stays underlined, the back link replaces the breadcrumb, and the form sits on the paper as every form in this system does. Nothing in the masthead changes between pages except the underline.</p>
+        </div>
+        <div>
+          <p class="mock-caption"><b>Build notes.</b> One <code>AppShell</code> renders the masthead and the tab bar; CSS decides which shows. The tab bar is a <code>nav</code> with four <code>NavLink</code>s, so the active state and prefetching work as they do now. Hiding it under the keyboard is a <code>focusin</code>/<code>focusout</code> listener on the outlet checking for text inputs, plus a class. The avatar popover uses the Popover API with <code>anchor</code> positioning where available and a fixed fallback. The "You" route renders the phone page and redirects to Desks at 768px and up. The shadcn sidebar, its cookie, the breadcrumb component and <code>@radix-ui/react-dialog</code> are removed. Estimated at two days including the Bookings merge.</p>
+          <p class="mock-caption"><b>What to test on a real phone before committing.</b> That the bar sits on the home indicator and not under it in Safari, both with the browser bar and from the home screen. That the depth effect looks right with the bar in the scaled layer. That the keyboard never covers a focused field on Edit desk. Those three are where tab bars go wrong on the web.</p>
+        </div>
       </div>
     </div>
   </div>
