@@ -1,6 +1,12 @@
 import { CalendarDays, ChartLine, LayoutGrid } from "lucide-react";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
-import { Link, useLocation } from "react-router";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
+import { Link, useLocation, useNavigation } from "react-router";
 import { cn } from "~/lib/utils";
 
 // The app chrome (design/design-options.html, "Masthead, in depth"): a 52px
@@ -166,8 +172,26 @@ export function Masthead({ user }: { user: ShellUser }) {
  */
 export function Dock({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
-  let active = activeTab(pathname);
+  let navigation = useNavigation();
+  // Light the tab you tapped straight away rather than when its page has
+  // loaded, so the pill moves under your finger.
+  let active = activeTab(navigation.location?.pathname ?? pathname);
   let keyboardOpen = useTextFieldFocused();
+  let items = useRef(new Map<Tab, HTMLAnchorElement>());
+  let [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  let [animate, setAnimate] = useState(false);
+
+  useLayoutEffect(() => {
+    let item = active && items.current.get(active);
+    setPill(item ? { left: item.offsetLeft, width: item.offsetWidth } : null);
+  }, [active]);
+
+  // The first placement should not slide in from the left edge.
+  useEffect(() => {
+    if (pill && !animate) {
+      requestAnimationFrame(() => setAnimate(true));
+    }
+  }, [pill, animate]);
 
   return (
     <nav
@@ -175,26 +199,51 @@ export function Dock({ user }: { user: ShellUser }) {
       data-hidden={keyboardOpen || undefined}
       className="app-dock fixed inset-x-0 bottom-[calc(12px+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 font-display transition-[opacity,transform] duration-200 data-[hidden]:pointer-events-none data-[hidden]:translate-y-4 data-[hidden]:opacity-0 md:hidden"
     >
-      <div className="flex items-center gap-0.5 rounded-full bg-[rgb(31_42_46/0.94)] p-[5px] shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-md">
+      <div className="relative flex items-center gap-0.5 rounded-full bg-[rgb(31_42_46/0.8)] p-[5px] shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150">
+        {pill && (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-y-[5px] left-0 rounded-full bg-white/[0.16]",
+              animate &&
+                "transition-[transform,width] duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none",
+            )}
+            style={{
+              width: pill.width,
+              transform: `translateX(${pill.left}px)`,
+            }}
+          />
+        )}
+
         {TABS.map((tab) => {
           let isActive = tab.id === active;
           let Icon = tab.icon;
           return (
             <Link
               key={tab.id}
+              ref={(node) => {
+                if (node) {
+                  items.current.set(tab.id, node);
+                } else {
+                  items.current.delete(tab.id);
+                }
+              }}
               to={tab.to}
               prefetch={tab.prefetch}
               aria-current={isActive ? "page" : undefined}
               onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
               className={cn(
-                "flex min-w-[64px] flex-col items-center gap-[3px] rounded-full px-3 pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/65 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft",
-                isActive && "bg-white/[0.14] text-white",
+                "group relative flex min-w-[64px] flex-col items-center gap-[3px] rounded-full px-3 pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft active:scale-95",
+                isActive && "text-white",
               )}
             >
               <Icon
                 aria-hidden
                 strokeWidth={2}
-                className={cn("size-5", isActive && "text-moss-soft")}
+                className={cn(
+                  "size-5 transition-[transform,color] duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none",
+                  isActive && "-translate-y-px scale-110 text-moss-soft",
+                )}
               />
               {tab.label}
             </Link>
@@ -205,7 +254,7 @@ export function Dock({ user }: { user: ShellUser }) {
           type="button"
           popoverTarget={MENU_ID}
           onClick={rememberMenuSource}
-          className="flex min-w-[64px] flex-col items-center gap-[3px] rounded-full px-3 pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft"
+          className="relative flex min-w-[64px] flex-col items-center gap-[3px] rounded-full px-3 pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft active:scale-95"
         >
           <Avatar
             user={user}
