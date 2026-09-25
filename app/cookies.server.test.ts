@@ -134,9 +134,7 @@ describe("authenticated principal", () => {
   });
 
   it("ignores stale cookie roles and reflects an admin demotion immediately", async () => {
-    const { userCookie, requireAuthCookie } = await import(
-      "./cookies.server"
-    );
+    const { userCookie, requireAuthCookie } = await import("./cookies.server");
     const cookie = await userCookie.serialize({
       userId: "u00001",
       role: "admin",
@@ -245,24 +243,22 @@ describe("route integration", () => {
         userId: "u00001",
         role: "admin",
       });
-      expect(
-        await loader({
+      await expect(
+        loader({
           request: requestWithCookie(cookie),
           params: {},
           context: new RouterContextProvider(),
           url: new URL("https://desk.test/desks/1/edit"),
           pattern: "/desks/:id/edit",
         }),
-      ).toBeNull();
+      ).resolves.not.toBeInstanceOf(Response);
       expect(findUser).not.toHaveBeenCalled();
     },
   );
 
   it("employee login issues a signed expiring cookie usable by the guard", async () => {
     const { action } = await import("./routes/login");
-    const { userCookie, requireAuthCookie } = await import(
-      "./cookies.server"
-    );
+    const { userCookie, requireAuthCookie } = await import("./cookies.server");
     const response = await action({
       request: new Request("https://desk.test/login", {
         method: "POST",

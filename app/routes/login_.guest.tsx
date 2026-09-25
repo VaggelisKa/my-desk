@@ -1,8 +1,12 @@
-import { Label } from "@radix-ui/react-label";
-import { Form, data, redirect } from "react-router";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { TypographyH1 } from "~/components/ui/typography";
+import { useState } from "react";
+import { Form, data, redirect, useNavigation } from "react-router";
+import {
+  AuthCard,
+  AuthField,
+  AuthLink,
+  AuthSubmit,
+  CodeField,
+} from "~/components/auth-card";
 import { createUserCookie, getAuthenticatedUser } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
@@ -10,7 +14,7 @@ import type { Route } from "./+types/login_.guest";
 
 export let meta: Route.MetaFunction = () => [
   {
-    title: "Create new user",
+    title: "Create an account",
   },
 ];
 
@@ -68,59 +72,70 @@ export async function action({ request }: Route.ActionArgs) {
   });
 }
 
-export default function guestLoginPage() {
+export default function GuestLoginPage({ actionData }: Route.ComponentProps) {
+  let errors = actionData?.errors;
+  let [employeeNumber, setEmployeeNumber] = useState("");
+  let navigation = useNavigation();
+  let isSubmitting =
+    navigation.state !== "idle" &&
+    navigation.formData?.get("intent") === "register";
+
   return (
-    <section className="flex w-full flex-col gap-16 sm:w-auto">
-      <TypographyH1>Register new account</TypographyH1>
-
-      <Form method="POST" className="flex flex-col gap-4">
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="employee-number">User ID</Label>
-
-          <Input
+    <AuthCard
+      title="Create an account"
+      description="Guests sign up with their user ID and name."
+    >
+      <Form method="POST" noValidate className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
+          <CodeField
             id="employee-number"
             name="employee-number"
-            type="text"
-            placeholder="g01234"
+            label="User ID"
+            error={errors?.employeeNumber}
+            value={employeeNumber}
+            onChange={setEmployeeNumber}
             autoFocus
             required
-            maxLength={6}
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="next"
           />
-        </fieldset>
 
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="name">First name</Label>
-
-          <Input
+          <AuthField
             id="name"
             name="name"
-            type="text"
-            placeholder="John"
+            label="First name"
+            error={errors?.firstName}
             required
+            placeholder="John"
+            autoComplete="given-name"
+            enterKeyHint="next"
           />
-        </fieldset>
 
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="last-name">Last name</Label>
-
-          <Input
+          <AuthField
             id="last-name"
             name="last-name"
-            type="text"
-            placeholder="Doe"
+            label="Last name"
+            error={errors?.lastName}
             required
+            placeholder="Doe"
+            autoComplete="family-name"
+            enterKeyHint="go"
           />
-        </fieldset>
+        </div>
 
-        <Button
-          className="w-full"
-          name="intent"
-          value="employee-login"
-          type="submit"
-        >
-          Login
-        </Button>
+        <div className="flex flex-col gap-3.5">
+          <AuthSubmit name="intent" value="register" disabled={isSubmitting}>
+            {isSubmitting ? "Creating account…" : "Create account"}
+          </AuthSubmit>
+
+          <p className="text-[13px] text-ink-muted">
+            Already have an account? <AuthLink to="/login">Sign in</AuthLink>
+          </p>
+        </div>
       </Form>
-    </section>
+    </AuthCard>
   );
 }

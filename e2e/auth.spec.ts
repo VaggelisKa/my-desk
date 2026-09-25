@@ -35,6 +35,9 @@ test.describe("logged out", () => {
     await loginPage.login("zzz999");
 
     await expect(page.getByText("No user found")).toBeVisible();
+    await expect(loginPage.userIdInput).toHaveAccessibleDescription(
+      "No user found",
+    );
     await expect(page).toHaveURL("/login");
     await expect(loginPage.userIdInput).toBeEmpty();
     await expect(loginPage.userIdInput).toBeFocused();
@@ -100,8 +103,11 @@ test.describe("logged in", () => {
 
     await expect(page).toHaveURL("/login");
     await expect(loginPage.heading).toBeVisible();
+    await expect(loginPage.signedOutNotice).toBeVisible();
 
     await page.goto("/");
     await expect(page).toHaveURL("/login");
+    // The notice is shown once, right after logging out.
+    await expect(loginPage.signedOutNotice).toBeHidden();
   });
 });

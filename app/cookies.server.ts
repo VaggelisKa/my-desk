@@ -25,6 +25,18 @@ export const userCookie = createCookie("user", {
   secrets: [sessionSecret],
 });
 
+/**
+ * Short-lived flag set by the logout action so the login page can show a
+ * "you're signed out" line once, instead of a silent redirect.
+ */
+export let signedOutCookie = createCookie("signed_out", {
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  maxAge: 60,
+});
+
 export function createUserCookie(userId: string) {
   return userCookie.serialize({
     userId,

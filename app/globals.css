@@ -55,6 +55,21 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+
+    /* Redesign tokens ("Slate & Moss"), see design/design-options.html */
+    --ink: #1f2a2e;
+    --ink-muted: #5f6b70;
+    --paper: #ffffff;
+    --paper-muted: #f4f5f2;
+    --line: #d8ddda;
+    --moss: #4f7a5a;
+    --moss-edge: #2f5039;
+    --moss-soft: #e2ede5;
+    --taken: #34434a;
+    --mist: #cfe3ea;
+    --mist-edge: #6f95a3;
+    --dim: #a3aeb2;
+    --danger: #9a3b2e;
   }
 
   .dark {
