@@ -1,6 +1,11 @@
 import { format } from "date-fns";
 import { Suspense } from "react";
-import { Await, type MetaFunction, useSearchParams } from "react-router";
+import {
+  Await,
+  type MetaFunction,
+  type ShouldRevalidateFunctionArgs,
+  useSearchParams,
+} from "react-router";
 import { DayStrip, DeskFilters } from "~/components/desk-filters";
 import { DeskSheet } from "~/components/desk-sheet";
 import { DeskTile, type DeskTileState } from "~/components/desk-tile";
@@ -10,6 +15,7 @@ import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
 import { formatDate, normalizeDay, parseDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
+import { reserveDesk } from "~/lib/reservations.server";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
@@ -143,6 +149,23 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   return { desks, userId, role, today, selectedDay };
 }
 
+// Booking happens in the desk sheet, so its fetcher posts here and the grid
+// revalidates with the new reservations while the sheet stays open.
+export async function action({ request }: Route.ActionArgs) {
+  let { userId } = await requireAuthCookie(request);
+
+  return reserveDesk(userId, await request.formData());
+}
+
+// Fetcher actions that fail skip revalidation by default. A 409 means someone
+// else just took the desk, so refresh the grid to show who.
+export function shouldRevalidate({
+  actionStatus,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  return actionStatus === 409 || defaultShouldRevalidate;
+}
+
 // Client navigations and revalidations (filter changes, reservation fetchers)
 // await the query so `useNavigation` and fetchers stay pending until the
 // refreshed grid is actually available. The initial document load still
@@ -161,7 +184,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
   return (
     <section className="flex w-full max-w-3xl flex-col gap-5 font-display text-ink">
-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
             Desks
@@ -179,9 +202,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         </div>
 
         <DayStrip today={today} />
+        <DeskFilters />
       </header>
-
-      <DeskFilters />
 
       <Legend />
 
@@ -242,8 +264,21 @@ function FloorPlan({
   role?: "admin" | "user" | null;
   selectedDay: string;
 }) {
-  let [searchParams] = useSearchParams();
+  let [searchParams, setSearchParams] = useSearchParams();
   let all = Object.values(desks).flat();
+  // "Book my desk" links here with `?desk=<id>` to open that desk's sheet.
+  let openDesk = searchParams.get("desk");
+
+  function closeDeskLink() {
+    if (!openDesk) return;
+    setSearchParams(
+      (params) => {
+        params.delete("desk");
+        return params;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+  }
   let nothingToPick = all.length > 0 && all.every((desk) => desk.disabled);
   let where = placements[searchParams.get("column") ?? ""] ?? "";
 
@@ -312,6 +347,8 @@ function FloorPlan({
                   allowedToReserve={desk.user?.id === userId}
                   allowedToEdit={role === "admin"}
                   selectedDay={selectedDay}
+                  autoOpen={openDesk === String(desk.id)}
+                  onClose={closeDeskLink}
                 >
                   <DeskTile
                     style={{ gridColumn: desk.column, gridRow: desk.row }}

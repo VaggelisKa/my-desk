@@ -11,8 +11,6 @@ setup("warm up the dev server", async ({ page, loginPage }) => {
 
   let pages = [
     "/",
-    "/reserve",
-    `/reserve/${desks.alice.id}`,
     "/reservations",
     `/desks/${desks.alice.id}/edit`,
     `/users/edit/${users.admin.id}`,

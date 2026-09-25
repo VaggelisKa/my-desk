@@ -1,7 +1,14 @@
 import { Sheet } from "@silk-hq/components";
-import { addDays, format, getWeek, isBefore, startOfDay } from "date-fns";
-import { X } from "lucide-react";
-import { useState } from "react";
+import {
+  addDays,
+  format,
+  getWeek,
+  isBefore,
+  isSameDay,
+  startOfDay,
+} from "date-fns";
+import { Check, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
@@ -34,7 +41,18 @@ type DeskSheetProps = {
   userId?: string;
   /** The day shown on the map, in `dd.MM.yyyy`; marked in the two-week grid. */
   selectedDay?: string;
+  /** Opens the sheet once the page is interactive, for links to a desk. */
+  autoOpen?: boolean;
+  onClose?: () => void;
 };
+
+// The owner can book a day until 11:00 on that day.
+const LAST_BOOKING_HOUR = 11;
+
+const WEEKS: { label: string; offset: 0 | 1 }[] = [
+  { label: "This week", offset: 0 },
+  { label: "Next week", offset: 1 },
+];
 
 type TravelStatus =
   | "entering"
@@ -61,8 +79,9 @@ let placement: Record<number, string> = {
 
 /**
  * Desk detail as a Silk sheet: from the bottom on phones, from the right on
- * larger screens. Shows who the desk belongs to, who has it today, the next
- * two weeks, and the one action the booking rules allow.
+ * larger screens. Shows who the desk belongs to, who has it today and the next
+ * two weeks. The owner books days straight from that grid; anyone else can
+ * take a free desk for today.
  */
 export function DeskSheet({
   desk,
@@ -71,8 +90,11 @@ export function DeskSheet({
   allowedToEdit,
   userId,
   selectedDay,
+  autoOpen = false,
+  onClose,
 }: DeskSheetProps) {
   let [presented, setPresented] = useState(false);
+  let [picked, setPicked] = useState<string[]>([]);
   let [travelStatus, setTravelStatus] = useState<TravelStatus>("idleOutside");
   // Same breakpoint as the phone dock. Captured when the sheet
   // opens so rotating a phone mid-way does not flip the placement.
@@ -93,6 +115,42 @@ export function DeskSheet({
     return desk.reservations.find((r) => r.day === day && r.week === week);
   }
 
+  let grid = WEEKS.map(({ label, offset }) => ({
+    label,
+    days: workdaysOfWeek(gridStart, offset).map(({ day, date }) => {
+      let reservation = reservationFor(day, gridWeek + offset);
+      let isPast = isBefore(date, startOfDay(now));
+      let isClosed =
+        isPast || (isSameDay(date, now) && now.getHours() >= LAST_BOOKING_HOUR);
+
+      return {
+        day,
+        date,
+        value: formatDate(date),
+        reservation,
+        isPast,
+        bookable: !!allowedToReserve && !reservation && !isClosed,
+      };
+    }),
+  }));
+
+  // Days booked in the meantime (by this sheet or anyone else) drop out of
+  // the pick on their own once the grid revalidates.
+  let bookable = new Set(
+    grid.flatMap(({ days }) =>
+      days.filter((d) => d.bookable).map((d) => d.value),
+    ),
+  );
+  let pickedDays = picked.filter((value) => bookable.has(value));
+
+  function togglePick(value: string) {
+    setPicked((current) =>
+      current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value],
+    );
+  }
+
   let todaysReservation = reservationFor(todaysDay, currentWeek);
   let borrower =
     todaysReservation && todaysReservation.users.id !== desk.user?.id
@@ -109,15 +167,21 @@ export function DeskSheet({
         ? "is borrowing it"
         : "is in";
 
-  let weeks: { label: string; offset: 0 | 1 }[] = [
-    { label: "This week", offset: 0 },
-    { label: "Next week", offset: 1 },
-  ];
-
   function handlePresentedChange(value: boolean) {
-    if (value) setIsSmallDevice(isNarrow);
+    if (value) {
+      setIsSmallDevice(isNarrow);
+    } else {
+      setPicked([]);
+      onClose?.();
+    }
     setPresented(value);
   }
+
+  useEffect(() => {
+    if (autoOpen) handlePresentedChange(true);
+    // Only when a link asks for it, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   return (
     <Sheet.Root
@@ -227,72 +291,109 @@ export function DeskSheet({
                 )}
               </div>
 
-              <div className="grid gap-1.5">
-                <span className="text-xs text-ink-muted">Next two weeks</span>
-                <div className="grid gap-1.5">
-                  {weeks.map(({ label, offset }) => (
+              <fetcher.Form
+                method="POST"
+                action="/?index"
+                className="flex flex-col gap-6"
+              >
+                <input type="hidden" name="deskId" value={desk.id} />
+
+                <fieldset className="grid gap-3">
+                  <legend className="mb-3 flex w-full justify-between text-xs text-ink-muted">
+                    <span>
+                      {allowedToReserve ? "Book days" : "Next two weeks"}
+                    </span>
+                    {allowedToReserve && bookable.size > 0 && (
+                      <span aria-hidden="true">Tap to pick</span>
+                    )}
+                  </legend>
+
+                  <div
+                    aria-hidden="true"
+                    className="grid grid-cols-[64px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
+                  >
+                    <span />
+                    {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
+                      <span key={d}>{d}</span>
+                    ))}
+                  </div>
+
+                  {grid.map(({ label, days }) => (
                     <div
                       key={label}
-                      className="grid grid-cols-[60px_repeat(5,1fr)] items-center gap-1 text-[11px] text-ink-muted"
+                      className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-1.5 text-[11px] text-ink-muted"
                     >
                       <span>{label}</span>
-                      {workdaysOfWeek(gridStart, offset).map(
-                        ({ day, date }) => (
+                      {days.map((d) =>
+                        d.bookable ? (
+                          <DayToggle
+                            key={d.day}
+                            date={d.date}
+                            value={d.value}
+                            checked={pickedDays.includes(d.value)}
+                            onChange={() => togglePick(d.value)}
+                          />
+                        ) : (
                           <DayCell
-                            key={day}
-                            day={day}
-                            date={date}
-                            reservation={reservationFor(day, gridWeek + offset)}
-                            isPast={isBefore(date, startOfDay(now))}
-                            isSelected={formatDate(date) === selectedDay}
+                            key={d.day}
+                            day={d.day}
+                            date={d.date}
+                            reservation={d.reservation}
+                            isPast={d.isPast}
+                            isSelected={d.value === selectedDay}
                             userId={userId}
                           />
                         ),
                       )}
                     </div>
                   ))}
-                </div>
-              </div>
 
-              {(allowedToReserve || showReserveForToday || allowedToEdit) && (
-                <div className="flex flex-col gap-2">
-                  {allowedToReserve ? (
-                    <Button variant="primary" size="tall" asChild>
-                      <Link to={`/reserve/${desk.id}`} prefetch="render">
-                        Book days
-                      </Link>
-                    </Button>
-                  ) : (
-                    showReserveForToday && (
-                      <fetcher.Form method="POST" action="/reserve">
-                        <input type="hidden" name="deskId" value={desk.id} />
-                        <input type="hidden" name="week" value={currentWeek} />
-                        <input type="hidden" name={todaysDay} value="on" />
+                  <DayLegend />
+                </fieldset>
 
+                {allowedToReserve
+                  ? bookable.size > 0 && (
+                      <Button
+                        variant="primary"
+                        size="tall"
+                        className="w-full"
+                        disabled={isSubmitting || pickedDays.length === 0}
+                        type="submit"
+                      >
+                        {isSubmitting
+                          ? "Booking..."
+                          : pickedDays.length === 0
+                            ? "Pick days to book"
+                            : `Book ${pickedDays.length} ${pickedDays.length === 1 ? "day" : "days"}`}
+                      </Button>
+                    )
+                  : showReserveForToday && (
+                      <>
+                        <input
+                          type="hidden"
+                          name="date"
+                          value={formatDate(now)}
+                        />
                         <Button
                           variant="primary"
                           size="tall"
                           className="w-full"
                           disabled={isSubmitting}
-                          name="intent"
-                          value="reserve-guest"
                           type="submit"
                         >
                           Reserve for today
                         </Button>
-                      </fetcher.Form>
-                    )
-                  )}
+                      </>
+                    )}
+              </fetcher.Form>
 
-                  {allowedToEdit && (
-                    <Link
-                      to={`/desks/${desk.id}/edit`}
-                      className="inline-flex min-h-11 items-center justify-center rounded-[10px] text-[14px] font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
-                    >
-                      Edit desk info
-                    </Link>
-                  )}
-                </div>
+              {allowedToEdit && (
+                <Link
+                  to={`/desks/${desk.id}/edit`}
+                  className="-mt-2 inline-flex min-h-11 items-center justify-center rounded-[10px] text-[14px] font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
+                >
+                  Edit desk info
+                </Link>
               )}
             </div>
           </Sheet.Content>
@@ -354,21 +455,95 @@ function DayCell({
         ? `taken by ${reservation?.users.firstName}`
         : status;
 
+  // A readout, not a control: the date over a status bar, with no box
+  // around it so it never looks tappable.
   return (
     <span
       role="img"
       aria-label={`${format(date, "EEE d MMM")}, ${who}`}
       data-day={day}
       className={cn(
-        "grid h-[26px] place-items-center rounded-[5px] border text-[11px] font-semibold",
-        isSelected && "ring-2 ring-ink ring-offset-1",
-        status === "free" && "border-ink bg-paper text-ink",
-        status === "taken" && "border-ink bg-taken text-white",
-        status === "yours" && "border-moss-edge bg-moss text-white",
-        status === "past" && "border-line bg-paper-muted text-dim",
+        "grid h-9 content-center justify-items-center gap-1 rounded-md text-[13px] font-semibold",
+        isSelected && "bg-paper-muted",
+        status === "past" ? "text-dim" : "text-ink",
       )}
     >
       {date.getDate()}
+      <i
+        aria-hidden="true"
+        className={cn(
+          "block h-1 w-[70%] rounded-full",
+          status === "free" && "ring-1 ring-inset ring-line",
+          status === "taken" && "bg-taken",
+          status === "yours" && "bg-moss",
+        )}
+      />
     </span>
+  );
+}
+
+/** A free day the owner can still book, as a real checkbox. */
+function DayToggle({
+  date,
+  value,
+  checked,
+  onChange,
+}: {
+  date: Date;
+  value: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "relative grid h-9 cursor-pointer place-items-center rounded-lg border-[1.5px] text-[13px] font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-moss has-[:focus-visible]:ring-offset-2",
+        checked
+          ? "border-moss-edge bg-moss text-white"
+          : "border-dashed border-mist-edge bg-paper text-ink hover:bg-paper-muted",
+      )}
+    >
+      <input
+        type="checkbox"
+        name="date"
+        value={value}
+        checked={checked}
+        onChange={onChange}
+        aria-label={`${format(date, "EEE d MMM")}, free`}
+        // Invisible but covering the chip, so taps (and test clicks) land on
+        // the real checkbox without scrolling to a clipped 1px box.
+        className="absolute inset-0 cursor-pointer appearance-none rounded-lg opacity-0"
+      />
+      {date.getDate()}
+      {checked && (
+        <span
+          aria-hidden="true"
+          className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full border-[1.5px] border-paper bg-moss-edge text-white"
+        >
+          <Check className="h-2.5 w-2.5" strokeWidth={3} />
+        </span>
+      )}
+    </label>
+  );
+}
+
+function DayLegend() {
+  let bar = "inline-block h-1 w-3.5 rounded-full";
+
+  return (
+    <div
+      aria-hidden="true"
+      className="mt-1 flex flex-wrap gap-4 text-[11px] text-ink-muted"
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <i className={cn(bar, "ring-1 ring-inset ring-line")} /> Free
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <i className={cn(bar, "bg-taken")} /> Taken
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <i className={cn(bar, "bg-moss")} /> Yours
+      </span>
+    </div>
   );
 }

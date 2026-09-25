@@ -4,7 +4,6 @@ import { DesksPage } from "./pages/desks-page";
 import { trackHydration } from "./pages/hydration";
 import { LoginPage } from "./pages/login-page";
 import { ReservationsPage } from "./pages/reservations-page";
-import { ReservePage } from "./pages/reserve-page";
 import { CronJobOrgStub } from "./support/cron";
 import { TestDatabase, type SeedUser } from "./support/db";
 import { NOW } from "./support/env";
@@ -19,7 +18,6 @@ type Fixtures = {
   cronJobOrg: CronJobOrgStub;
   loginPage: LoginPage;
   desksPage: DesksPage;
-  reservePage: ReservePage;
   reservationsPage: ReservationsPage;
   deskEditPage: DeskEditPage;
 };
@@ -55,7 +53,6 @@ export const test = base.extend<Fixtures>({
 
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
   desksPage: async ({ page }, use) => use(new DesksPage(page)),
-  reservePage: async ({ page }, use) => use(new ReservePage(page)),
   reservationsPage: async ({ page }, use) => use(new ReservationsPage(page)),
   deskEditPage: async ({ page }, use) => use(new DeskEditPage(page)),
 });
