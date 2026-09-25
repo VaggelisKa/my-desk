@@ -10,7 +10,7 @@ export class DesksPage {
     this.sidebar = page.locator("[data-sidebar='sidebar']");
     this.logoutButton = page.getByRole("button", { name: "Logout" });
     this.showFreeDesksOnly = page.getByRole("checkbox", {
-      name: "Show free desks only",
+      name: "Free only",
     });
   }
 
@@ -30,7 +30,10 @@ export class DesksPage {
   async openDesk(label: string) {
     await this.desk(label).click();
     let dialog = new DeskDialog(this.page.getByRole("dialog"));
+    // The sheet slides in; interacting with it before it has come to rest
+    // fights the animation (and Playwright's scroll-into-view can dismiss it).
     await dialog.root.waitFor();
+    await this.page.locator("[data-travel-status='idleInside']").waitFor();
 
     return dialog;
   }
@@ -49,13 +52,14 @@ export class DeskDialog {
     this.reserveForTodayButton = root.getByRole("button", {
       name: "Reserve for today",
     });
-    this.reserveLink = root.getByRole("link", { name: "Reserve" });
+    this.reserveLink = root.getByRole("link", { name: "Book days" });
     this.editDeskLink = root.getByRole("link", { name: "Edit desk info" });
     this.assignedTo = root
       .getByText("Assigned to", { exact: true })
-      .locator("xpath=following-sibling::p");
+      .locator("xpath=following-sibling::p[1]");
+    // The "Today" row: the sitter's name sits in a <p> next to the avatar.
     this.usedTodayBy = root
-      .getByText("Used for today by", { exact: true })
-      .locator("xpath=following-sibling::p");
+      .getByText("Today", { exact: true })
+      .locator("xpath=following-sibling::*//p");
   }
 }
