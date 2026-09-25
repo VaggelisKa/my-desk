@@ -12,11 +12,7 @@ test("an employee books their desk for several days across both weeks from the s
   reservationsPage,
 }) => {
   await desksPage.goto();
-  await (await desksPage.menuLink("Book my desk")).click();
-  await expect(page).toHaveURL(`/?desk=${desks.alice.id}`);
-
-  // The menu link opens the sheet for the user's own desk.
-  let dialog = await desksPage.dialog();
+  let dialog = await desksPage.openDesk("Alice");
   await expect(dialog.title).toHaveText("Desk 1.1.1");
   await expect(dialog.bookButton).toHaveText("Pick days to book");
   await expect(dialog.bookButton).toBeDisabled();
@@ -43,13 +39,13 @@ test("an employee books their desk for several days across both weeks from the s
 
   await reservationsPage.goto();
   await expect(reservationsPage.rows).toHaveCount(booked.length);
-  for (let { day, date } of booked) {
-    await expect(reservationsPage.row(date)).toContainText(day, {
-      ignoreCase: true,
-    });
+  for (let { date, label } of booked) {
+    // "Mon 17" from "Mon 17 Mar".
     await expect(reservationsPage.row(date)).toContainText(
-      "Block 1, Row 1, Column 1",
+      label.split(" ").slice(0, 2).join(" "),
     );
+    await expect(reservationsPage.row(date)).toContainText("Your desk");
+    await expect(reservationsPage.row(date)).toContainText("1.1.1");
   }
 
   // The dates the server stored match the days picked in the UI.

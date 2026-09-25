@@ -159,6 +159,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       toast({
         title: data.toast?.message,
         description: data.toast?.description,
+        variant: "success",
         duration: 3000,
       });
     }
@@ -167,7 +168,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       toast({
         title: data.toast.message,
         description: data.toast?.description,
-        variant: "destructive",
+        variant: "error",
+        duration: 6000,
       });
     }
   }, [data, toast]);

@@ -69,12 +69,12 @@ describe("AppShell", () => {
     for (let link of current) {
       expect(link).toHaveTextContent("Bookings");
     }
-    expect(
-      screen.getByRole("link", { name: "Back to Bookings" }),
-    ).toHaveAttribute("href", "/reservations");
-    expect(
-      screen.getByRole("heading", { name: "Automatic reservations" }),
-    ).toBeInTheDocument();
+  });
+
+  it("leaves the Bookings pages to draw their own heading", () => {
+    renderShell("/automatic-reservations");
+
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
   it("gives the desks page no extra heading, it draws its own", () => {
@@ -106,23 +106,8 @@ describe("AppShell", () => {
     expect(
       menu.getByRole("link", { name: "Edit profile", hidden: true }),
     ).toHaveAttribute("href", "/users/edit/emp042");
-    expect(
-      menu.getByRole("link", { name: "Book my desk", hidden: true }),
-    ).toHaveAttribute("href", "/?desk=7");
-    expect(
-      menu.getByRole("link", { name: "Automatic reservations", hidden: true }),
-    ).toHaveAttribute("href", "/automatic-reservations");
-    expect(
-      menu
-        .getByRole("button", { name: "Sign out", hidden: true })
-        .closest("form"),
-    ).toHaveAttribute("action", "/login/logout");
-  });
-
-  it("only offers reservation management to users with a desk", () => {
-    renderShell("/", { ...user, role: "user", desk: null });
-
-    let menu = within(document.getElementById("app-menu")!);
+    // Booking lives in the desk sheet and recurring bookings on the
+    // Bookings page, so neither has a menu entry.
     expect(
       menu.queryByRole("link", { name: "Book my desk", hidden: true }),
     ).not.toBeInTheDocument();
@@ -132,6 +117,16 @@ describe("AppShell", () => {
         hidden: true,
       }),
     ).not.toBeInTheDocument();
+    expect(
+      menu
+        .getByRole("button", { name: "Sign out", hidden: true })
+        .closest("form"),
+    ).toHaveAttribute("action", "/login/logout");
+  });
+
+  it("says so when the user has no desk", () => {
+    renderShell("/", { ...user, role: "user", desk: null });
+
     expect(document.getElementById("app-menu")).toHaveTextContent("No desk");
   });
 });

@@ -49,7 +49,11 @@ export async function loader({ url }: Route.LoaderArgs) {
   });
 
   if (!userInDb?.desk || userInDb.desk.id !== parsedInputs.data.deskId) {
-    await deleteCron({ cronId: userInDb?.autoReservationsCronId ?? "" });
+    if (userInDb?.autoReservationsCronId) {
+      await deleteCron({ cronId: userInDb.autoReservationsCronId }).catch(
+        console.error,
+      );
+    }
     await db
       .update(users)
       .set({ autoReservationsCronId: null })

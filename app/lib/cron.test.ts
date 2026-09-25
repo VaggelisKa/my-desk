@@ -125,15 +125,60 @@ describe("job toggling", () => {
   });
 
   it("returns the parsed details of a job", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ jobDetails: { enabled: false } })),
+    );
     let { getCronDetails } = await importCron();
 
     let details = await getCronDetails({ cronId: "99" });
 
-    expect(details).toEqual({ jobId: 42 });
+    expect(details).toEqual({ jobDetails: { enabled: false } });
     expect(lastRequest()).toMatchObject({
       url: "https://api.cron-job.org/jobs/99",
       method: "GET",
     });
+  });
+});
+
+describe("provider failures", () => {
+  it.each([
+    ["disableCron", 500],
+    ["enableCron", 404],
+    ["deleteCron", 403],
+    ["getCronDetails", 502],
+  ] as const)("%s throws when cron-job.org answers %i", async (fn, status) => {
+    fetchMock.mockResolvedValue(new Response("nope", { status }));
+    let cron = await importCron();
+
+    await expect(cron[fn]({ cronId: "99" })).rejects.toBeInstanceOf(
+      cron.CronError,
+    );
+  });
+
+  it("does not treat details without a job as a paused job", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({})));
+    let cron = await importCron();
+
+    await expect(cron.getCronDetails({ cronId: "99" })).rejects.toBeInstanceOf(
+      cron.CronError,
+    );
+  });
+
+  it.each([
+    ["an error status", new Response("nope", { status: 500 })],
+    ["no job id", new Response(JSON.stringify({ error: "limit" }))],
+  ])("addCron throws on %s", async (_, response) => {
+    fetchMock.mockResolvedValue(response);
+    let cron = await importCron();
+
+    await expect(
+      cron.addCron({
+        deskId: "7",
+        userId: "user-1",
+        firstName: "Jane",
+        days: ["monday"],
+      }),
+    ).rejects.toBeInstanceOf(cron.CronError);
   });
 });
 
@@ -162,5 +207,28 @@ describe("addCronSchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("daysFromJob", () => {
+  it("reads the weekdays back from the callback URL", async () => {
+    let { daysFromJob } = await importCron();
+
+    expect(
+      daysFromJob({
+        url: "https://example.com/cron?deskId=7&cronPassword=secret&day=monday&day=thursday",
+      }),
+    ).toEqual(["monday", "thursday"]);
+  });
+
+  it.each([
+    undefined,
+    {},
+    { url: "not a url" },
+    { url: "https://x.dev/?day=sunday" },
+  ])("returns no days for %j", async (job) => {
+    let { daysFromJob } = await importCron();
+
+    expect(daysFromJob(job)).toEqual([]);
   });
 });

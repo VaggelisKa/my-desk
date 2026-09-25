@@ -316,8 +316,7 @@ export function AppMenu({ user }: { user: ShellUser }) {
     return () => element.removeEventListener("beforetoggle", place);
   }, []);
 
-  // Close after following a link from the menu, including "Book my desk",
-  // which stays on the desks page and only changes the search.
+  // Close after following a link from the menu.
   useEffect(() => {
     let element = menu.current;
     if (element?.matches(":popover-open")) {
@@ -348,18 +347,6 @@ export function AppMenu({ user }: { user: ShellUser }) {
         </p>
       </div>
 
-      {/* Booking opens your desk's sheet. Automatic reservations lives here
-      until Bookings gets its Recurring segment. */}
-      {user.desk && (
-        <>
-          <Link to={`/?desk=${user.desk.id}`} className={item}>
-            Book my desk
-          </Link>
-          <Link to="/automatic-reservations" prefetch="intent" className={item}>
-            Automatic reservations
-          </Link>
-        </>
-      )}
       <Link to={`/users/edit/${user.id}`} prefetch="intent" className={item}>
         Edit profile
       </Link>
@@ -442,12 +429,6 @@ let PAGE_HEADINGS: {
   title: string;
   back?: { to: string; label: string };
 }[] = [
-  { match: (p) => p === "/reservations", title: "My reservations" },
-  {
-    match: (p) => p.startsWith("/automatic-reservations"),
-    title: "Automatic reservations",
-    back: { to: "/reservations", label: "Bookings" },
-  },
   {
     match: (p) => p.startsWith("/desks/"),
     title: "Edit desk",

@@ -83,7 +83,8 @@ export async function action({ request, params }: Route.ActionArgs) {
       ? updatedUserIdRaw.toLowerCase().trim()
       : "";
   let currentUserIdRaw = formData.get("current-user-id");
-  let currentUserId = typeof currentUserIdRaw === "string" ? currentUserIdRaw : "";
+  let currentUserId =
+    typeof currentUserIdRaw === "string" ? currentUserIdRaw : "";
   let currentUserCronIdRaw = formData.get("current-user-cron-id");
   let currentUserCronId =
     typeof currentUserCronIdRaw === "string" ? currentUserCronIdRaw : "";
@@ -108,7 +109,9 @@ export async function action({ request, params }: Route.ActionArgs) {
             eq(users.autoReservationsCronId, currentUserCronId),
           ),
         ),
-      deleteCron({ cronId: currentUserCronId }),
+      // The desk has already changed hands; a job left behind removes
+      // itself on its next run, when the desk no longer matches.
+      deleteCron({ cronId: currentUserCronId }).catch(console.error),
     ]);
   }
 
