@@ -281,7 +281,7 @@ function FloorPlan({
 
           <div
             className={cn(
-              "grid grid-cols-3 gap-x-2.5 gap-y-[22px] py-3 sm:gap-y-[26px] sm:py-3.5",
+              "grid grid-cols-3 gap-x-2.5 gap-y-[22px] pb-3 pt-5 sm:gap-y-[26px] sm:pb-3.5 sm:pt-6",
               block === "4" ? "grid-rows-1" : "grid-rows-2",
             )}
           >
@@ -381,7 +381,7 @@ function DesksSkeleton() {
             <div className="mt-2 text-[13px] font-bold">Block {block}</div>
             <div
               className={cn(
-                "grid grid-cols-3 gap-x-2.5 gap-y-[22px] py-3 sm:gap-y-[26px] sm:py-3.5",
+                "grid grid-cols-3 gap-x-2.5 gap-y-[22px] pb-3 pt-5 sm:gap-y-[26px] sm:pb-3.5 sm:pt-6",
                 singleRow ? "grid-rows-1" : "grid-rows-2",
               )}
             >
