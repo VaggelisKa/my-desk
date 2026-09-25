@@ -4,7 +4,7 @@ import archivo600 from "@fontsource/archivo/600.css?url";
 import archivo700 from "@fontsource/archivo/700.css?url";
 import { Island, SheetStack } from "@silk-hq/components";
 import silkStyles from "@silk-hq/components/unlayered-styles.css?url";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import {
   data,
   Links,
@@ -13,25 +13,26 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  useNavigationType,
   useRouteError,
   useRouteLoaderData,
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { getToast } from "remix-toast";
+import {
+  AppMenu,
+  Dock,
+  Masthead,
+  PAGE_COLUMN,
+  PageHeading,
+} from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
+import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
-import { AppBreadcrumbs } from "./components/app-breadcrumbs";
-import { AppSidebar } from "./components/app-sidebar";
-import { Separator } from "./components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "./components/ui/sidebar";
 import { useToast } from "./components/ui/use-toast";
 
 let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
@@ -72,29 +73,10 @@ export let links: Route.LinksFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let cookieHeader = request.headers.get("Cookie");
-
   let { toast, headers } = await getToast(request);
   let user = await getAuthenticatedUser(request);
 
-  let sidebarState = cookieHeader
-    ?.split("; ")
-    .find((row) => row.startsWith("sidebar_state="))
-    ?.split("=")[1];
-
-  return data(
-    {
-      user,
-      toast,
-      sidebarState:
-        sidebarState === undefined
-          ? true
-          : sidebarState === "true"
-            ? true
-            : false,
-    },
-    { headers },
-  );
+  return data({ user, toast }, { headers });
 }
 
 // Toasts are flashed through this loader. React Router skips revalidation after
@@ -110,19 +92,63 @@ export function shouldRevalidate({
   return defaultShouldRevalidate;
 }
 
+// Where each history entry's outlet was scrolled to, by location key.
+let outletScroll = new Map<string, number>();
+
+/**
+ * On phones the page scrolls inside the outlet (see `.app-outlet`), which the
+ * window-based <ScrollRestoration> cannot see. So do its job there: a new page
+ * starts at the top, and Back or Forward returns to where that page was left.
+ * On desktop the outlet does not scroll and this is a no-op.
+ */
+function useOutletScrollRestoration(outlet: RefObject<HTMLDivElement | null>) {
+  let location = useLocation();
+  let navigationType = useNavigationType();
+  let previous = useRef(location);
+  let currentKey = useRef(location.key);
+
+  // Recorded as you scroll: once the next page has rendered, the old one's
+  // position is gone (or clamped to the new page's height).
+  useEffect(() => {
+    let element = outlet.current;
+    if (!element) return;
+
+    let onScroll = () =>
+      outletScroll.set(currentKey.current, element.scrollTop);
+    element.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => element.removeEventListener("scroll", onScroll);
+  }, [outlet]);
+
+  // Before paint, so the page never shows at the old position first.
+  useLayoutEffect(() => {
+    let from = previous.current;
+    previous.current = location;
+    currentKey.current = location.key;
+
+    let element = outlet.current;
+    if (!element || from.key === location.key) return;
+
+    let saved = outletScroll.get(location.key);
+
+    if (navigationType === "POP" && saved !== undefined) {
+      element.scrollTo(0, saved);
+    } else if (from.pathname !== location.pathname) {
+      // Only a new page starts at the top: filters and the day strip change
+      // the search params and keep your place.
+      element.scrollTo(0, 0);
+    }
+  }, [location, navigationType, outlet]);
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   let data = useRouteLoaderData<typeof loader>("root");
   let error = useRouteError();
   let { toast } = useToast();
-  let { pathname } = useLocation();
   let outlet = useRef<HTMLDivElement>(null);
+  let user = data?.user?.id ? data.user : undefined;
 
-  // On phones the page scrolls inside the outlet (see `.app-outlet`), which
-  // the window-based <ScrollRestoration> cannot see; start each page at the
-  // top. On desktop the outlet does not scroll and this is a no-op.
-  useEffect(() => {
-    outlet.current?.scrollTo(0, 0);
-  }, [pathname]);
+  useOutletScrollRestoration(outlet);
 
   useEffect(() => {
     if (!data?.toast) {
@@ -165,38 +191,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className="app-outlet bg-background"
             stackingAnimation={depth}
           >
-            <SidebarProvider defaultOpen={data?.sidebarState ?? true}>
-              {data?.user?.id && (
-                <AppSidebar
-                  deskId={data.user?.desk?.id}
-                  userId={data.user?.id}
-                />
+            {user && <Masthead user={user} />}
+
+            <main
+              className={cn(
+                "flex w-full flex-col items-center px-4 py-8",
+                // Room for the floating dock on phones.
+                user && "pb-[calc(104px+env(safe-area-inset-bottom))] md:pb-8",
               )}
-
-              <SidebarInset>
-                {data?.user?.id && (
-                  <header className="flex h-16 w-full items-center gap-2 border-b px-4">
-                    <SidebarTrigger className="-ml-1" />
-                    <Separator orientation="vertical" className="mr-2 h-4" />
-                    <AppBreadcrumbs />
-                  </header>
-                )}
-
-                <main className="flex w-full justify-center px-4 py-8">
-                  {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
-                  {error ? <ErrorCard message={error?.message} /> : children}
-                </main>
-                {/* An island stays interactive and announced while a Silk sheet
-                makes the rest of the page inert, so toasts still get through. */}
-                <Island.Root>
-                  <Island.Content>
-                    <Toaster />
-                  </Island.Content>
-                </Island.Root>
-              </SidebarInset>
-            </SidebarProvider>
+            >
+              {error ? (
+                // @ts-expect-error react-router forwards an error message but type is unknown
+                <ErrorCard message={error?.message} />
+              ) : user ? (
+                <div className={cn(PAGE_COLUMN, "flex flex-col")}>
+                  <PageHeading />
+                  {children}
+                </div>
+              ) : (
+                children
+              )}
+            </main>
+            {/* An island stays interactive and announced while a Silk sheet
+            makes the rest of the page inert, so toasts still get through. */}
+            <Island.Root>
+              <Island.Content>
+                <Toaster />
+              </Island.Content>
+            </Island.Root>
           </SheetStack.Outlet>
         </SheetStack.Root>
+
+        {user && (
+          <>
+            <Dock user={user} />
+            <AppMenu user={user} />
+          </>
+        )}
 
         <ScrollRestoration />
         <Scripts />

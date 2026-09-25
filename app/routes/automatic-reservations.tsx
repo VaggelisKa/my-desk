@@ -212,7 +212,7 @@ export default function AutomaticReservationsPage({
           </fieldset>
 
           <Button
-            className="max-w-full md:max-w-[6rem] md:self-center"
+            className="max-w-full md:max-w-[6rem]"
             type="submit"
             disabled={isSubmitting}
           >

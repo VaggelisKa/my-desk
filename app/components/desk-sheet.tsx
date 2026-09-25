@@ -74,7 +74,7 @@ export function DeskSheet({
 }: DeskSheetProps) {
   let [presented, setPresented] = useState(false);
   let [travelStatus, setTravelStatus] = useState<TravelStatus>("idleOutside");
-  // Same breakpoint as the sidebar's mobile mode. Captured when the sheet
+  // Same breakpoint as the phone dock. Captured when the sheet
   // opens so rotating a phone mid-way does not flip the placement.
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
