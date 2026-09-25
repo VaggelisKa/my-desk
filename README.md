@@ -1,39 +1,51 @@
 # Share a desk
 
-## App description
+Book desks in a shared workspace. Built with React Router, Drizzle, shadcn/ui and
+Tailwind CSS; hosted on Vercel with a Turso database.
 
-This is a simple workspace management applications that allows users to book and reserve desks in a shared workspace.
+## Development
 
-## Tech stack
+Create `.env` with database credentials from your admin and a session secret generated
+with `openssl rand -hex 32`:
 
-tl;dr:
-This is a full-stack application build with [Remix](https://remix.run/docs/en/main) which is a react framework that allows for server-side rendering.
-
-The app is hosted on [Vercel](https://vercel.com/) and is using [Turso](https://turso.tech/) as a serverless SQLite database provider.
-
-Extras:
-
-- [shadcn](https://ui.shadcn.com/) For UI components building on top of Radix.
-- [TailwindCSS](https://tailwindcss.com/) for styling.
-- [Drizzle](https://orm.drizzle.team/docs/overview) as ORM and for managing migrations, schemas etc.
-
-## How to run
-
-Before running the app, you need to create a `.env` file in the root of the project with the following content:
-
-```bash
-DATABASE_AUTH_TOKEN="paste-your-token-here"
-DATABASE_URL="paste-your-database-url-here"
+```dotenv
+DATABASE_URL="your-database-url"
+DATABASE_AUTH_TOKEN="your-database-token"
+SESSION_SECRET="your-generated-secret"
 ```
 
-the actual values for `DATABASE_AUTH_TOKEN` and `DATABASE_URL` can be obtained from the Turso dashboard (talk with admin).
+```sh
+npm ci
+npm run dev
+```
 
-After that is in place, you can just:
+The database is shared: use isolated test data for changes that write or delete records.
+Never commit credentials.
 
-1. Install dependencies: `npm install`
-2. Run the app: `npm run dev`
+## Checks
 
-P.S Just be a bit careful when dealing with the database, as it's a shared resource and you can easily mess up the data for others.
+```sh
+npm test
+npm run test:e2e
+npm run typecheck
+npm run build
+```
+
+Authentication tests mock the database and need no service credentials.
+
+## Session configuration
+
+Set `SESSION_SECRET` before deploying to each Vercel environment, including previews.
+Use a separate random secret per environment, shared across its instances. Missing
+secrets or values shorter than 32 characters prevent authentication startup.
+
+Signed cookies expire after 14 days; roles are checked against the database on every
+request. Deployment rejects old unsigned cookies, and rotating the secret signs
+everyone out. Logout clears the browser cookie but cannot revoke a stolen copy
+before expiry; deleting its user or rotating the secret invalidates it.
+
+Employee-ID-only login and registration's existing-account fallback still need
+identity verification. Cookie signing does not resolve those separate risks.
 
 ## Testing
 
