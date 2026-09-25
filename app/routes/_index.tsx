@@ -274,15 +274,10 @@ function FloorPlan({
       </div>
 
       {Object.entries(desks).map(([block, desksData]) => (
-        <div key={block} className="flex flex-col">
+        <div key={block} className="flex flex-col [&+&]:pt-5">
           {block === "7" && <Wall />}
 
-          <div className="mt-2 flex items-baseline gap-2 text-[13px] font-bold">
-            Block {block}
-            <span className="text-[11px] font-semibold text-ink-muted">
-              {desksData.length} {desksData.length === 1 ? "desk" : "desks"}
-            </span>
-          </div>
+          <div className="mt-2 text-[13px] font-bold">Block {block}</div>
 
           <div
             className={cn(
@@ -380,7 +375,7 @@ function DesksSkeleton() {
         let singleRow = block === "4";
 
         return (
-          <div key={block} className="flex flex-col">
+          <div key={block} className="flex flex-col [&+&]:pt-5">
             {block === "7" && <Wall />}
 
             <div className="mt-2 text-[13px] font-bold">Block {block}</div>

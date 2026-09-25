@@ -124,8 +124,10 @@ export function DeskSheet({
       // Free to use for everyone and not commercialised, so the free
       // licence applies (https://silkhq.com/access).
       license="non-commercial"
-      // Joins the page-level stack so the page sinks back behind the sheet.
-      forComponent="closest"
+      // Bottom sheets join the page-level stack so the page sinks back behind
+      // them. The side sheet stays out: the stack would put a no-op transform
+      // on the page and make it flicker.
+      forComponent={isSmallDevice ? "closest" : undefined}
       sheetRole="dialog"
       presented={presented}
       onPresentedChange={handlePresentedChange}
@@ -180,7 +182,7 @@ export function DeskSheet({
               </Sheet.Trigger>
             )}
 
-            <div className="desk-sheet-body flex flex-col gap-4 font-display text-ink">
+            <div className="desk-sheet-body flex flex-col gap-5 font-display text-ink">
               <div>
                 <Sheet.Title className="text-lg font-bold tracking-tight sm:text-xl">
                   {`Desk ${desk.block}.${desk.row}.${desk.column}`}
@@ -190,60 +192,49 @@ export function DeskSheet({
                 </Sheet.Description>
               </div>
 
-              <div className="grid gap-1">
-                <span className="text-xs text-ink-muted">Assigned to</span>
-                <p className="flex items-center gap-2 text-[15px] font-semibold capitalize">
-                  {desk.user ? (
-                    <>
-                      <Avatar user={desk.user} />
-                      {`${desk.user.firstName} ${desk.user.lastName || ""}`}
-                    </>
-                  ) : (
-                    "None"
-                  )}
-                </p>
-                {!desk.user && (
-                  <span className="text-xs text-ink-muted">
-                    Not assigned to anyone. Ask an admin (Christian, Sara,
-                    Michael or Vaggelis) to make it yours.
-                  </span>
-                )}
-              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+                <div className="grid content-start gap-1">
+                  <span className="text-xs text-ink-muted">Assigned to</span>
+                  <p className="flex items-center gap-2 text-[15px] font-semibold capitalize">
+                    {desk.user ? (
+                      <>
+                        <Avatar user={desk.user} />
+                        {`${desk.user.firstName} ${desk.user.lastName || ""}`}
+                      </>
+                    ) : (
+                      "None"
+                    )}
+                  </p>
+                </div>
 
-              <div className="grid gap-1">
-                <span className="text-xs text-ink-muted">Today</span>
-                {sitter ? (
-                  <div className="flex items-center gap-2 text-[15px]">
-                    <Avatar user={sitter} tone={sitterIsMe ? "moss" : "ink"} />
-                    <p className="font-semibold capitalize">
-                      {`${sitter.firstName} ${sitter.lastName}`}
-                    </p>
-                    <span className="text-ink-muted">{today}</span>
-                  </div>
-                ) : (
-                  <p className="text-[15px] font-semibold">{today}</p>
+                <div className="grid content-start gap-1">
+                  <span className="text-xs text-ink-muted">Today</span>
+                  {sitter ? (
+                    <div className="flex items-center gap-2 text-[15px]">
+                      <Avatar
+                        user={sitter}
+                        tone={sitterIsMe ? "moss" : "ink"}
+                      />
+                      <p className="font-semibold capitalize">
+                        {`${sitter.firstName} ${sitter.lastName}`}
+                      </p>
+                      <span className="text-ink-muted">{today}</span>
+                    </div>
+                  ) : (
+                    <p className="text-[15px] font-semibold">{today}</p>
+                  )}
+                </div>
+
+                {!desk.user && (
+                  <p className="col-span-2 text-[13px] text-ink-muted">
+                    Ask an admin (Christian, Sara, Michael or Vaggelis) to make
+                    it yours.
+                  </p>
                 )}
               </div>
 
               <div className="grid gap-1.5">
                 <span className="text-xs text-ink-muted">Next two weeks</span>
-                <div
-                  aria-hidden="true"
-                  className="flex gap-3 text-[11px] text-ink-muted"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    <i className="inline-block h-[9px] w-[14px] rounded-[2px] border border-ink bg-paper" />
-                    Free
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <i className="inline-block h-[9px] w-[14px] rounded-[2px] border border-ink bg-taken" />
-                    Taken
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <i className="inline-block h-[9px] w-[14px] rounded-[2px] border border-moss-edge bg-moss" />
-                    Yours
-                  </span>
-                </div>
                 <div className="grid gap-1.5">
                   {weeks.map(({ label, offset }) => (
                     <div
@@ -269,59 +260,46 @@ export function DeskSheet({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2.5">
-                {allowedToReserve ? (
-                  <>
+              {(allowedToReserve || showReserveForToday || allowedToEdit) && (
+                <div className="flex flex-col gap-2">
+                  {allowedToReserve ? (
                     <Button variant="primary" size="tall" asChild>
                       <Link to={`/reserve/${desk.id}`} prefetch="render">
                         Book days
                       </Link>
                     </Button>
-                    <p className="text-center text-[13px] text-ink-muted">
-                      This is your desk. Pick the days you'll be in.
-                    </p>
-                  </>
-                ) : showReserveForToday ? (
-                  <>
-                    <fetcher.Form method="POST" action="/reserve">
-                      <input type="hidden" name="deskId" value={desk.id} />
-                      <input type="hidden" name="week" value={currentWeek} />
-                      <input type="hidden" name={todaysDay} value="on" />
+                  ) : (
+                    showReserveForToday && (
+                      <fetcher.Form method="POST" action="/reserve">
+                        <input type="hidden" name="deskId" value={desk.id} />
+                        <input type="hidden" name="week" value={currentWeek} />
+                        <input type="hidden" name={todaysDay} value="on" />
 
-                      <Button
-                        variant="primary"
-                        size="tall"
-                        className="w-full"
-                        disabled={isSubmitting}
-                        name="intent"
-                        value="reserve-guest"
-                        type="submit"
-                      >
-                        Reserve for today
-                      </Button>
-                    </fetcher.Form>
-                    <p className="text-center text-[13px] text-ink-muted">
-                      {desk.user
-                        ? "Someone else's desk can only be borrowed for today."
-                        : "An unclaimed desk can be borrowed for today."}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-center text-[13px] text-ink-muted">
-                    {isWeekend
-                      ? "Bookings open again on Monday."
-                      : desk.user
-                        ? "Taken today. Someone else's desk can only be borrowed for today."
-                        : "Taken today."}
-                  </p>
-                )}
+                        <Button
+                          variant="primary"
+                          size="tall"
+                          className="w-full"
+                          disabled={isSubmitting}
+                          name="intent"
+                          value="reserve-guest"
+                          type="submit"
+                        >
+                          Reserve for today
+                        </Button>
+                      </fetcher.Form>
+                    )
+                  )}
 
-                {allowedToEdit && (
-                  <Button variant="quiet" size="tall" asChild>
-                    <Link to={`/desks/${desk.id}/edit`}>Edit desk info</Link>
-                  </Button>
-                )}
-              </div>
+                  {allowedToEdit && (
+                    <Link
+                      to={`/desks/${desk.id}/edit`}
+                      className="inline-flex min-h-11 items-center justify-center rounded-[10px] text-[14px] font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
+                    >
+                      Edit desk info
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
           </Sheet.Content>
         </Sheet.View>

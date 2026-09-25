@@ -196,8 +196,8 @@ describe("DeskSheet", () => {
 
       expect(within(dialog).getByText("Weekend")).toBeInTheDocument();
       expect(
-        within(dialog).getByText("Bookings open again on Monday."),
-      ).toBeInTheDocument();
+        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+      ).not.toBeInTheDocument();
     });
 
     it("ignores reservations for the same weekday in another week", async () => {
@@ -279,7 +279,7 @@ describe("DeskSheet", () => {
       });
     });
 
-    it("explains instead of offering a reservation when the desk is taken today", async () => {
+    it("offers no reservation when the desk is taken today", async () => {
       let { dialog } = await openSheet({
         desk: makeDesk({ reservations: [reservation("wednesday", guest)] }),
       });
@@ -287,7 +287,6 @@ describe("DeskSheet", () => {
       expect(
         within(dialog).queryByRole("button", { name: "Reserve for today" }),
       ).not.toBeInTheDocument();
-      expect(within(dialog).getByText(/^Taken today\./)).toBeInTheDocument();
     });
 
     it("starts the two-week grid from the coming week on a Saturday", async () => {

@@ -38,17 +38,18 @@ import { useToast } from "./components/ui/use-toast";
 
 let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
 
-// On phones the page sinks back a little while a sheet is up, iOS style. It
-// only runs in the browser, so the media query is safe to read here.
-let phone = () => window.matchMedia("(max-width: 767px)").matches;
+// On phones the page sinks back a little while a sheet is up, iOS style.
+// Only sheets that open from the bottom join the stack, so this never runs
+// behind the desktop side sheet (a no-op transform there still forced the
+// whole page onto its own layer and made it flicker).
 let depth = {
   transformOrigin: "50% 0",
   scale: ({ progress, tween }: DepthFrame) =>
-    phone() ? tween(1, 1 - 0.06 * Math.min(progress, 1)) : 1,
+    tween(1, 1 - 0.06 * Math.min(progress, 1)),
   translateY: ({ progress, tween }: DepthFrame) =>
-    phone() ? tween("0px", `${12 * Math.min(progress, 1)}px`) : "0px",
+    tween("0px", `${12 * Math.min(progress, 1)}px`),
   borderRadius: ({ progress, tween }: DepthFrame) =>
-    phone() ? tween("0px", `${14 * Math.min(progress, 1)}px`) : "0px",
+    tween("0px", `${14 * Math.min(progress, 1)}px`),
 };
 
 type DepthFrame = {
