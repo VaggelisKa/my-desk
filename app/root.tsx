@@ -19,6 +19,7 @@ import {
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { getToast } from "remix-toast";
+import { AppMenu, Dock, Masthead, PageHeading } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { Toaster } from "~/components/ui/toaster";
@@ -26,15 +27,8 @@ import { userCookie } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
+import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
-import { AppBreadcrumbs } from "./components/app-breadcrumbs";
-import { AppSidebar } from "./components/app-sidebar";
-import { Separator } from "./components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "./components/ui/sidebar";
 import { useToast } from "./components/ui/use-toast";
 
 let iconSizes = ["57", "72", "76", "114", "120", "144", "152", "180"] as const;
@@ -86,24 +80,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
   });
 
-  let sidebarState = cookieHeader
-    ?.split("; ")
-    .find((row) => row.startsWith("sidebar_state="))
-    ?.split("=")[1];
-
-  return data(
-    {
-      user,
-      toast,
-      sidebarState:
-        sidebarState === undefined
-          ? true
-          : sidebarState === "true"
-            ? true
-            : false,
-    },
-    { headers },
-  );
+  return data({ user, toast }, { headers });
 }
 
 // Toasts are flashed through this loader. React Router skips revalidation after
@@ -125,6 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let { toast } = useToast();
   let { pathname } = useLocation();
   let outlet = useRef<HTMLDivElement>(null);
+  let user = data?.user?.id ? data.user : undefined;
 
   // On phones the page scrolls inside the outlet (see `.app-outlet`), which
   // the window-based <ScrollRestoration> cannot see; start each page at the
@@ -174,38 +152,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className="app-outlet bg-background"
             stackingAnimation={depth}
           >
-            <SidebarProvider defaultOpen={data?.sidebarState ?? true}>
-              {data?.user?.id && (
-                <AppSidebar
-                  deskId={data.user?.desk?.id}
-                  userId={data.user?.id}
-                />
+            {user && <Masthead user={user} />}
+
+            <main
+              className={cn(
+                "flex w-full flex-col items-center px-4 py-8",
+                // Room for the floating dock on phones.
+                user && "pb-[calc(104px+env(safe-area-inset-bottom))] md:pb-8",
               )}
-
-              <SidebarInset>
-                {data?.user?.id && (
-                  <header className="flex h-16 w-full items-center gap-2 border-b px-4">
-                    <SidebarTrigger className="-ml-1" />
-                    <Separator orientation="vertical" className="mr-2 h-4" />
-                    <AppBreadcrumbs />
-                  </header>
-                )}
-
-                <main className="flex w-full justify-center px-4 py-8">
-                  {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
-                  {error ? <ErrorCard message={error?.message} /> : children}
-                </main>
-                {/* An island stays interactive and announced while a Silk sheet
-                makes the rest of the page inert, so toasts still get through. */}
-                <Island.Root>
-                  <Island.Content>
-                    <Toaster />
-                  </Island.Content>
-                </Island.Root>
-              </SidebarInset>
-            </SidebarProvider>
+            >
+              {user && !error && <PageHeading />}
+              {/* @ts-expect-error react-router forwards an error message but type is unknown*/}
+              {error ? <ErrorCard message={error?.message} /> : children}
+            </main>
+            {/* An island stays interactive and announced while a Silk sheet
+            makes the rest of the page inert, so toasts still get through. */}
+            <Island.Root>
+              <Island.Content>
+                <Toaster />
+              </Island.Content>
+            </Island.Root>
           </SheetStack.Outlet>
         </SheetStack.Root>
+
+        {user && (
+          <>
+            <Dock user={user} />
+            <AppMenu user={user} />
+          </>
+        )}
 
         <ScrollRestoration />
         <Scripts />
