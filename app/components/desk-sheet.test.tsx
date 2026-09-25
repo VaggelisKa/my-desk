@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { getWeek } from "date-fns";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatDate, workdaysOfWeek, type Weekday } from "~/lib/dates";
 import { renderWithRouter } from "../../test/render-with-router";
 import { DeskSheet } from "./desk-sheet";
 
@@ -89,12 +90,14 @@ function makeDesk(
   };
 }
 
-function reservation(
-  day: string,
-  users: typeof owner,
-  week = getWeek(new Date()),
-) {
-  return { day, week, date: null, users };
+// A reservation on `day` of this week (or the next, with `weekOffset` 1),
+// relative to the faked "now".
+function reservation(day: Weekday, users: typeof owner, weekOffset: 0 | 1 = 0) {
+  let { date } = workdaysOfWeek(new Date(), weekOffset).find(
+    (d) => d.day === day,
+  )!;
+
+  return { day, week: getWeek(date), date: formatDate(date), users };
 }
 
 function setToday(date: Date) {
@@ -105,14 +108,19 @@ function setToday(date: Date) {
 async function openSheet(props: Omit<DeskSheetProps, "children">) {
   let reserveAction = vi.fn(async ({ request }: { request: Request }) => {
     let formData = await request.formData();
-    return { method: request.method, data: Object.fromEntries(formData) };
+    return {
+      method: request.method,
+      data: Object.fromEntries(formData),
+      dates: formData.getAll("date"),
+    };
   });
 
   let utils = renderWithRouter(
     <DeskSheet {...props}>
       <button>Open desk</button>
     </DeskSheet>,
-    { routes: [{ path: "/reserve", action: reserveAction }] },
+    // The sheet posts to the desks page, i.e. the index route.
+    { path: "/sheet", routes: [{ index: true, action: reserveAction }] },
   );
 
   await utils.user.click(screen.getByRole("button", { name: "Open desk" }));
@@ -136,9 +144,7 @@ describe("DeskSheet", () => {
     expect(
       within(dialog).getByRole("heading", { name: "Desk 3.2.1" }),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText("Block 3 · row 2 · by the window"),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText("By the window")).toBeInTheDocument();
     expect(within(dialog).getByText("jane doe")).toBeInTheDocument();
   });
 
@@ -203,9 +209,7 @@ describe("DeskSheet", () => {
     it("ignores reservations for the same weekday in another week", async () => {
       let { dialog } = await openSheet({
         desk: makeDesk({
-          reservations: [
-            reservation("wednesday", guest, getWeek(WEDNESDAY) + 1),
-          ],
+          reservations: [reservation("wednesday", guest, 1)],
         }),
       });
 
@@ -216,6 +220,36 @@ describe("DeskSheet", () => {
         within(dialog).getByRole("button", { name: "Reserve for today" }),
       ).toBeEnabled();
     });
+  });
+
+  it("finds next week's bookings across New Year, when week numbers restart", async () => {
+    // Monday 21 Dec 2026 is in week 52; Monday 28 Dec is already week 1.
+    setToday(new Date(2026, 11, 21, 9));
+
+    let { dialog } = await openSheet({
+      desk: makeDesk({ reservations: [reservation("monday", owner, 1)] }),
+      userId: owner.id,
+      allowedToReserve: true,
+    });
+
+    expect(
+      within(dialog).getByRole("img", { name: "Mon 28 Dec, reserved by you" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("checkbox", { name: "Mon 28 Dec, free" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("takes today from the page rather than the browser clock", async () => {
+    // The browser already thinks it is Thursday; the server says Wednesday.
+    setToday(new Date(2025, 2, 13, 0, 30));
+
+    let { dialog } = await openSheet({
+      desk: makeDesk({ reservations: [reservation("wednesday", guest)] }),
+      today: "12.03.2025",
+    });
+
+    expect(within(dialog).getByText("is borrowing it")).toBeInTheDocument();
   });
 
   it("marks the next two weeks with real dates and who has them", async () => {
@@ -244,18 +278,63 @@ describe("DeskSheet", () => {
   });
 
   describe("reserving", () => {
-    it("links the desk owner to the reservation page for the desk", async () => {
+    it("lets the desk owner pick free days from the grid and book them", async () => {
+      let { dialog, user, reserveAction } = await openSheet({
+        desk: makeDesk({ reservations: [reservation("thursday", guest)] }),
+        allowedToReserve: true,
+        userId: owner.id,
+      });
+
+      expect(
+        within(dialog).getByRole("button", { name: "Pick days to book" }),
+      ).toBeDisabled();
+      // Taken and past days stay a readout.
+      expect(
+        within(dialog).getByRole("img", { name: "Thu 13 Mar, taken by john" }),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole("img", { name: "Mon 10 Mar, past" }),
+      ).toBeInTheDocument();
+
+      await user.click(
+        within(dialog).getByRole("checkbox", { name: "Wed 12 Mar, free" }),
+      );
+      await user.click(
+        within(dialog).getByRole("checkbox", { name: "Mon 17 Mar, free" }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Book 2 days" }),
+      );
+
+      await waitFor(() => expect(reserveAction).toHaveBeenCalledTimes(1));
+      let { data, dates } = await reserveAction.mock.results[0].value;
+      expect(data.deskId).toBe("12");
+      expect(dates).toEqual(["12.03.2025", "17.03.2025"]);
+      expect(
+        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("stops offering today to the owner from 11:00", async () => {
+      setToday(new Date(2025, 2, 12, 11));
+
       let { dialog } = await openSheet({
         desk: makeDesk(),
         allowedToReserve: true,
       });
 
       expect(
-        within(dialog).getByRole("link", { name: "Book days" }),
-      ).toHaveAttribute("href", "/reserve/12");
-      expect(
-        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+        within(dialog).queryByRole("checkbox", { name: /12 Mar/ }),
       ).not.toBeInTheDocument();
+      expect(
+        within(dialog).getByRole("checkbox", { name: "Thu 13 Mar, free" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows other users the grid as a readout only", async () => {
+      let { dialog } = await openSheet({ desk: makeDesk() });
+
+      expect(within(dialog).queryAllByRole("checkbox")).toHaveLength(0);
     });
 
     it("lets other users reserve a free desk for today as a guest", async () => {
@@ -270,12 +349,8 @@ describe("DeskSheet", () => {
       await waitFor(() => expect(reserveAction).toHaveBeenCalledTimes(1));
       expect(await reserveAction.mock.results[0].value).toEqual({
         method: "POST",
-        data: {
-          deskId: "12",
-          week: String(getWeek(WEDNESDAY)),
-          wednesday: "on",
-          intent: "reserve-guest",
-        },
+        data: { deskId: "12", date: "12.03.2025" },
+        dates: ["12.03.2025"],
       });
     });
 
@@ -300,6 +375,15 @@ describe("DeskSheet", () => {
       expect(
         within(dialog).queryByRole("img", { name: /10 Mar/ }),
       ).not.toBeInTheDocument();
+      expect(within(dialog).getByText("Upcoming week")).toBeInTheDocument();
+      expect(within(dialog).queryByText("This week")).not.toBeInTheDocument();
+    });
+
+    it("labels the first row this week on a weekday", async () => {
+      let { dialog } = await openSheet({ desk: makeDesk() });
+
+      expect(within(dialog).getByText("This week")).toBeInTheDocument();
+      expect(within(dialog).getByText("Next week")).toBeInTheDocument();
     });
 
     it.each([SATURDAY, new Date(2025, 2, 16, 10)])(

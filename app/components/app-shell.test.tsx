@@ -34,8 +34,6 @@ describe("activeTab", () => {
   it.each([
     ["/", "desks"],
     ["/desks/12/edit", "desks"],
-    ["/reserve", "desks"],
-    ["/reserve/12", "desks"],
     ["/reservations", "bookings"],
     ["/automatic-reservations", "bookings"],
     ["/metrics", "metrics"],
@@ -109,8 +107,8 @@ describe("AppShell", () => {
       menu.getByRole("link", { name: "Edit profile", hidden: true }),
     ).toHaveAttribute("href", "/users/edit/emp042");
     expect(
-      menu.getByRole("link", { name: "Add reservation", hidden: true }),
-    ).toHaveAttribute("href", "/reserve");
+      menu.getByRole("link", { name: "Book my desk", hidden: true }),
+    ).toHaveAttribute("href", "/?desk=7");
     expect(
       menu.getByRole("link", { name: "Automatic reservations", hidden: true }),
     ).toHaveAttribute("href", "/automatic-reservations");
@@ -126,7 +124,7 @@ describe("AppShell", () => {
 
     let menu = within(document.getElementById("app-menu")!);
     expect(
-      menu.queryByRole("link", { name: "Add reservation", hidden: true }),
+      menu.queryByRole("link", { name: "Book my desk", hidden: true }),
     ).not.toBeInTheDocument();
     expect(
       menu.queryByRole("link", {
