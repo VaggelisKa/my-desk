@@ -64,7 +64,10 @@ function json(body, status = 200) {
   });
 }
 
-function cronJobOrgMock(url, method) {
+// Jobs created through the stub, so reads reflect what the app saved.
+let cronJobs = new Map();
+
+function cronJobOrgMock(url, method, body) {
   // Tests read this log to assert which cron jobs the app touched.
   if (process.env.E2E_CRON_LOG) {
     appendFileSync(
@@ -73,12 +76,26 @@ function cronJobOrgMock(url, method) {
     );
   }
 
+  let jobId = url.pathname.split("/")[2];
+
   if (method === "PUT" && url.pathname === "/jobs") {
-    return json({ jobId: nextCronJobId++ });
+    let id = nextCronJobId++;
+    cronJobs.set(String(id), { enabled: true, ...body?.job });
+    return json({ jobId: id });
   }
 
   if (method === "GET" && url.pathname.startsWith("/jobs/")) {
-    return json({ jobDetails: { enabled: true } });
+    // Jobs seeded straight into the database are unknown here: enabled,
+    // with no days to read back.
+    return json({ jobDetails: cronJobs.get(jobId) ?? { enabled: true } });
+  }
+
+  if (method === "PATCH" && cronJobs.has(jobId)) {
+    Object.assign(cronJobs.get(jobId), body?.job);
+  }
+
+  if (method === "DELETE") {
+    cronJobs.delete(jobId);
   }
 
   if (
@@ -97,7 +114,8 @@ globalThis.fetch = async (input, init) => {
   let method = (init?.method ?? request?.method ?? "GET").toUpperCase();
 
   if (url.hostname === "api.cron-job.org") {
-    return cronJobOrgMock(url, method);
+    let body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    return cronJobOrgMock(url, method, body);
   }
 
   if (localHosts.has(url.hostname)) {

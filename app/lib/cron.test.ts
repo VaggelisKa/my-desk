@@ -164,3 +164,26 @@ describe("addCronSchema", () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe("daysFromJob", () => {
+  it("reads the weekdays back from the callback URL", async () => {
+    let { daysFromJob } = await importCron();
+
+    expect(
+      daysFromJob({
+        url: "https://example.com/cron?deskId=7&cronPassword=secret&day=monday&day=thursday",
+      }),
+    ).toEqual(["monday", "thursday"]);
+  });
+
+  it.each([
+    undefined,
+    {},
+    { url: "not a url" },
+    { url: "https://x.dev/?day=sunday" },
+  ])("returns no days for %j", async (job) => {
+    let { daysFromJob } = await importCron();
+
+    expect(daysFromJob(job)).toEqual([]);
+  });
+});
