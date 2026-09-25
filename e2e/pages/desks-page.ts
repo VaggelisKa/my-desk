@@ -42,6 +42,15 @@ export class DesksPage {
       .getByRole("link", { name, exact: true });
   }
 
+  /** The desk sheet opened by a link, once it has come to rest. */
+  async dialog() {
+    let dialog = new DeskDialog(this.page.getByRole("dialog"));
+    await dialog.root.waitFor();
+    await this.page.locator("[data-travel-status='idleInside']").waitFor();
+
+    return dialog;
+  }
+
   async openDesk(label: string) {
     await this.desk(label).click();
     let dialog = new DeskDialog(this.page.getByRole("dialog"));
@@ -57,7 +66,7 @@ export class DesksPage {
 export class DeskDialog {
   readonly title;
   readonly reserveForTodayButton;
-  readonly reserveLink;
+  readonly bookButton;
   readonly editDeskLink;
   readonly assignedTo;
   readonly usedTodayBy;
@@ -67,7 +76,9 @@ export class DeskDialog {
     this.reserveForTodayButton = root.getByRole("button", {
       name: "Reserve for today",
     });
-    this.reserveLink = root.getByRole("link", { name: "Book days" });
+    this.bookButton = root.getByRole("button", {
+      name: /^(Book \d|Pick days)/,
+    });
     this.editDeskLink = root.getByRole("link", { name: "Edit desk info" });
     this.assignedTo = root
       .getByText("Assigned to", { exact: true })
@@ -76,5 +87,26 @@ export class DeskDialog {
     this.usedTodayBy = root
       .getByText("Today", { exact: true })
       .locator("xpath=following-sibling::*//p");
+  }
+
+  /** A day in the two-week grid, e.g. "Mon 17 Mar". Free days the owner can
+   * book are checkboxes; every other day is a readout image. */
+  day(label: string) {
+    return this.root.getByRole("checkbox", { name: new RegExp(`^${label},`) });
+  }
+
+  dayStatus(label: string) {
+    return this.root.getByRole("img", { name: new RegExp(`^${label},`) });
+  }
+
+  bookableDays() {
+    return this.root.getByRole("checkbox");
+  }
+
+  async book(labels: string[]) {
+    for (let label of labels) {
+      await this.day(label).check();
+    }
+    await this.bookButton.click();
   }
 }

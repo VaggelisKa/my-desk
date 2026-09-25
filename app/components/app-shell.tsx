@@ -68,11 +68,7 @@ export function activeTab(pathname: string): Tab | undefined {
   ) {
     return "bookings";
   }
-  if (
-    pathname === "/" ||
-    pathname.startsWith("/desks/") ||
-    pathname.startsWith("/reserve")
-  ) {
+  if (pathname === "/" || pathname.startsWith("/desks/")) {
     return "desks";
   }
   return undefined;
@@ -273,7 +269,7 @@ export function Dock({ user }: { user: ShellUser }) {
  */
 export function AppMenu({ user }: { user: ShellUser }) {
   let menu = useRef<HTMLDivElement>(null);
-  let { pathname } = useLocation();
+  let location = useLocation();
 
   useEffect(() => {
     let element = menu.current;
@@ -307,13 +303,14 @@ export function AppMenu({ user }: { user: ShellUser }) {
     return () => element.removeEventListener("beforetoggle", place);
   }, []);
 
-  // Close after following a link from the menu.
+  // Close after following a link from the menu, including "Book my desk",
+  // which stays on the desks page and only changes the search.
   useEffect(() => {
     let element = menu.current;
     if (element?.matches(":popover-open")) {
       element.hidePopover();
     }
-  }, [pathname]);
+  }, [location.key]);
 
   let desk = user.desk
     ? `Desk ${user.desk.block}.${user.desk.row}.${user.desk.column}`
@@ -338,12 +335,12 @@ export function AppMenu({ user }: { user: ShellUser }) {
         </p>
       </div>
 
-      {/* Until Bookings gets its Upcoming and Recurring segments, these two
-      live here so they stay reachable without the sidebar. */}
+      {/* Booking opens your desk's sheet. Automatic reservations lives here
+      until Bookings gets its Recurring segment. */}
       {user.desk && (
         <>
-          <Link to="/reserve" prefetch="intent" className={item}>
-            Add reservation
+          <Link to={`/?desk=${user.desk.id}`} className={item}>
+            Book my desk
           </Link>
           <Link to="/automatic-reservations" prefetch="intent" className={item}>
             Automatic reservations
@@ -437,11 +434,6 @@ let PAGE_HEADINGS: {
     match: (p) => p.startsWith("/automatic-reservations"),
     title: "Automatic reservations",
     back: { to: "/reservations", label: "Bookings" },
-  },
-  {
-    match: (p) => p.startsWith("/reserve"),
-    title: "Add reservation",
-    back: { to: "/", label: "Desks" },
   },
   {
     match: (p) => p.startsWith("/desks/"),
