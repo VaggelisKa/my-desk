@@ -6,7 +6,13 @@ import {
   startOfWeek,
 } from "date-fns";
 import { X } from "lucide-react";
-import { Link, NavLink, useFetcher } from "react-router";
+import {
+  Link,
+  NavLink,
+  useFetcher,
+  useLocation,
+  useNavigation,
+} from "react-router";
 import { buttonVariants } from "~/components/ui/button";
 import { parseDate } from "~/lib/dates";
 import { cn } from "~/lib/utils";
@@ -79,35 +85,57 @@ export function BookingsHeader({ desk }: { desk: OwnDesk | null }) {
       </div>
 
       {/* Recurring only makes sense with a desk of your own to repeat. */}
-      {desk && (
-        <nav
-          aria-label="Bookings"
-          className="flex self-start rounded-full bg-paper-muted p-1 ring-1 ring-inset ring-line"
-        >
-          {[
-            { to: "/reservations", label: "Upcoming" },
-            { to: "/automatic-reservations", label: "Recurring" },
-          ].map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end
-              prefetch="intent"
-              className={({ isActive }) =>
-                cn(
-                  "inline-flex h-9 min-w-[104px] items-center justify-center rounded-full px-4 text-[13px] font-semibold text-ink-muted transition-colors hover:text-ink",
-                  focusRing,
-                  isActive &&
-                    "bg-paper text-ink shadow-[0_1px_2px_rgb(31_42_46/0.12)] ring-1 ring-line",
-                )
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-      )}
+      {desk && <SegmentSwitch />}
     </header>
+  );
+}
+
+let SEGMENTS = [
+  { to: "/reservations", label: "Upcoming" },
+  { to: "/automatic-reservations", label: "Recurring" },
+];
+
+/**
+ * Upcoming · Recurring. The header lives in the Bookings layout, so it stays
+ * mounted across the switch and the pill slides rather than jumps. It moves
+ * as soon as you tap, not when the other page has loaded, like the dock.
+ */
+function SegmentSwitch() {
+  let location = useLocation();
+  let navigation = useNavigation();
+  let pathname = navigation.location?.pathname ?? location.pathname;
+  let active = Math.max(
+    0,
+    SEGMENTS.findIndex((segment) => segment.to === pathname),
+  );
+
+  return (
+    <nav
+      aria-label="Bookings"
+      className="relative grid w-[232px] grid-cols-2 self-start rounded-full bg-paper-muted p-1 ring-1 ring-inset ring-line"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-paper shadow-[0_1px_3px_rgb(31_42_46/0.14)] ring-1 ring-line transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none"
+        style={{ transform: `translateX(${active * 100}%)` }}
+      />
+      {SEGMENTS.map(({ to, label }, index) => (
+        <NavLink
+          key={to}
+          to={to}
+          end
+          prefetch="intent"
+          preventScrollReset
+          className={cn(
+            "relative inline-flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-semibold transition-colors duration-300",
+            focusRing,
+            index === active ? "text-ink" : "text-ink-muted hover:text-ink",
+          )}
+        >
+          {label}
+        </NavLink>
+      ))}
+    </nav>
   );
 }
 
@@ -269,7 +297,6 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
       data-date={booking.date}
       className={cn(
         "grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line px-4 py-3.5 last:border-b-0 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:gap-x-5 sm:px-5",
-        isToday && "bg-moss-soft",
       )}
     >
       <div className="flex flex-col gap-0.5">

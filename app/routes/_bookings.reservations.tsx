@@ -1,18 +1,18 @@
 import { getTime, startOfDay } from "date-fns";
 import { and, asc, eq, gte } from "drizzle-orm";
-import { data } from "react-router";
+import { data, useRouteLoaderData } from "react-router";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import {
   BookingList,
-  BookingsHeader,
   EmptyBookings,
   type Booking,
 } from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
 import { formatDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
-import { reservations, users } from "~/lib/db/schema";
-import type { Route } from "./+types/reservations";
+import { reservations } from "~/lib/db/schema";
+import type { Route } from "./+types/_bookings.reservations";
+import type { loader as bookingsLoader } from "./_bookings";
 
 export let meta: Route.MetaFunction = () => [
   {
@@ -23,28 +23,19 @@ export let meta: Route.MetaFunction = () => [
 export async function loader({ request }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
   let now = new Date();
-  let [rows, user] = await Promise.all([
-    db.query.reservations.findMany({
-      with: {
-        desks: {
-          columns: { id: true, block: true, row: true, column: true },
-          with: { user: { columns: { id: true, firstName: true } } },
-        },
+  let rows = await db.query.reservations.findMany({
+    with: {
+      desks: {
+        columns: { id: true, block: true, row: true, column: true },
+        with: { user: { columns: { id: true, firstName: true } } },
       },
-      where: and(
-        eq(reservations.userId, userId),
-        gte(reservations.dateTimestamp, getTime(startOfDay(now))),
-      ),
-      orderBy: [asc(reservations.dateTimestamp)],
-    }),
-    db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true },
-      with: {
-        desk: { columns: { id: true, block: true, row: true, column: true } },
-      },
-    }),
-  ]);
+    },
+    where: and(
+      eq(reservations.userId, userId),
+      gte(reservations.dateTimestamp, getTime(startOfDay(now))),
+    ),
+    orderBy: [asc(reservations.dateTimestamp)],
+  });
 
   let bookings: Booking[] = rows.flatMap((r) =>
     r.desks && r.date && r.deskId !== null
@@ -64,7 +55,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     bookings,
-    desk: user?.desk ?? null,
     today: formatDate(now),
   };
 }
@@ -113,16 +103,14 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ReservationsPage({
-  loaderData: { bookings, desk, today },
+  loaderData: { bookings, today },
 }: Route.ComponentProps) {
-  return (
-    <section className="flex w-full flex-col gap-8 font-display text-ink">
-      <BookingsHeader desk={desk} />
-      {bookings.length ? (
-        <BookingList bookings={bookings} today={today} />
-      ) : (
-        <EmptyBookings desk={desk} />
-      )}
-    </section>
+  let desk =
+    useRouteLoaderData<typeof bookingsLoader>("routes/_bookings")?.desk;
+
+  return bookings.length ? (
+    <BookingList bookings={bookings} today={today} />
+  ) : (
+    <EmptyBookings desk={desk ?? null} />
   );
 }
