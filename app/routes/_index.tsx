@@ -1,6 +1,11 @@
 import { format } from "date-fns";
 import { Suspense } from "react";
-import { Await, type MetaFunction, useSearchParams } from "react-router";
+import {
+  Await,
+  type MetaFunction,
+  type ShouldRevalidateFunctionArgs,
+  useSearchParams,
+} from "react-router";
 import { DayStrip, DeskFilters } from "~/components/desk-filters";
 import { DeskSheet } from "~/components/desk-sheet";
 import { DeskTile, type DeskTileState } from "~/components/desk-tile";
@@ -8,8 +13,15 @@ import { ErrorCard } from "~/components/error-card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
-import { formatDate, normalizeDay, parseDate } from "~/lib/dates";
+import {
+  defaultDay,
+  formatDate,
+  normalizeDay,
+  officeNow,
+  parseDate,
+} from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
+import { reserveDesk } from "~/lib/reservations.server";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
@@ -125,11 +137,14 @@ async function loadDesks({
 export async function loader({ request, url }: Route.LoaderArgs) {
   let { userId, role } = await requireAuthCookie(request);
 
-  // "Today" comes from the server so the first render and hydration agree
-  // even when the browser sits in another timezone. A missing or malformed
-  // `selected-day` means today.
-  let today = formatDate(new Date());
-  let selectedDay = normalizeDay(url.searchParams.get("selected-day")) ?? today;
+  // "Today" is the office's, from the server, so the first render and
+  // hydration agree even when the browser sits in another timezone. A missing
+  // or malformed `selected-day` means today, or the coming Monday on a weekend.
+  let now = officeNow();
+  let today = formatDate(now);
+  let selectedDay =
+    normalizeDay(url.searchParams.get("selected-day")) ??
+    formatDate(defaultDay(now));
 
   // Not awaited on purpose: the shell streams immediately and the desk grid
   // fills in once the query resolves.
@@ -141,6 +156,23 @@ export async function loader({ request, url }: Route.LoaderArgs) {
   });
 
   return { desks, userId, role, today, selectedDay };
+}
+
+// Booking happens in the desk sheet, so its fetcher posts here and the grid
+// revalidates with the new reservations while the sheet stays open.
+export async function action({ request }: Route.ActionArgs) {
+  let { userId } = await requireAuthCookie(request);
+
+  return reserveDesk(userId, await request.formData());
+}
+
+// Fetcher actions that fail skip revalidation by default. A 409 means someone
+// else just took the desk, so refresh the grid to show who.
+export function shouldRevalidate({
+  actionStatus,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  return actionStatus === 409 || defaultShouldRevalidate;
 }
 
 // Client navigations and revalidations (filter changes, reservation fetchers)
@@ -161,7 +193,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
   return (
     <section className="flex w-full max-w-3xl flex-col gap-5 font-display text-ink">
-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
             Desks
@@ -179,9 +211,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         </div>
 
         <DayStrip today={today} />
+        <DeskFilters />
       </header>
-
-      <DeskFilters />
 
       <Legend />
 
@@ -196,6 +227,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
               userId={loaderData.userId}
               role={loaderData.role}
               selectedDay={selectedDay}
+              today={today}
             />
           )}
         </Await>
@@ -236,14 +268,29 @@ function FloorPlan({
   userId,
   role,
   selectedDay,
+  today,
 }: {
   desks: Desks;
   userId: string;
   role?: "admin" | "user" | null;
   selectedDay: string;
+  today: string;
 }) {
-  let [searchParams] = useSearchParams();
+  let [searchParams, setSearchParams] = useSearchParams();
   let all = Object.values(desks).flat();
+  // "Book my desk" links here with `?desk=<id>` to open that desk's sheet.
+  let openDesk = searchParams.get("desk");
+
+  function closeDeskLink() {
+    if (!openDesk) return;
+    setSearchParams(
+      (params) => {
+        params.delete("desk");
+        return params;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+  }
   let nothingToPick = all.length > 0 && all.every((desk) => desk.disabled);
   let where = placements[searchParams.get("column") ?? ""] ?? "";
 
@@ -312,9 +359,14 @@ function FloorPlan({
                   allowedToReserve={desk.user?.id === userId}
                   allowedToEdit={role === "admin"}
                   selectedDay={selectedDay}
+                  today={today}
+                  // Silk wraps the tile in a div, and that wrapper is the
+                  // grid item, so the desk's place goes on it.
+                  style={{ gridColumn: desk.column, gridRow: desk.row }}
+                  autoOpen={openDesk === String(desk.id)}
+                  onClose={closeDeskLink}
                 >
                   <DeskTile
-                    style={{ gridColumn: desk.column, gridRow: desk.row }}
                     name={desk.user?.firstName}
                     label={`${desk.block}.${desk.row}.${desk.column}`}
                     row={desk.row}

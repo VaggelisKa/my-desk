@@ -62,7 +62,14 @@ export function bookingDay(day: Weekday, weekOffset: 0 | 1 = 0) {
     week: getWeek(NOW) + weekOffset,
     date: format(date, "dd.MM.yyyy"),
     dateTimestamp: date.getTime(),
+    /** How the desk sheet's two-week grid names the day, e.g. "Mon 17 Mar". */
+    label: format(date, "EEE d MMM"),
   };
+}
+
+function bookingDayRow(day: Weekday, weekOffset: 0 | 1) {
+  let { label: _label, ...row } = bookingDay(day, weekOffset);
+  return row;
 }
 
 export class TestDatabase {
@@ -109,7 +116,7 @@ export class TestDatabase {
     await this.db.insert(schema.reservations).values({
       userId: users[user].id,
       deskId,
-      ...bookingDay(day, weekOffset),
+      ...bookingDayRow(day, weekOffset),
     });
   }
 
@@ -118,6 +125,13 @@ export class TestDatabase {
       .update(schema.users)
       .set({ autoReservationsCronId: cronId })
       .where(eq(schema.users.id, users[user].id));
+  }
+
+  async moveDesk(id: number, place: { row: number; column: number }) {
+    await this.db
+      .update(schema.desks)
+      .set(place)
+      .where(eq(schema.desks.id, id));
   }
 
   reservationsForDesk(deskId: number) {

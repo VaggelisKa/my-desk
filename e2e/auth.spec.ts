@@ -29,7 +29,7 @@ test.describe("logged out", () => {
     await desksPage.openAccountMenu();
     await expect(desksPage.signOutButton).toBeVisible();
     await expect(
-      desksPage.accountMenu.getByRole("link", { name: "Add reservation" }),
+      desksPage.accountMenu.getByRole("link", { name: "Book my desk" }),
     ).toBeVisible();
     await expect(
       desksPage.accountMenu.getByRole("link", { name: "Edit profile" }),
@@ -83,7 +83,7 @@ test.describe("logged out", () => {
     await expect(desksPage.signOutButton).toBeVisible();
     // Guests have no permanent desk, so they cannot plan reservations ahead.
     await expect(
-      desksPage.accountMenu.getByRole("link", { name: "Add reservation" }),
+      desksPage.accountMenu.getByRole("link", { name: "Book my desk" }),
     ).toBeHidden();
     await expect(db.user("gst777")).resolves.toMatchObject({
       firstName: "Grace",
