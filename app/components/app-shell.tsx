@@ -84,15 +84,6 @@ function scrollToTopIfActive(isActive: boolean) {
   };
 }
 
-function Mark() {
-  return (
-    <span
-      aria-hidden
-      className="size-[18px] flex-none rounded-[5px] bg-moss shadow-[0_3px_0_var(--moss-edge)]"
-    />
-  );
-}
-
 function Avatar({ user, className }: { user: ShellUser; className?: string }) {
   return (
     <span
@@ -121,17 +112,9 @@ export function Masthead({ user }: { user: ShellUser }) {
 
   return (
     <header className="app-masthead sticky top-0 z-30 hidden h-[52px] border-b border-line bg-white/85 font-display text-ink backdrop-blur-md md:block">
-      <div className="mx-auto flex h-full w-full max-w-3xl items-center gap-7 px-4">
-        <Link
-          to="/"
-          prefetch="none"
-          className="flex items-center gap-2.5 rounded-sm text-[15px] font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
-        >
-          <Mark />
-          Share a desk
-        </Link>
-
-        <nav aria-label="Main" className="flex self-stretch">
+      <div className="mx-auto flex h-full w-full max-w-3xl items-center px-4">
+        {/* No wordmark: the first tab's label lines up with the page title. */}
+        <nav aria-label="Main" className="-ml-2.5 flex self-stretch">
           {TABS.map((tab) => {
             let isActive = tab.id === active;
             return (
