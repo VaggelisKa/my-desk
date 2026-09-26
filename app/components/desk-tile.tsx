@@ -117,8 +117,16 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
           >
             {name || "Unclaimed"}
           </span>
-          <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-[0.02em] sm:text-[10.5px]">
-            {status}
+          {/* Muted a little below the name, but never under 4.5:1 on its
+              tile: white on moss has the least room to fade. */}
+          <span
+            className={cn(
+              "max-w-full truncate text-[10px] font-medium leading-none tracking-[0.02em] sm:text-[10.5px]",
+              state === "taken" && !dimmed && "opacity-80",
+              (state !== "taken" || dimmed) && "opacity-95",
+            )}
+          >
+            ({status})
           </span>
         </span>
       </button>

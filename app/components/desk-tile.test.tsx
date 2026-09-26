@@ -11,10 +11,10 @@ describe("DeskTile", () => {
   });
 
   it.each([
-    [{ state: "free" as const }, "Free"],
-    [{ state: "taken" as const }, "Taken"],
-    [{ state: "mine" as const }, "Yours"],
-    [{ dimmed: true }, "Filtered out"],
+    [{ state: "free" as const }, "(Free)"],
+    [{ state: "taken" as const }, "(Taken)"],
+    [{ state: "mine" as const }, "(Yours)"],
+    [{ dimmed: true }, "(Filtered out)"],
   ])(
     "writes the state on the tile instead of the number (%o)",
     (props, word) => {
