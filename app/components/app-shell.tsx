@@ -115,28 +115,98 @@ function rememberMenuSource(event: MouseEvent<HTMLElement>) {
   menuSource = event.currentTarget;
 }
 
+/**
+ * Tracks where the active tab sits so one indicator can slide between tabs
+ * instead of each tab drawing its own. The active tab follows the link you
+ * clicked straight away rather than waiting for its page to load.
+ */
+function useSlidingIndicator() {
+  let { pathname } = useLocation();
+  let navigation = useNavigation();
+  let active = activeTab(navigation.location?.pathname ?? pathname);
+  let items = useRef(new Map<Tab, HTMLAnchorElement>());
+  let [position, setPosition] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
+  let [animate, setAnimate] = useState(false);
+
+  useLayoutEffect(() => {
+    // Only one of the masthead and the dock is displayed at a time, and a
+    // hidden one measures as zero, so measure again when the window resizes.
+    function measure() {
+      let item = active && items.current.get(active);
+      setPosition(
+        item?.offsetWidth
+          ? { left: item.offsetLeft, width: item.offsetWidth }
+          : null,
+      );
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [active]);
+
+  // The first placement should not slide in from the left edge.
+  useEffect(() => {
+    if (position && !animate) {
+      requestAnimationFrame(() => setAnimate(true));
+    }
+  }, [position, animate]);
+
+  function itemRef(tab: Tab) {
+    return (node: HTMLAnchorElement | null) => {
+      if (node) {
+        items.current.set(tab, node);
+      } else {
+        items.current.delete(tab);
+      }
+    };
+  }
+
+  return { active, position, animate, itemRef };
+}
+
+// A soft spring: quick, with a small overshoot at the end.
+let SLIDE =
+  "transition-[transform,width] duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none";
+
 export function Masthead({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
-  let active = activeTab(pathname);
+  let { active, position, animate, itemRef } = useSlidingIndicator();
 
   return (
     <header className="app-masthead sticky top-0 z-30 hidden h-[52px] border-b border-line bg-white/85 px-4 font-display text-ink backdrop-blur-md md:block">
       <div className={cn(PAGE_COLUMN, "flex h-full items-center")}>
         {/* No wordmark: the first tab's label lines up with the page title. */}
-        <nav aria-label="Main" className="-ml-2.5 flex self-stretch">
+        <nav aria-label="Main" className="relative -ml-2.5 flex self-stretch">
+          {position && (
+            <span
+              aria-hidden
+              className={cn(
+                "absolute -bottom-px left-0 h-0.5 rounded-t-sm bg-moss",
+                animate && SLIDE,
+              )}
+              style={{
+                // Inset by the tab's padding so the line spans the label.
+                width: position.width - 20,
+                transform: `translateX(${position.left + 10}px)`,
+              }}
+            />
+          )}
           {TABS.map((tab) => {
             let isActive = tab.id === active;
             return (
               <Link
                 key={tab.id}
+                ref={itemRef(tab.id)}
                 to={tab.to}
                 prefetch={tab.prefetch}
                 aria-current={isActive ? "page" : undefined}
                 onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
                 className={cn(
-                  "relative flex items-center px-2.5 text-[13px] font-semibold text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss",
-                  isActive &&
-                    "text-ink after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-t-sm after:bg-moss",
+                  "relative flex items-center px-2.5 text-[13px] font-semibold text-ink-muted transition-colors duration-300 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss",
+                  isActive && "text-ink",
                 )}
               >
                 {tab.label}
@@ -168,26 +238,8 @@ export function Masthead({ user }: { user: ShellUser }) {
  */
 export function Dock({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
-  let navigation = useNavigation();
-  // Light the tab you tapped straight away rather than when its page has
-  // loaded, so the pill moves under your finger.
-  let active = activeTab(navigation.location?.pathname ?? pathname);
+  let { active, position: pill, animate, itemRef } = useSlidingIndicator();
   let keyboardOpen = useTextFieldFocused();
-  let items = useRef(new Map<Tab, HTMLAnchorElement>());
-  let [pill, setPill] = useState<{ left: number; width: number } | null>(null);
-  let [animate, setAnimate] = useState(false);
-
-  useLayoutEffect(() => {
-    let item = active && items.current.get(active);
-    setPill(item ? { left: item.offsetLeft, width: item.offsetWidth } : null);
-  }, [active]);
-
-  // The first placement should not slide in from the left edge.
-  useEffect(() => {
-    if (pill && !animate) {
-      requestAnimationFrame(() => setAnimate(true));
-    }
-  }, [pill, animate]);
 
   return (
     <nav
@@ -201,8 +253,7 @@ export function Dock({ user }: { user: ShellUser }) {
             aria-hidden
             className={cn(
               "absolute inset-y-[5px] left-0 rounded-full bg-white/[0.16]",
-              animate &&
-                "transition-[transform,width] duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none",
+              animate && SLIDE,
             )}
             style={{
               width: pill.width,
@@ -217,13 +268,7 @@ export function Dock({ user }: { user: ShellUser }) {
           return (
             <Link
               key={tab.id}
-              ref={(node) => {
-                if (node) {
-                  items.current.set(tab.id, node);
-                } else {
-                  items.current.delete(tab.id);
-                }
-              }}
+              ref={itemRef(tab.id)}
               to={tab.to}
               prefetch={tab.prefetch}
               aria-current={isActive ? "page" : undefined}
