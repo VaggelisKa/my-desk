@@ -289,9 +289,16 @@ export function DayStrip({
             focusRing,
           )}
         >
-          {inNextWeek
-            ? `← ${isWeekend(today) ? "Upcoming week" : "This week"}`
-            : "Next week →"}
+          {inNextWeek ? (
+            <>
+              <span aria-hidden="true">← </span>
+              {isWeekend(today) ? "Upcoming week" : "This week"}
+            </>
+          ) : (
+            <>
+              Next week<span aria-hidden="true"> →</span>
+            </>
+          )}
         </Link>
       )}
     </nav>
@@ -370,14 +377,14 @@ function DayPill({
     return (
       <span
         ref={pillRef}
-        aria-disabled="true"
-        aria-label={`${format(date, "EEEE d MMMM")}, past`}
         className={cn(
           className,
           "text-dim line-through decoration-1 before:hidden hover:text-dim",
         )}
       >
-        {format(date, "EEE")}
+        {/* Plain text, since some screen readers skip a label on a span. */}
+        <span aria-hidden="true">{format(date, "EEE")}</span>
+        <span className="sr-only">{`${format(date, "EEEE d MMMM")}, past`}</span>
       </span>
     );
   }

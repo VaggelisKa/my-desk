@@ -7,6 +7,7 @@ import silkStyles from "@silk-hq/components/unlayered-styles.css?url";
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import {
   data,
+  isRouteErrorResponse,
   Links,
   Meta,
   Outlet,
@@ -164,6 +165,16 @@ function useOutletScrollRestoration(
   }, [location, navigationType, outlet]);
 }
 
+/** What to say on the error page: a missing page, or the error's message. */
+function errorMessage(error: unknown) {
+  if (isRouteErrorResponse(error)) {
+    return error.status === 404
+      ? "There is no page at this address."
+      : error.statusText || undefined;
+  }
+  return error instanceof Error ? error.message : undefined;
+}
+
 /**
  * Reads out the new page's title after moving to another page in the app.
  * A full page load does that on its own; client-side navigation is silent
@@ -283,8 +294,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               )}
             >
               {error ? (
-                // @ts-expect-error react-router forwards an error message but type is unknown
-                <ErrorCard message={error?.message} />
+                <div className={cn(PAGE_COLUMN, "flex flex-col")}>
+                  <ErrorCard page message={errorMessage(error)} />
+                </div>
               ) : user ? (
                 <div className={cn(PAGE_COLUMN, "flex flex-col")}>
                   {pendingTab ? (

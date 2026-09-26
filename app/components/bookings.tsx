@@ -212,7 +212,7 @@ export function BookingList({
             className="flex items-baseline gap-2 px-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-muted"
           >
             {week.label}
-            <span className="font-medium normal-case tracking-normal text-dim">
+            <span className="font-medium normal-case tracking-normal text-ink-muted">
               {week.range}
             </span>
           </h2>

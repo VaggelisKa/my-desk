@@ -25,6 +25,9 @@
     --paper: #ffffff;
     --paper-muted: #f4f5f2;
     --line: #d8ddda;
+    /* Text field borders: darker than --line so the field stands out
+       (3:1 on white). */
+    --field: #8a9599;
     --moss: #4f7a5a;
     --moss-edge: #2f5039;
     --moss-soft: #e2ede5;

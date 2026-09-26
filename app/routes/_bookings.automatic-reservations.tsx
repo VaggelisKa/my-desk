@@ -347,7 +347,7 @@ function ScheduleSummary({
                     "grid h-11 place-items-center rounded-lg border-[1.5px] text-[13px] font-semibold",
                     on
                       ? "border-moss-edge bg-moss text-white"
-                      : "border-line bg-paper text-dim",
+                      : "border-line bg-paper text-ink-muted",
                   )}
                 >
                   {dayNames[day]}

@@ -292,7 +292,7 @@ let DOCK_ITEM = {
   full: 64,
   compact: 44,
   className:
-    "group relative flex flex-none flex-col items-center rounded-full pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] active:scale-95 motion-reduce:transition-none group-data-[compact]/dock:py-2.5",
+    "group relative flex flex-none flex-col items-center rounded-full pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/70 duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] active:scale-95 motion-reduce:transition-none group-data-[compact]/dock:py-2.5",
 };
 let DOCK_GAP = 2;
 

@@ -576,12 +576,15 @@ function DayCell({
       aria-label={`${format(date, "EEE d MMM")}, ${who}`}
       data-day={day}
       className={cn(
-        "grid h-9 content-center justify-items-center gap-1 rounded-md text-[13px] font-semibold",
+        "relative grid h-9 content-center justify-items-center gap-1 rounded-md text-[13px] font-semibold",
         isSelected && "bg-paper-muted",
-        status === "past" ? "text-dim" : "text-ink",
+        status === "past" ? "text-ink-muted" : "text-ink",
       )}
     >
       {date.getDate()}
+      {/* Yours and taken bars differ in colour only, so yours also gets
+          the check a picked day shows. */}
+      {status === "yours" && <YoursMark className="absolute -top-1 right-0" />}
       <i
         aria-hidden="true"
         className={cn(
@@ -640,6 +643,21 @@ function DayToggle({
   );
 }
 
+/** The small check that marks a day as yours. */
+function YoursMark({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "grid h-3.5 w-3.5 place-items-center rounded-full bg-moss-edge text-white",
+        className,
+      )}
+    >
+      <Check className="h-2 w-2" strokeWidth={3.5} />
+    </span>
+  );
+}
+
 function DayLegend() {
   let bar = "inline-block h-1 w-3.5 rounded-full";
 
@@ -655,7 +673,8 @@ function DayLegend() {
         <i className={cn(bar, "bg-taken")} /> Taken
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <i className={cn(bar, "bg-moss")} /> Yours
+        <i className={cn(bar, "bg-moss")} />
+        <YoursMark /> Yours
       </span>
     </div>
   );

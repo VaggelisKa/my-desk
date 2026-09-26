@@ -133,7 +133,7 @@ function SearchField({
         placeholder={label}
         autoFocus={autoFocus}
         autoComplete="off"
-        className="focus-visible:ring-moss/30 h-11 w-full rounded-[10px] border border-line bg-paper pl-9 pr-3 text-base text-ink placeholder:text-ink-muted focus-visible:border-moss focus-visible:outline-none focus-visible:ring-2"
+        className="h-11 w-full rounded-[10px] border border-field bg-paper pl-9 pr-3 text-base text-ink placeholder:text-ink-muted focus-visible:border-moss focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-moss"
       />
     </div>
   );
@@ -463,7 +463,7 @@ function BookedCount({ count, short }: { count: number; short?: boolean }) {
     <span
       className={cn(
         "shrink-0 text-xs tabular-nums",
-        count ? "font-semibold text-ink" : "text-dim",
+        count ? "font-semibold text-ink" : "text-ink-muted",
       )}
     >
       {short
@@ -1191,7 +1191,7 @@ function RenameForm({ person }: { person: AdminPerson }) {
     firstName.trim() !== person.firstName ||
     lastName.trim() !== person.lastName;
   let input =
-    "h-10 w-full rounded-[10px] border border-line bg-paper px-3 text-base text-ink focus-visible:border-moss focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/30";
+    "h-10 w-full rounded-[10px] border border-field bg-paper px-3 text-base text-ink focus-visible:border-moss focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-moss";
 
   return (
     <fetcher.Form method="post" action="/admin" className="grid gap-2">
@@ -1288,7 +1288,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
             <div className={groupHeading}>
               <h2>
                 {label}
-                <span className="ml-2 font-medium normal-case tracking-normal text-dim">
+                <span className="ml-2 font-medium normal-case tracking-normal text-ink-muted">
                   {plural(all, "booking")}
                 </span>
               </h2>
@@ -1346,7 +1346,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                       <div className={cn(groupHeading, "px-0")}>
                         <span>
                           {label}
-                          <span className="ml-2 font-medium normal-case tracking-normal text-dim">
+                          <span className="ml-2 font-medium normal-case tracking-normal text-ink-muted">
                             {plural(all, "booking")}
                           </span>
                         </span>
