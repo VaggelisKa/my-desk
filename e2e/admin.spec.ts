@@ -124,6 +124,42 @@ test.describe("as an admin", () => {
     });
   });
 
+  test("sorts the desks table by a column", async ({ page, db, adminPage }) => {
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "wednesday",
+    });
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    await adminPage.goto();
+    let manage = page
+      .getByRole("main")
+      .getByRole("button", { name: /^Manage desk / });
+    await expect(manage.first()).toHaveAccessibleName("Manage desk 1.1.1");
+
+    let booked = page.getByRole("columnheader", { name: "Booked" });
+    await booked.getByRole("button").click();
+
+    // Most booked first on the first tap.
+    await expect(booked).toHaveAttribute("aria-sort", "descending");
+    await expect(manage.first()).toHaveAccessibleName("Manage desk 1.1.2");
+    await expect(manage.nth(1)).toHaveAccessibleName("Manage desk 1.1.1");
+
+    await booked.getByRole("button").click();
+    await expect(booked).toHaveAttribute("aria-sort", "ascending");
+    await expect(manage.last()).toHaveAccessibleName("Manage desk 1.1.2");
+  });
+
   test("unassigns a desk after asking", async ({
     page,
     db,

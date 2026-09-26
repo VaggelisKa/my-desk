@@ -1,6 +1,6 @@
 import { Sheet } from "@silk-hq/components";
 import { differenceInCalendarDays, format } from "date-fns";
-import { Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown, Search, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFetcher, useOutletContext } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
@@ -160,6 +160,98 @@ let rowButton = cn(
   focusRing,
 );
 
+type SortDir = "asc" | "desc";
+type SortValue = string | number | null;
+
+/**
+ * Sorts a table by one column at a time. Tapping a column sorts by it, and
+ * tapping it again flips the direction. Empty values (no owner, no desk) go
+ * last whichever way it sorts; ties keep the list's own order.
+ */
+function useSort<T, K extends string>(
+  rows: T[],
+  columns: Record<K, { value: (row: T) => SortValue; first?: SortDir }>,
+  initial: NoInfer<K>,
+) {
+  let [sort, setSort] = useState<{ key: K; dir: SortDir }>({
+    key: initial,
+    dir: columns[initial].first ?? "asc",
+  });
+  let value = columns[sort.key].value;
+  let sorted = [...rows].sort((a, b) => {
+    let x = value(a);
+    let y = value(b);
+    if (x === y) return 0;
+    if (x === null) return 1;
+    if (y === null) return -1;
+    let order =
+      typeof x === "number" && typeof y === "number"
+        ? x - y
+        : String(x).localeCompare(String(y), undefined, {
+            numeric: true,
+            sensitivity: "base",
+          });
+    return sort.dir === "asc" ? order : -order;
+  });
+
+  function toggle(key: K) {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: columns[key].first ?? "asc" },
+    );
+  }
+
+  return { sorted, sort, toggle };
+}
+
+function SortHeader<K extends string>({
+  label,
+  column,
+  sort,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  column: K;
+  sort: { key: K; dir: SortDir };
+  onSort: (column: K) => void;
+  align?: "left" | "right";
+}) {
+  let active = sort.key === column;
+  let Icon = !active
+    ? ChevronsUpDown
+    : sort.dir === "asc"
+      ? ArrowUp
+      : ArrowDown;
+
+  return (
+    <th
+      aria-sort={
+        active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined
+      }
+      className={cn(th, align === "right" && "text-right")}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn(
+          "-mx-1 inline-flex items-center gap-1 rounded px-1 uppercase tracking-[inherit] hover:text-ink",
+          active && "text-ink",
+          align === "right" && "flex-row-reverse",
+          focusRing,
+        )}
+      >
+        {label}
+        <Icon
+          aria-hidden="true"
+          className={cn("size-3", !active && "opacity-40")}
+        />
+      </button>
+    </th>
+  );
+}
+
 function NothingFound({ children }: { children: ReactNode }) {
   return (
     <p className="rounded-xl border border-dashed border-line bg-paper px-5 py-8 text-sm text-ink-muted">
@@ -185,6 +277,20 @@ export function DeskList({ data }: { data: AdminData }) {
     ),
   );
   let blocks = [...new Set(shown.map((desk) => desk.block))];
+  let table = useSort(
+    shown,
+    {
+      desk: { value: (d) => d.block * 10000 + d.row * 100 + d.column },
+      owner: { value: (d) => (d.owner ? fullName(d.owner) : null) },
+      // Window, middle, aisle, then by block.
+      place: { value: (d) => d.column * 100 + d.block },
+      booked: {
+        value: (d) => index.bookingsOfDesk(d.id).length,
+        first: "desc",
+      },
+    },
+    "desk",
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -252,17 +358,38 @@ export function DeskList({ data }: { data: AdminData }) {
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className={th}>Desk</th>
-                <th className={th}>Owner</th>
-                <th className={th}>Place</th>
-                <th className={cn(th, "text-right")}>Booked</th>
+                <SortHeader
+                  label="Desk"
+                  column="desk"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="Owner"
+                  column="owner"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="Place"
+                  column="place"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="Booked"
+                  column="booked"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                  align="right"
+                />
                 <th className={th}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {shown.map((desk) => (
+              {table.sorted.map((desk) => (
                 <tr key={desk.id} className={tableRow}>
                   <td className={td}>
                     <DeskChip
@@ -652,6 +779,30 @@ export function PeopleList({ data }: { data: AdminData }) {
     return matches(query, fullName(person), person.id, desk && deskLabel(desk));
   });
 
+  let deskOf = (person: AdminPerson) =>
+    person.deskId !== null ? index.desks.get(person.deskId) : undefined;
+  let table = useSort(
+    shown,
+    {
+      name: { value: (p) => fullName(p) },
+      id: { value: (p) => p.id },
+      desk: {
+        value: (p) => {
+          let desk = deskOf(p);
+          return desk
+            ? desk.block * 10000 + desk.row * 100 + desk.column
+            : null;
+        },
+      },
+      weekly: { value: (p) => (p.hasRecurring ? 0 : null) },
+      booked: {
+        value: (p) => index.bookingsOfPerson(p.id).length,
+        first: "desc",
+      },
+    },
+    "name",
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <SearchField
@@ -703,18 +854,44 @@ export function PeopleList({ data }: { data: AdminData }) {
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className={th}>Name</th>
-                <th className={th}>ID</th>
-                <th className={th}>Desk</th>
-                <th className={th}>Weekly</th>
-                <th className={cn(th, "text-right")}>Booked</th>
+                <SortHeader
+                  label="Name"
+                  column="name"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="ID"
+                  column="id"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="Desk"
+                  column="desk"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="Weekly"
+                  column="weekly"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                />
+                <SortHeader
+                  label="Booked"
+                  column="booked"
+                  sort={table.sort}
+                  onSort={table.toggle}
+                  align="right"
+                />
                 <th className={th}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {shown.map((person) => {
+              {table.sorted.map((person) => {
                 let desk =
                   person.deskId !== null
                     ? index.desks.get(person.deskId)
