@@ -134,8 +134,8 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
   }
   .desk-sheet-content {
     box-sizing: border-box;
