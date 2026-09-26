@@ -133,10 +133,13 @@ test.describe("as an admin", () => {
 
     await page.getByLabel("First name").fill("Alicia");
     await page.getByLabel("Last name").fill("Anders");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("button", { name: "Save changes" }).click();
 
-    await expect(page).toHaveURL("/");
-    await expectToast(page, `User ${users.alice.id} updated successfully`);
+    await expect(page).toHaveURL(`/users/edit/${users.alice.id}`);
+    await expectToast(page, "Saved Alicia Anders's profile");
+    await expect(
+      page.getByRole("heading", { name: "Alicia's profile" }),
+    ).toBeVisible();
     await expect(db.user(users.alice.id)).resolves.toMatchObject({
       firstName: "Alicia",
       lastName: "Anders",
@@ -231,10 +234,17 @@ test.describe("as a regular user", () => {
   test("can edit their own profile", async ({ page, db }) => {
     await gotoHydrated(page, `/users/edit/${users.alice.id}`);
 
-    await page.getByLabel("First name").fill("Ali");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    let save = page.getByRole("button", { name: "Save changes" });
+    await expect(save).toBeDisabled();
 
-    await expectToast(page, `User ${users.alice.id} updated successfully`);
+    await page.getByLabel("First name").fill("Ali");
+    await save.click();
+
+    await expectToast(page, "Profile saved");
+    await expect(
+      page.getByRole("main").getByText("Ali Andersen"),
+    ).toBeVisible();
+    await expect(save).toBeDisabled();
     await expect(db.user(users.alice.id)).resolves.toMatchObject({
       firstName: "Ali",
     });
