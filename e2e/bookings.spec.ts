@@ -86,10 +86,7 @@ test.describe("an employee with a desk", () => {
     await page.getByRole("checkbox", { name: "Thu" }).check();
     await setUp.click();
 
-    await expectToast(
-      page,
-      "Automatic reservation has been setup successfully!",
-    );
+    await expectToast(page, "Weekly booking set up");
     await expect(page.getByText("Active", { exact: true })).toBeVisible();
     await expect(page.getByRole("img", { name: "Mon, booked" })).toBeVisible();
     await expect(page.getByRole("img", { name: "Thu, booked" })).toBeVisible();
@@ -101,11 +98,11 @@ test.describe("an employee with a desk", () => {
     });
 
     await page.getByRole("button", { name: "Pause" }).click();
-    await expectToast(page, "Automatic reservation has been disabled!");
+    await expectToast(page, "Weekly booking paused");
     await expect(page.getByText("Paused", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Stop and remove" }).click();
-    await expectToast(page, "Automatic reservation has been deleted!");
+    await expectToast(page, "Weekly booking stopped");
     // The setup form comes back with the days that were set.
     await expect(setUp).toBeEnabled();
     await expect(page.getByRole("checkbox", { name: "Mon" })).toBeChecked();

@@ -99,7 +99,7 @@ export async function action({ request }: Route.ActionArgs) {
       .where(eq(users.id, user.userId));
 
     return dataWithSuccess(null, {
-      message: "Automatic reservation has been setup successfully!",
+      message: "Weekly booking set up",
     });
   } else if (intent === "DELETE") {
     let cronId = String(formData.get("cronId"));
@@ -115,21 +115,21 @@ export async function action({ request }: Route.ActionArgs) {
       );
 
     return dataWithSuccess(null, {
-      message: "Automatic reservation has been deleted!",
+      message: "Weekly booking stopped",
     });
   } else if (intent === "DISABLE") {
     let cronId = String(formData.get("cronId"));
     await disableCron({ cronId });
 
     return dataWithSuccess(null, {
-      message: "Automatic reservation has been disabled!",
+      message: "Weekly booking paused",
     });
   } else if (intent === "ENABLE") {
     let cronId = String(formData.get("cronId"));
     await enableCron({ cronId });
 
     return dataWithSuccess(null, {
-      message: "Automatic reservation has been enabled!",
+      message: "Weekly booking resumed",
     });
   }
 
@@ -148,7 +148,19 @@ export default function AutomaticReservationsPage({
   loaderData: { desk, cronId, schedule, nextRun },
 }: Route.ComponentProps) {
   let navigation = useNavigation();
-  let isSubmitting = navigation.state === "submitting";
+  // A submission stays pending through the reload that follows it, so the
+  // buttons do not flash back to the old state before the new data lands.
+  let pendingIntent =
+    navigation.state !== "idle" ? navigation.formData?.get("intent") : null;
+  let isSubmitting = pendingIntent != null;
+  // Pause and Resume flip the status straight away instead of showing a
+  // "Pausing..." step, the old status, and then the new one.
+  let enabled =
+    pendingIntent === "ENABLE"
+      ? true
+      : pendingIntent === "DISABLE"
+        ? false
+        : schedule?.enabled === true;
   let [picked, setPicked] = useState<Weekday[]>(schedule?.days ?? []);
   let scheduledDays = schedule?.days.join();
 
@@ -162,7 +174,7 @@ export default function AutomaticReservationsPage({
   let nextRunLabel = format(parseDate(nextRun), "EEE d MMM");
 
   function isSubmittingAction(action: string) {
-    return isSubmitting && navigation.formData?.get("intent") === action;
+    return pendingIntent === action;
   }
 
   return (
@@ -183,17 +195,15 @@ export default function AutomaticReservationsPage({
                 aria-hidden="true"
                 className={cn(
                   "size-2 rounded-full",
-                  schedule.enabled
+                  enabled
                     ? "bg-moss ring-4 ring-moss-soft"
                     : "ring-line/60 bg-dim ring-4",
                 )}
               />
-              <b className="font-semibold">
-                {schedule.enabled ? "Active" : "Paused"}
-              </b>
+              <b className="font-semibold">{enabled ? "Active" : "Paused"}</b>
             </span>
             <span className="text-ink-muted">
-              {schedule.enabled
+              {enabled
                 ? `Next run ${nextRunLabel}`
                 : "Nothing is booked while paused"}
             </span>
@@ -238,7 +248,7 @@ export default function AutomaticReservationsPage({
               <input
                 type="hidden"
                 name="intent"
-                value={schedule.enabled ? "DISABLE" : "ENABLE"}
+                value={enabled ? "DISABLE" : "ENABLE"}
               />
               <input type="hidden" name="cronId" value={cronId} />
               <Button
@@ -247,13 +257,7 @@ export default function AutomaticReservationsPage({
                 className="w-full px-5 sm:w-auto"
                 disabled={isSubmitting}
               >
-                {schedule.enabled
-                  ? isSubmittingAction("DISABLE")
-                    ? "Pausing..."
-                    : "Pause"
-                  : isSubmittingAction("ENABLE")
-                    ? "Resuming..."
-                    : "Resume"}
+                {enabled ? "Pause" : "Resume"}
               </Button>
             </Form>
 
