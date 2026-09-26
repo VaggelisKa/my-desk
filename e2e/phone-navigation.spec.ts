@@ -26,3 +26,31 @@ test("Back returns to where the page was scrolled; a new page starts at the top"
   await expect(page).toHaveURL("/");
   await expect.poll(scrollTop).toBe(250);
 });
+
+test("the dock tucks into icons while scrolling down and opens again on the way up", async ({
+  page,
+}) => {
+  await gotoHydrated(page, "/");
+  let dock = page.getByRole("navigation", { name: "Main" }).last();
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  await expect(dock).not.toHaveAttribute("data-compact");
+
+  await page.mouse.move(195, 250);
+  for (let step = 0; step < 4; step++) {
+    await page.mouse.wheel(0, 60);
+  }
+  await expect(dock).toHaveAttribute("data-compact", "true");
+  // The labels fold away but still name the links.
+  await expect(dock.getByRole("link", { name: "Bookings" })).toBeVisible();
+
+  await page.mouse.wheel(0, -40);
+  await expect(dock).not.toHaveAttribute("data-compact");
+
+  for (let step = 0; step < 4; step++) {
+    await page.mouse.wheel(0, 60);
+  }
+  await expect(dock).toHaveAttribute("data-compact", "true");
+  await dock.getByRole("link", { name: "Bookings" }).click();
+  await expect(page).toHaveURL("/reservations");
+  await expect(dock).not.toHaveAttribute("data-compact");
+});

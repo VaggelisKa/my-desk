@@ -147,11 +147,14 @@ function rememberMenuSource(event: MouseEvent<HTMLElement>) {
  * The tab to highlight follows the link you clicked straight away rather
  * than waiting for its page to load.
  */
-function useSlidingIndicator() {
+function useActiveTab() {
   let { pathname } = useLocation();
   let navigation = useNavigation();
-  let active = activeTab(navigation.location?.pathname ?? pathname);
+  return activeTab(navigation.location?.pathname ?? pathname);
+}
 
+function useSlidingIndicator() {
+  let active = useActiveTab();
   return { active, ...useSlidingHighlight(active) };
 }
 
@@ -222,43 +225,53 @@ export function Masthead({ user }: { user: ShellUser }) {
  */
 export function Dock({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
-  let { active, position: pill, animate, itemRef } = useSlidingIndicator();
+  let active = useActiveTab();
   let keyboardOpen = useTextFieldFocused();
+  let compact = useCompactOnScroll();
+  let tabs = tabsFor(user);
+  let activeIndex = tabs.findIndex((tab) => tab.id === active);
+
+  // Every item has the same fixed width, so the pill's place follows from the
+  // active item's index. That keeps it in step with the items while they
+  // shrink and grow, which a measured position could only chase.
+  let itemWidth = compact ? DOCK_ITEM.compact : DOCK_ITEM.full;
 
   return (
     <nav
       aria-label="Main"
       data-hidden={keyboardOpen || undefined}
-      className="app-dock fixed inset-x-0 bottom-[calc(12px+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 font-display transition-[opacity,transform] duration-200 data-[hidden]:pointer-events-none data-[hidden]:translate-y-4 data-[hidden]:opacity-0 md:hidden"
+      data-compact={compact || undefined}
+      className="app-dock group/dock fixed inset-x-0 bottom-[calc(12px+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 font-display transition-[opacity,transform] duration-200 data-[hidden]:pointer-events-none data-[hidden]:translate-y-4 data-[hidden]:opacity-0 md:hidden"
     >
       <div className="relative flex items-center gap-0.5 rounded-full bg-[rgb(31_42_46/0.8)] p-[5px] shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150">
-        {pill && (
+        {activeIndex >= 0 && (
           <span
             aria-hidden
             className={cn(
-              "absolute inset-y-[5px] left-0 rounded-full bg-white/[0.16]",
-              animate && SLIDE,
+              "absolute inset-y-[5px] left-[5px] rounded-full bg-white/[0.16]",
+              SLIDE,
             )}
             style={{
-              width: pill.width,
-              transform: `translateX(${pill.left}px)`,
+              width: itemWidth,
+              transform: `translateX(${activeIndex * (itemWidth + DOCK_GAP)}px)`,
             }}
           />
         )}
 
-        {tabsFor(user).map((tab) => {
+        {tabs.map((tab) => {
           let isActive = tab.id === active;
           let Icon = tab.icon;
           return (
             <Link
               key={tab.id}
-              ref={itemRef(tab.id)}
               to={tab.to}
               prefetch={tab.prefetch}
               aria-current={isActive ? "page" : undefined}
               onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
+              style={{ width: itemWidth }}
               className={cn(
-                "group relative flex min-w-[64px] flex-col items-center gap-[3px] rounded-full px-3 pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft active:scale-95",
+                DOCK_ITEM.className,
+                "transition-[width,padding,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft",
                 isActive && "text-white",
               )}
             >
@@ -270,7 +283,7 @@ export function Dock({ user }: { user: ShellUser }) {
                   isActive && "-translate-y-px scale-110 text-moss-soft",
                 )}
               />
-              {tab.label}
+              <DockLabel>{tab.label}</DockLabel>
             </Link>
           );
         })}
@@ -279,17 +292,82 @@ export function Dock({ user }: { user: ShellUser }) {
           type="button"
           popoverTarget={MENU_ID}
           onClick={rememberMenuSource}
-          className="relative flex min-w-[64px] flex-col items-center gap-[3px] rounded-full px-3 pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft active:scale-95"
+          style={{ width: itemWidth }}
+          className={cn(
+            DOCK_ITEM.className,
+            "transition-[width,padding,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft",
+          )}
         >
           <Avatar
             user={user}
             className="size-5 text-[8.5px] ring-1 ring-white/25"
           />
-          You
+          <DockLabel>You</DockLabel>
         </button>
       </div>
     </nav>
   );
+}
+
+// Fits the longest label ("Bookings") and five items on a 375px phone.
+let DOCK_ITEM = {
+  full: 64,
+  compact: 44,
+  className:
+    "group relative flex flex-none flex-col items-center rounded-full pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] active:scale-95 motion-reduce:transition-none group-data-[compact]/dock:py-2.5",
+};
+let DOCK_GAP = 2;
+
+/**
+ * Folds away to nothing when the dock is compact. The text stays in the
+ * accessibility tree, so each item keeps its name.
+ */
+function DockLabel({ children }: { children: string }) {
+  return (
+    <span className="grid grid-rows-[1fr] transition-[grid-template-rows,opacity] duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] group-data-[compact]/dock:grid-rows-[0fr] group-data-[compact]/dock:opacity-0 motion-reduce:transition-none">
+      <span className="overflow-hidden pt-[3px]">{children}</span>
+    </span>
+  );
+}
+
+/**
+ * Scrolling down a page tucks the dock into icons only, to give the page
+ * more room; scrolling back up, reaching the top or opening another page
+ * brings the labels back. Only phones show the dock, and there the page
+ * scrolls inside the outlet rather than the window.
+ */
+function useCompactOnScroll() {
+  let { pathname } = useLocation();
+  let [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    setCompact(false);
+    let outlet = document.querySelector<HTMLElement>(".app-outlet");
+    if (!outlet) return;
+    let scroller = outlet;
+
+    let last = scroller.scrollTop;
+    function onScroll() {
+      // Clamped, so the rubber band at either end reads as standing still.
+      let max = scroller.scrollHeight - scroller.clientHeight;
+      let y = Math.min(Math.max(scroller.scrollTop, 0), max);
+      let delta = y - last;
+      if (y < 24) {
+        setCompact(false);
+      } else if (Math.abs(delta) < 8) {
+        // Too small to call a direction; wait for more.
+        return;
+      } else {
+        setCompact(delta > 0);
+      }
+      last = y;
+    }
+
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
+  }, [pathname]);
+
+  return compact;
 }
 
 /**
