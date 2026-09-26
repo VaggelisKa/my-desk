@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { addDays, addWeeks, getYear, startOfWeek } from "date-fns";
+import type { CSSProperties } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -36,4 +37,9 @@ export function calculatePercentDiff(value: number, previousValue: number) {
   }
 
   return ((value - previousValue) / previousValue) * 100;
+}
+
+/** Staggers an `.enter` element: the nth one starts a beat after the last. */
+export function enterAt(index: number): CSSProperties {
+  return { "--enter-index": index } as CSSProperties;
 }

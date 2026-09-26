@@ -17,7 +17,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartContainer } from "~/components/ui/chart";
-import { calculatePercentDiff, cn } from "~/lib/utils";
+import { calculatePercentDiff, cn, enterAt } from "~/lib/utils";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 // The Metrics tab: this month in one line, how full each weekday usually is,
@@ -477,14 +477,20 @@ export function Metrics({ rows }: { rows: MetricRow[] }) {
     <div className="flex w-full flex-col gap-8 font-display text-ink">
       <MetricsHeader />
       {s.days.length === 0 ? (
-        <p className="rounded-xl px-5 py-8 text-center text-[14px] text-ink-muted ring-1 ring-inset ring-line">
+        <p className="enter rounded-xl px-5 py-8 text-center text-[14px] text-ink-muted ring-1 ring-inset ring-line">
           Nothing counted yet. Numbers show up here after the first workday.
         </p>
       ) : (
         <>
-          <ThisMonth s={s} />
-          <BusiestDays days={s.days} now={s.now} />
-          <BookingsChart days={s.days} now={s.now} />
+          <div className="enter">
+            <ThisMonth s={s} />
+          </div>
+          <div className="enter" style={enterAt(1)}>
+            <BusiestDays days={s.days} now={s.now} />
+          </div>
+          <div className="enter" style={enterAt(2)}>
+            <BookingsChart days={s.days} now={s.now} />
+          </div>
         </>
       )}
     </div>

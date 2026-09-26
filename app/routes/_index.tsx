@@ -22,7 +22,7 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reserveDesk } from "~/lib/reservations.server";
-import { cn } from "~/lib/utils";
+import { cn, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
@@ -294,31 +294,35 @@ function FloorPlan({
   return (
     <div className="relative max-w-[420px] pl-[26px] pr-[22px] sm:pl-8 sm:pr-7">
       {nothingToPick && (
-        <p role="status" className="mb-3 text-[13px] text-ink-muted">
+        <p role="status" className="enter mb-3 text-[13px] text-ink-muted">
           {`No free desks${where} on ${format(parseDate(selectedDay), "EEEE")}. Try another day or placement.`}
         </p>
       )}
 
       <div
         aria-hidden="true"
-        className="absolute bottom-1.5 left-1.5 top-7 w-2.5 rounded-[3px] border-[1.5px] border-mist-edge bg-mist"
+        className="enter absolute bottom-1.5 left-1.5 top-7 w-2.5 rounded-[3px] border-[1.5px] border-mist-edge bg-mist"
       />
       <div
         aria-hidden="true"
-        className="absolute bottom-1.5 right-2 top-7 border-l-2 border-dashed border-line"
+        className="enter absolute bottom-1.5 right-2 top-7 border-l-2 border-dashed border-line"
       />
 
       <div
         aria-hidden="true"
-        className="grid grid-cols-3 gap-2.5 text-center text-[11px] font-bold text-ink-muted"
+        className="enter grid grid-cols-3 gap-2.5 text-center text-[11px] font-bold text-ink-muted"
       >
         <span>window</span>
         <span>middle</span>
         <span>aisle</span>
       </div>
 
-      {Object.entries(desks).map(([block, desksData]) => (
-        <div key={block} className="flex flex-col [&+&]:pt-5">
+      {Object.entries(desks).map(([block, desksData], index) => (
+        <div
+          key={block}
+          className="enter flex flex-col [&+&]:pt-5"
+          style={enterAt(index + 1)}
+        >
           {block === "7" && <Wall />}
 
           <div className="mt-2 text-[13px] font-bold">Block {block}</div>

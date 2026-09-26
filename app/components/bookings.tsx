@@ -8,7 +8,7 @@ import {
 import { X } from "lucide-react";
 import { NavLink, useFetcher, useLocation, useNavigation } from "react-router";
 import { parseDate } from "~/lib/dates";
-import { cn } from "~/lib/utils";
+import { cn, enterAt } from "~/lib/utils";
 
 // The Bookings tab (design/design-options.html, "My reservations" and
 // "Bookings"): one heading and an Upcoming · Recurring switch. The tab is
@@ -232,11 +232,12 @@ export function BookingList({
 
   return (
     <div className="flex flex-col gap-8">
-      {groupByWeek(bookings, todayDate).map((week) => (
+      {groupByWeek(bookings, todayDate).map((week, index) => (
         <section
           key={week.key}
           aria-labelledby={`week-${week.key}`}
-          className="flex flex-col gap-2.5"
+          className="enter flex flex-col gap-2.5"
+          style={enterAt(index)}
         >
           <h2
             id={`week-${week.key}`}
@@ -354,7 +355,7 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
 
 export function EmptyBookings({ desk }: { desk: OwnDesk | null }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-line bg-paper px-5 py-8 sm:px-8 sm:py-10">
+    <div className="enter flex flex-col gap-1.5 rounded-xl border border-dashed border-line bg-paper px-5 py-8 sm:px-8 sm:py-10">
       <h2 className="text-[15px] font-bold">Nothing booked yet</h2>
       <p className="max-w-[46ch] text-pretty text-sm leading-relaxed text-ink-muted">
         {desk
