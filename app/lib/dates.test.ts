@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { defaultDay, formatDate, normalizeDay, workdaysOfWeek } from "./dates";
+import {
+  defaultDay,
+  formatDate,
+  isOpenForBooking,
+  normalizeDay,
+  officeNow,
+  workdaysOfWeek,
+} from "./dates";
 
 describe("normalizeDay", () => {
   it("keeps a well-formed day", () => {
@@ -51,5 +58,55 @@ describe("defaultDay", () => {
     expect(formatDate(defaultDay(new Date(2025, 2, 16, 10)))).toBe(
       "17.03.2025",
     );
+  });
+});
+
+describe("officeNow", () => {
+  it("reads the time in Copenhagen whatever the server's timezone", () => {
+    // 23:30 UTC on 30 Sep is already 01:30 on 1 Oct in Copenhagen (CEST).
+    let now = officeNow(new Date(Date.UTC(2026, 8, 30, 23, 30)));
+
+    expect(formatDate(now)).toBe("01.10.2026");
+    expect(now.getHours()).toBe(1);
+    expect(now.getMinutes()).toBe(30);
+  });
+});
+
+describe("isOpenForBooking", () => {
+  // Wednesday 30 Sep 2026.
+  let at = (hour: number) => new Date(2026, 8, 30, hour);
+  let day = (d: number, m = 9) => new Date(2026, m, d);
+
+  it("takes the rest of this week and all of next week", () => {
+    expect(isOpenForBooking(day(1), at(9))).toBe(true); // Thu 1 Oct
+    expect(isOpenForBooking(day(5), at(9))).toBe(true); // Mon 5 Oct
+    expect(isOpenForBooking(day(9), at(9))).toBe(true); // Fri 9 Oct
+  });
+
+  it("refuses the past, weekends and anything beyond next week", () => {
+    expect(isOpenForBooking(day(29, 8), at(9))).toBe(false); // yesterday
+    expect(isOpenForBooking(day(3), at(9))).toBe(false); // Saturday
+    expect(isOpenForBooking(day(12), at(9))).toBe(false); // Mon 12 Oct
+    expect(isOpenForBooking(day(14), at(9))).toBe(false);
+  });
+
+  it("closes today at 11:00", () => {
+    expect(isOpenForBooking(day(30, 8), at(10))).toBe(true);
+    expect(isOpenForBooking(day(30, 8), at(11))).toBe(false);
+  });
+
+  it("starts from the coming week on a Saturday", () => {
+    let saturday = new Date(2026, 9, 3, 9);
+
+    expect(isOpenForBooking(day(5), saturday)).toBe(true);
+    expect(isOpenForBooking(day(16), saturday)).toBe(true); // Fri 16 Oct
+    expect(isOpenForBooking(day(19), saturday)).toBe(false);
+  });
+
+  it("counts across New Year by date", () => {
+    // Mon 21 Dec 2026 to Fri 1 Jan 2027.
+    expect(
+      isOpenForBooking(new Date(2027, 0, 1), new Date(2026, 11, 21, 9)),
+    ).toBe(true);
   });
 });

@@ -1,7 +1,13 @@
-import { addDays, format, getWeek, isValid, startOfDay } from "date-fns";
+import { format, getWeek, isValid, isWeekend } from "date-fns";
 import { eq } from "drizzle-orm";
 import { dataWithError, dataWithSuccess } from "remix-toast";
-import { formatDate, parseDate, WEEKDAYS } from "~/lib/dates";
+import {
+  formatDate,
+  isOpenForBooking,
+  LAST_BOOKING_HOUR,
+  officeNow,
+  parseDate,
+} from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema";
 
@@ -40,26 +46,6 @@ export async function reserveDesk(userId: string, formData: FormData) {
     );
   }
 
-  // The sheet only offers weekdays of this week and the next. A day of slack
-  // on both ends covers a browser a timezone away from the server.
-  let today = startOfDay(new Date());
-  let earliest = addDays(today, -1);
-  let latest = addDays(today, 16);
-  let days = dates.map((value) => parseDate(value));
-  let isBookable = (date: Date) =>
-    isValid(date) &&
-    WEEKDAYS.includes(format(date, "EEEE").toLowerCase() as never) &&
-    date >= earliest &&
-    date <= latest;
-
-  if (!days.every(isBookable)) {
-    return dataWithError(
-      null,
-      { message: "Those days cannot be booked" },
-      { status: 400 },
-    );
-  }
-
   let desk = await db.query.desks.findFirst({
     where: eq(desks.id, deskId),
     columns: { userId: true },
@@ -69,10 +55,32 @@ export async function reserveDesk(userId: string, formData: FormData) {
     return dataWithError(null, { message: "Desk not found!" }, { status: 404 });
   }
 
-  let onlyToday = dates.every((date) => date === formatDate(today));
+  // The same rules the sheet shows, in office time: the owner books weekdays
+  // of this week and the next (today until 11:00); anyone else only today.
+  let now = officeNow();
+  let today = formatDate(now);
+  let days = dates.map((value) => parseDate(value));
+  let isOwner = desk.userId === userId;
 
-  if (desk.userId !== userId && !onlyToday) {
+  if (!isOwner && !dates.every((date) => date === today)) {
     return dataWithError(null, notOwnerError, { status: 403 });
+  }
+
+  let isBookable = isOwner
+    ? (date: Date) => isOpenForBooking(date, now)
+    : (date: Date) => isValid(date) && !isWeekend(date);
+
+  if (!days.every(isBookable)) {
+    return dataWithError(
+      null,
+      {
+        message: "Those days cannot be booked",
+        description: isOwner
+          ? `You can book weekdays this week and next. Today closes at ${LAST_BOOKING_HOUR}:00.`
+          : undefined,
+      },
+      { status: 400 },
+    );
   }
 
   try {

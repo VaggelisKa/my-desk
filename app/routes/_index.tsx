@@ -13,7 +13,13 @@ import { ErrorCard } from "~/components/error-card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
-import { defaultDay, formatDate, normalizeDay, parseDate } from "~/lib/dates";
+import {
+  defaultDay,
+  formatDate,
+  normalizeDay,
+  officeNow,
+  parseDate,
+} from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reserveDesk } from "~/lib/reservations.server";
 import { cn } from "~/lib/utils";
@@ -131,10 +137,10 @@ async function loadDesks({
 export async function loader({ request, url }: Route.LoaderArgs) {
   let { userId, role } = await requireAuthCookie(request);
 
-  // "Today" comes from the server so the first render and hydration agree
-  // even when the browser sits in another timezone. A missing or malformed
-  // `selected-day` means today, or the coming Monday on a weekend.
-  let now = new Date();
+  // "Today" is the office's, from the server, so the first render and
+  // hydration agree even when the browser sits in another timezone. A missing
+  // or malformed `selected-day` means today, or the coming Monday on a weekend.
+  let now = officeNow();
   let today = formatDate(now);
   let selectedDay =
     normalizeDay(url.searchParams.get("selected-day")) ??

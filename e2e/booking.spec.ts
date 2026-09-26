@@ -1,3 +1,5 @@
+import { addDays } from "date-fns";
+import { formatDate, parseDate } from "../app/lib/dates";
 import { authFile, expect, expectToast, test } from "./fixtures";
 import { bookingDay, desks, users } from "./support/db";
 
@@ -97,6 +99,22 @@ test("submitting without picking a day is rejected", async ({ page, db }) => {
   });
 
   expect(response.status()).toBe(400);
+  await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
+});
+
+test("days the sheet does not offer are refused by the server", async ({
+  page,
+  db,
+}) => {
+  let monday = parseDate(bookingDay("monday").date);
+
+  for (let date of [addDays(monday, -3), addDays(monday, 16)]) {
+    let response = await page.request.post("/?index", {
+      form: { deskId: String(desks.alice.id), date: formatDate(date) },
+    });
+
+    expect(response.status()).toBe(400);
+  }
   await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
 });
 

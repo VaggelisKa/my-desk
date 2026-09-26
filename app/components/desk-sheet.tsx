@@ -7,6 +7,7 @@ import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
 import {
   formatDate,
+  LAST_BOOKING_HOUR,
   parseDate,
   workdaysOfWeek,
   type Weekday,
@@ -51,9 +52,6 @@ type DeskSheetProps = {
   autoOpen?: boolean;
   onClose?: () => void;
 };
-
-// The owner can book a day until 11:00 on that day.
-const LAST_BOOKING_HOUR = 11;
 
 // On a weekend the first row is the week ahead, so it is not "this" week.
 function weekRows(isWeekend: boolean): { label: string; offset: 0 | 1 }[] {

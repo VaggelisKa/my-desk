@@ -8,7 +8,7 @@ import {
   type Booking,
 } from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
-import { formatDate } from "~/lib/dates";
+import { formatDate, officeNow } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema";
 import type { Route } from "./+types/_bookings.reservations";
@@ -22,7 +22,7 @@ export let meta: Route.MetaFunction = () => [
 
 export async function loader({ request }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
-  let now = new Date();
+  let now = officeNow();
   let rows = await db.query.reservations.findMany({
     with: {
       desks: {
