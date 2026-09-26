@@ -281,6 +281,37 @@ test.describe("as an admin", () => {
     ).resolves.toBeDefined();
   });
 
+  test("stops someone's weekly booking and keeps the days it booked", async ({
+    page,
+    db,
+    cronJobOrg,
+    adminPage,
+  }) => {
+    await db.setCronId("bob", "3131");
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "thursday",
+    });
+
+    await adminPage.goto("people");
+    let sheet = await adminPage.open(adminPage.personRow("Bob Berg"));
+    await sheet.confirm("Stop weekly booking", "Stop it");
+
+    await expectToast(page, "Recurring booking stopped");
+    await expect(sheet.button("Stop weekly booking")).toHaveCount(0);
+    await expect(db.user(users.bob.id)).resolves.toMatchObject({
+      autoReservationsCronId: null,
+    });
+    await expect(
+      db.reservation(desks.bob.id, "thursday"),
+    ).resolves.toBeDefined();
+    expect(await cronJobOrg.calls()).toContainEqual({
+      method: "DELETE",
+      path: "/jobs/3131",
+    });
+  });
+
   test("renames someone and makes them an admin", async ({
     page,
     db,
@@ -318,6 +349,33 @@ test.describe("as an admin", () => {
       firstName: "Alicia",
       lastName: "Anders",
     });
+  });
+});
+
+test.describe("as an admin on a phone", () => {
+  test.use({
+    storageState: authFile("admin"),
+    viewport: { width: 390, height: 800 },
+  });
+
+  test("finds a person in the list and manages them from a sheet", async ({
+    page,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+    // Phones get a plain list instead of the table.
+    await expect(page.getByRole("table")).toBeHidden();
+
+    await adminPage.search.fill("berg");
+    let rows = page.getByRole("main").getByRole("listitem");
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText("Bob Berg");
+    await expect(rows).toContainText("emp002 · Desk 1.1.2");
+
+    let sheet = await adminPage.open(rows.getByRole("button"));
+    await expect(sheet.title).toContainText("Bob Berg");
+    await expect(sheet.button("Clear all")).toHaveCount(0);
+    await expect(sheet.root).toContainText("Bob has nothing booked");
   });
 });
 

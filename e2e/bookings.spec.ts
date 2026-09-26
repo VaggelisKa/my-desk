@@ -1,6 +1,6 @@
 import { authFile, expect, expectToast, test } from "./fixtures";
 import { gotoHydrated } from "./pages/hydration";
-import { bookingDay, desks } from "./support/db";
+import { bookingDay, desks, users } from "./support/db";
 
 test.describe("an employee with a desk", () => {
   test.use({ storageState: authFile("alice") });
@@ -133,6 +133,30 @@ test.describe("an employee with a desk", () => {
     expect(await cronJobOrg.calls()).toEqual([]);
     await expect(db.user("emp002")).resolves.toMatchObject({
       autoReservationsCronId: "777",
+    });
+  });
+
+  test("says so when the scheduler cannot be reached, and changes nothing", async ({
+    page,
+    db,
+  }) => {
+    await db.setCronId("alice", "down-1");
+
+    await gotoHydrated(page, "/automatic-reservations");
+    await expect(
+      page.getByText("Could not reach the scheduler, so its status is unknown"),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Pause" })).toHaveCount(0);
+
+    for (let intent of ["DISABLE", "DELETE"]) {
+      let response = await page.request.post("/automatic-reservations", {
+        form: { intent },
+      });
+      expect(response.status()).toBe(502);
+    }
+    // The job is still hers, since cron-job.org never removed it.
+    await expect(db.user(users.alice.id)).resolves.toMatchObject({
+      autoReservationsCronId: "down-1",
     });
   });
 

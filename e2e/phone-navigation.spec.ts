@@ -54,3 +54,74 @@ test("the dock tucks into icons while scrolling down and opens again on the way 
   await expect(page).toHaveURL("/reservations");
   await expect(dock).not.toHaveAttribute("data-compact");
 });
+
+test("the dock steps aside for the keyboard and comes back after Back", async ({
+  page,
+}) => {
+  await gotoHydrated(page, "/");
+  let dock = page.getByRole("navigation", { name: "Main" }).last();
+
+  // On phones the account menu sits in the dock as "You".
+  await dock.getByRole("button", { name: "You" }).click();
+  await page
+    .locator("#app-menu")
+    .getByRole("link", { name: "Edit profile" })
+    .click();
+  await expect(page).toHaveURL("/users/edit/emp001");
+
+  await page.getByLabel("First name").focus();
+  await expect(dock).toHaveAttribute("data-hidden", "true");
+
+  // The field goes away with its page while it still has focus. Chromium
+  // reports that as a focusout; Safari does not, which app-shell.test.tsx
+  // covers.
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await expect(dock).not.toHaveAttribute("data-hidden");
+});
+
+// Safari zooms into any field with text under 16px when it gets focus.
+test.describe("text fields are at least 16px so phones don't zoom", () => {
+  async function expectFontSizes(fields: import("@playwright/test").Locator[]) {
+    for (let field of fields) {
+      let size = await field.evaluate((el) =>
+        parseFloat(getComputedStyle(el).fontSize),
+      );
+      expect(
+        size,
+        await field.evaluate((el) => el.outerHTML),
+      ).toBeGreaterThanOrEqual(16);
+    }
+  }
+
+  test("on the profile", async ({ page }) => {
+    await gotoHydrated(page, "/users/edit/emp001");
+    await expectFontSizes([
+      page.getByLabel("First name"),
+      page.getByLabel("Last name"),
+    ]);
+  });
+
+  test.describe("on sign in and registration", () => {
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test("sign in", async ({ page }) => {
+      await gotoHydrated(page, "/login");
+      await expectFontSizes([page.getByLabel("User ID")]);
+    });
+
+    test("registration", async ({ page }) => {
+      await gotoHydrated(page, "/login/guest");
+      await expectFontSizes(await page.locator("input:visible").all());
+    });
+  });
+
+  test.describe("in the Admin tab", () => {
+    test.use({ storageState: authFile("admin") });
+
+    test("search", async ({ page }) => {
+      await gotoHydrated(page, "/admin/people");
+      await expectFontSizes([page.getByRole("searchbox").first()]);
+    });
+  });
+});

@@ -78,6 +78,11 @@ function cronJobOrgMock(url, method, body) {
 
   let jobId = url.pathname.split("/")[2];
 
+  // Jobs whose id starts with "down" stand in for cron-job.org being down.
+  if (jobId?.startsWith("down")) {
+    return json({ error: "Service unavailable" }, 503);
+  }
+
   if (method === "PUT" && url.pathname === "/jobs") {
     let id = nextCronJobId++;
     cronJobs.set(String(id), { enabled: true, ...body?.job });
