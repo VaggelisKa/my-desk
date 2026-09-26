@@ -33,7 +33,7 @@ export type MetricRow = {
 };
 
 // cron.log-metrics divides by this many desks for participation.
-export const OFFICE_DESKS = 33;
+const OFFICE_DESKS = 33;
 
 let INK = "#1f2a2e";
 let MOSS = "#4f7a5a";
@@ -377,10 +377,7 @@ function BookingsChart({ days, now }: { days: Day[]; now: Date }) {
         <PeriodSwitch value={period} onChange={setPeriod} />
       </div>
 
-      <ChartContainer
-        config={{}}
-        className="aspect-auto h-[240px] sm:h-[300px]"
-      >
+      <ChartContainer className="aspect-auto h-[240px] sm:h-[300px]">
         <BarChart data={data} margin={{ top: 22, left: -12, right: 4 }}>
           <defs>
             <pattern

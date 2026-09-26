@@ -13,7 +13,7 @@ import {
   type Weekday,
 } from "~/lib/dates";
 import type { reservations, users } from "~/lib/db/schema";
-import { cn } from "~/lib/utils";
+import { cn, deskLabel } from "~/lib/utils";
 
 type DeskSheetProps = {
   desk: {
@@ -266,7 +266,7 @@ export function DeskSheet({
             <div className="desk-sheet-body flex flex-col gap-5 font-display text-ink">
               <div>
                 <Sheet.Title className="text-lg font-bold tracking-tight sm:text-xl">
-                  {`Desk ${desk.block}.${desk.row}.${desk.column}`}
+                  {`Desk ${deskLabel(desk)}`}
                 </Sheet.Title>
                 <Sheet.Description className="mt-0.5 text-[13px] text-ink-muted">
                   {/* The title already gives block and row, so only say where. */}

@@ -1,5 +1,5 @@
-import { format } from "date-fns";
 import { and, count, eq, isNull, ne, or } from "drizzle-orm";
+import { formatDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks, reservations } from "~/lib/db/schema";
 import type { Route } from "./+types/cron.log-metrics";
@@ -9,7 +9,7 @@ export async function loader({ url }: Route.LoaderArgs) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let today = format(new Date(), "dd.MM.yyyy");
+  let today = formatDate(new Date());
 
   let metricsForToday = await db
     .select()

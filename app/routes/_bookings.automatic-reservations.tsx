@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { useEffect, useState } from "react";
 import { Form, redirect, useNavigation } from "react-router";
 import { dataWithError, dataWithSuccess } from "remix-toast";
-import { DeskChip, deskLabel, type OwnDesk } from "~/components/bookings";
+import { DeskChip, type OwnDesk } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
 import { requireAuthCookie } from "~/cookies.server";
 import {
@@ -19,7 +19,7 @@ import {
 import { formatDate, parseDate, WEEKDAYS, type Weekday } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
-import { cn } from "~/lib/utils";
+import { cn, deskLabel } from "~/lib/utils";
 import type { Route } from "./+types/_bookings.automatic-reservations";
 
 export let meta: Route.MetaFunction = () => [{ title: "Recurring bookings" }];

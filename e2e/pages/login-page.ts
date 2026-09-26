@@ -35,7 +35,7 @@ export class GuestRegistrationPage {
   readonly lastNameInput;
   readonly submitButton;
 
-  constructor(private readonly page: Page) {
+  constructor(page: Page) {
     this.heading = page.getByRole("heading", { name: "Create an account" });
     this.userIdInput = page.getByLabel("User ID");
     this.firstNameInput = page.getByLabel("First name");

@@ -11,7 +11,7 @@ import {
 } from "date-fns";
 
 /** The date format the app stores and passes around, e.g. "23.09.2026". */
-export const DATE_FORMAT = "dd.MM.yyyy";
+const DATE_FORMAT = "dd.MM.yyyy";
 
 export const WEEKDAYS = [
   "monday",
@@ -66,7 +66,7 @@ export function defaultDay(today: Date) {
 }
 
 /** Where the office is. The weekly cron job runs on the same clock. */
-export const OFFICE_TIMEZONE = "Europe/Copenhagen";
+const OFFICE_TIMEZONE = "Europe/Copenhagen";
 
 /** The owner can book a day until 11:00 on that day. */
 export const LAST_BOOKING_HOUR = 11;

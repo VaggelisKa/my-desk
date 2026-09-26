@@ -4,16 +4,11 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, Search, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFetcher, useOutletContext } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
-import {
-  DeskChip,
-  deskLabel,
-  deskPlace,
-  SegmentSwitch,
-} from "~/components/bookings";
+import { DeskChip, deskPlace, SegmentSwitch } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
 import type { AdminBooking, AdminDesk, AdminPerson } from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
-import { cn } from "~/lib/utils";
+import { capitalize, cn, deskLabel, plural } from "~/lib/utils";
 
 // The Admin tab (design option B): a sliding Desks · People · Bookings switch
 // over searchable lists. Every row opens a sheet where the work happens, so
@@ -56,10 +51,6 @@ let focusRing =
 
 function fullName(person: { firstName: string; lastName: string }) {
   return `${person.firstName} ${person.lastName}`.trim();
-}
-
-function plural(count: number, word: string) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
 /** Lookups every list and sheet shares. */
@@ -583,10 +574,6 @@ function unassignQuestion(desk: AdminDesk, index: Index) {
     : sentence;
 }
 
-function capitalize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
 /** What moving `desk` to `person` changes, one line per person affected. */
 function moveConsequences(desk: AdminDesk, person: AdminPerson, index: Index) {
   let lines: string[] = [];
@@ -984,7 +971,6 @@ function PersonSheet({
         step.name === "pick-desk" ? (
           <DeskPicker
             data={data}
-            index={index}
             exclude={desk?.id}
             onBack={() => setStep({ name: "view" })}
             onPick={(picked) => setStep({ name: "confirm", deskId: picked.id })}
@@ -1086,13 +1072,11 @@ function PersonSheet({
 
 function DeskPicker({
   data,
-  index,
   exclude,
   onBack,
   onPick,
 }: {
   data: AdminData;
-  index: Index;
   exclude?: number;
   onBack: () => void;
   onPick: (desk: AdminDesk) => void;

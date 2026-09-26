@@ -22,7 +22,7 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reserveDesk } from "~/lib/reservations.server";
-import { cn, enterAt } from "~/lib/utils";
+import { cn, deskLabel, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
@@ -368,7 +368,7 @@ function FloorPlan({
                 >
                   <DeskTile
                     name={desk.user?.firstName}
-                    label={`${desk.block}.${desk.row}.${desk.column}`}
+                    label={deskLabel(desk)}
                     row={desk.row}
                     state={state}
                     sitter={sitter}

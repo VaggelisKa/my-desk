@@ -8,7 +8,7 @@ import {
 import { X } from "lucide-react";
 import { NavLink, useFetcher, useLocation, useNavigation } from "react-router";
 import { parseDate } from "~/lib/dates";
-import { cn, enterAt } from "~/lib/utils";
+import { capitalize, cn, deskLabel, enterAt } from "~/lib/utils";
 
 // The Bookings tab (design/design-options.html, "My reservations" and
 // "Bookings"): one heading and an Upcoming · Recurring switch. The tab is
@@ -22,14 +22,6 @@ export type OwnDesk = {
   row: number;
   column: number;
 };
-
-export function deskLabel(desk: {
-  block: number;
-  row: number;
-  column: number;
-}) {
-  return `${desk.block}.${desk.row}.${desk.column}`;
-}
 
 let placement: Record<number, string> = {
   1: "by the window",
@@ -180,7 +172,7 @@ function weekRange(monday: Date) {
 }
 
 /** Bookings grouped into Sunday-start weeks, like the rest of the app. */
-export function groupByWeek(bookings: Booking[], today: Date): Week[] {
+function groupByWeek(bookings: Booking[], today: Date): Week[] {
   let thisWeek = startOfWeek(today);
   let weeks = new Map<string, Week>();
 
@@ -207,10 +199,6 @@ export function groupByWeek(bookings: Booking[], today: Date): Week[] {
   }
 
   return [...weeks.values()];
-}
-
-function capitalize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 function relativeDay(date: Date, today: Date) {

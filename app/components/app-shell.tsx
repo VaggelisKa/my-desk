@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useLocation, useNavigation } from "react-router";
-import { cn } from "~/lib/utils";
+import { cn, deskLabel } from "~/lib/utils";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 // The app chrome (design/design-options.html, "Masthead, in depth"): a 52px
@@ -418,9 +418,7 @@ export function AppMenu({ user }: { user: ShellUser }) {
     }
   }, [location.key]);
 
-  let desk = user.desk
-    ? `Desk ${user.desk.block}.${user.desk.row}.${user.desk.column}`
-    : "No desk";
+  let desk = user.desk ? `Desk ${deskLabel(user.desk)}` : "No desk";
   let item =
     "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[13px] text-ink hover:bg-paper-muted focus-visible:bg-paper-muted focus-visible:outline-none";
 

@@ -1,7 +1,8 @@
-import { format, getWeek } from "date-fns";
+import { getWeek } from "date-fns";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { deleteCron } from "~/lib/cron";
+import { formatDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations, users } from "~/lib/db/schema";
 import { getDateByWeekAndDay } from "~/lib/utils";
@@ -15,8 +16,6 @@ const automaticReservationsQueryArgsSchema = z.object({
 
 export async function loader({ url }: Route.LoaderArgs) {
   let cronPassword = url.searchParams.get("cronPassword");
-
-  console.log("search params => ", url.searchParams);
 
   if (!cronPassword || cronPassword !== process.env.CRON_PASSWORD) {
     return new Response("Unauthorized", { status: 401 });
@@ -67,7 +66,7 @@ export async function loader({ url }: Route.LoaderArgs) {
     week,
     deskId: parsedInputs.data!.deskId,
     userId: parsedInputs.data!.userId,
-    date: format(getDateByWeekAndDay(day, week), "dd.MM.yyyy"),
+    date: formatDate(getDateByWeekAndDay(day, week)),
     dateTimestamp: sql`(${getDateByWeekAndDay(day, week).getTime()})`,
   }));
 

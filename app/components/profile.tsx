@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Form, useNavigation } from "react-router";
 import { AuthField } from "~/components/auth-card";
-import { deskLabel, deskPlace } from "~/components/bookings";
+import { deskPlace } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
+import { deskLabel } from "~/lib/utils";
 
 export type ProfileUser = {
   id: string;

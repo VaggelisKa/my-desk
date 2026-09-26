@@ -6,6 +6,7 @@ import { deleteCron } from "~/lib/cron";
 import { normalizeDay, officeNow } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
+import { capitalize, deskLabel, plural } from "~/lib/utils";
 
 // The Admin tab: who owns which desk, who is who, and what is booked. Every
 // loader and action here checks the role itself; hiding the tab is not enough.
@@ -179,16 +180,8 @@ function field(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function plural(count: number, word: string) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
-}
-
-function capitalize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
 let deskName = (desk: { block: number; row: number; column: number }) =>
-  `desk ${desk.block}.${desk.row}.${desk.column}`;
+  `desk ${deskLabel(desk)}`;
 
 export async function handleAdminAction(request: Request) {
   let { userId: adminId } = await requireAdmin(request);
