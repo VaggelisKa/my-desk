@@ -220,13 +220,13 @@ export function Masthead({ user }: { user: ShellUser }) {
  * The phone navigation: a dark pill floating above the bottom edge. It lives
  * outside the sheet stack outlet, because the outlet scrolls on phones and a
  * fixed element inside it would scroll away as soon as the depth effect
- * transforms the outlet. Sheets rise over it, and it hides while a text field
- * has focus so it never rides up on top of the keyboard.
+ * transforms the outlet. Sheets rise over it, and it hides while the keyboard
+ * is up so it never rides up on top of it.
  */
 export function Dock({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
   let active = useActiveTab();
-  let keyboardOpen = useTextFieldFocused();
+  let keyboardOpen = useKeyboardOpen();
   let compact = useCompactOnScroll();
   let tabs = tabsFor(user);
   let activeIndex = tabs.findIndex((tab) => tab.id === active);
@@ -524,4 +524,66 @@ function useTextFieldFocused() {
   }, []);
 
   return focused;
+}
+
+// A phone keyboard is far taller than the browser bars folding away.
+let KEYBOARD_MIN_HEIGHT = 150;
+// How long a focused field may wait for its keyboard before the dock returns.
+let KEYBOARD_WAIT_MS = 1000;
+
+/**
+ * Whether the on-screen keyboard is up. A focused text field alone can't say:
+ * phones close the keyboard without taking focus from the field (the keyboard
+ * button, clearing a search, a sheet handing focus back), which left the dock
+ * hidden. So the dock hides as soon as a field gets focus, and after that
+ * follows the visual viewport, which shrinks by the keyboard's height.
+ */
+function useKeyboardOpen() {
+  let focused = useTextFieldFocused();
+  // Set once the keyboard is known to be down while a field keeps focus.
+  let [closed, setClosed] = useState(false);
+  let shrunk = useRef(false);
+  let focusedRef = useRef(focused);
+  focusedRef.current = focused;
+
+  useEffect(() => {
+    let viewport = window.visualViewport;
+    if (!viewport) return;
+
+    // The tallest the viewport has been at this width, keyboard down.
+    let width = window.innerWidth;
+    let tallest = 0;
+    let measure = () => {
+      if (window.innerWidth !== width) {
+        width = window.innerWidth;
+        tallest = 0;
+      }
+      let height = viewport.height * viewport.scale;
+      tallest = Math.max(tallest, height);
+      let wasShrunk = shrunk.current;
+      shrunk.current = tallest - height > KEYBOARD_MIN_HEIGHT;
+      if (shrunk.current) setClosed(false);
+      else if (wasShrunk && focusedRef.current) setClosed(true);
+    };
+
+    measure();
+    viewport.addEventListener("resize", measure);
+    return () => viewport.removeEventListener("resize", measure);
+  }, []);
+
+  // Hide right away on focus rather than once the keyboard has slid in, but
+  // don't wait forever for a keyboard that never comes.
+  useEffect(() => {
+    if (!focused) {
+      setClosed(false);
+      return;
+    }
+    if (!window.visualViewport) return;
+    let timer = setTimeout(() => {
+      if (!shrunk.current) setClosed(true);
+    }, KEYBOARD_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [focused]);
+
+  return focused && !closed;
 }

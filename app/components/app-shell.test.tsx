@@ -1,6 +1,6 @@
 import { act, screen, within } from "@testing-library/react";
 import { Link, Route, Routes } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithRouter } from "../../test/render-with-router";
 import {
   activeTab,
@@ -160,5 +160,68 @@ describe("AppShell", () => {
     // field goes with it without a focusout.
     await act(async () => screen.getByText("Back to desks").click());
     expect(dock).not.toHaveAttribute("data-hidden");
+  });
+  describe("with an on-screen keyboard", () => {
+    // A phone's visual viewport, which shrinks while the keyboard is up.
+    function fakeViewport() {
+      let viewport = Object.assign(new EventTarget(), {
+        height: 800,
+        scale: 1,
+      });
+      vi.stubGlobal("visualViewport", viewport);
+      return (height: number) =>
+        act(() => {
+          viewport.height = height;
+          viewport.dispatchEvent(new Event("resize"));
+        });
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    });
+
+    it("brings the dock back when the keyboard closes but the field keeps focus", async () => {
+      let resize = fakeViewport();
+      let { user: pointer } = renderWithRouter(
+        <>
+          <input type="search" aria-label="Search desk or person" />
+          <Dock user={user} />
+        </>,
+      );
+      let dock = document.querySelector(".app-dock");
+
+      await pointer.click(screen.getByLabelText("Search desk or person"));
+      expect(dock).toHaveAttribute("data-hidden");
+      resize(460);
+      expect(dock).toHaveAttribute("data-hidden");
+
+      // Like clearing a search on a phone: the keyboard goes away, focus stays.
+      resize(800);
+      expect(screen.getByLabelText("Search desk or person")).toHaveFocus();
+      expect(dock).not.toHaveAttribute("data-hidden");
+
+      // Tapping the field again brings the keyboard back without a new focus.
+      resize(460);
+      expect(dock).toHaveAttribute("data-hidden");
+    });
+
+    it("brings the dock back when a focused field gets no keyboard", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      fakeViewport();
+      renderWithRouter(
+        <>
+          <input aria-label="First name" />
+          <Dock user={user} />
+        </>,
+      );
+      let dock = document.querySelector(".app-dock");
+
+      act(() => screen.getByLabelText("First name").focus());
+      expect(dock).toHaveAttribute("data-hidden");
+
+      act(() => vi.advanceTimersByTime(1000));
+      expect(dock).not.toHaveAttribute("data-hidden");
+    });
   });
 });
