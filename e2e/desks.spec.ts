@@ -25,13 +25,17 @@ test("each desk says in words whether it is free, taken or yours", async ({
   let unclaimed = desksPage.desk("Unclaimed");
 
   await expect(alice).toContainText("Yours");
-  await expect(alice).toHaveAccessibleDescription("Desk 1.1.1, yours");
+  await expect(alice).toHaveAccessibleDescription(
+    "Desk 1.1.1 by the window, yours",
+  );
   await expect(bob).toContainText("Taken");
   await expect(bob).toHaveAccessibleDescription(
-    "Desk 1.1.2, taken, Gary is sitting here",
+    "Desk 1.1.2 in the middle, taken, Gary is sitting here",
   );
   await expect(unclaimed).toContainText("Free");
-  await expect(unclaimed).toHaveAccessibleDescription("Desk 2.1.1, free");
+  await expect(unclaimed).toHaveAccessibleDescription(
+    "Desk 2.1.1 by the window, free",
+  );
   await expect(page.getByRole("main")).toContainText("3 of 4 free");
 });
 

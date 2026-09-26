@@ -25,6 +25,9 @@
     --paper: #ffffff;
     --paper-muted: #f4f5f2;
     --line: #d8ddda;
+    /* Text field borders: darker than --line so the field stands out
+       (3:1 on white). */
+    --field: #8a9599;
     --moss: #4f7a5a;
     --moss-edge: #2f5039;
     --moss-soft: #e2ede5;
@@ -52,6 +55,14 @@
     .app-outlet {
       height: 100dvh;
       overflow-y: auto;
+      /* Whatever gets keyboard focus scrolls clear of the floating dock. */
+      scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    }
+  }
+  /* ...and clear of the sticky masthead on desktop. */
+  @media (min-width: 768px) {
+    html {
+      scroll-padding-top: 64px;
     }
   }
 }
@@ -230,4 +241,10 @@ html[data-touch] .group:focus-visible * {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Headings and panels that only take focus from script, to keep keyboard
+   users in place (see app/lib/focus.ts), show no ring. */
+[tabindex="-1"]:focus {
+  outline: none;
 }

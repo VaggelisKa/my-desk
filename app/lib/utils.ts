@@ -45,6 +45,11 @@ let placement: Record<number, string> = {
   3: "by the aisle",
 };
 
+/** "by the window", from the desk's column. */
+export function deskPlacement(column: number) {
+  return placement[column];
+}
+
 // One word each, for where a row has little room.
 let shortPlacement: Record<number, string> = {
   1: "window",

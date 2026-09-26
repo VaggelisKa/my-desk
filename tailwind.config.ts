@@ -12,6 +12,7 @@ const config = {
         ink: { DEFAULT: "var(--ink)", muted: "var(--ink-muted)" },
         paper: { DEFAULT: "var(--paper)", muted: "var(--paper-muted)" },
         line: "var(--line)",
+        field: "var(--field)",
         moss: {
           DEFAULT: "var(--moss)",
           edge: "var(--moss-edge)",

@@ -46,7 +46,7 @@ export function AuthCard({
 }
 
 let inputClassName =
-  "h-11 rounded-lg border-line bg-paper px-3 text-base shadow-none placeholder:text-dim focus-visible:border-moss focus-visible:ring-[3px] focus-visible:ring-moss-soft aria-[invalid]:border-danger";
+  "h-11 rounded-lg border-field bg-paper px-3 text-base shadow-none placeholder:text-[#6b767a] focus-visible:border-moss focus-visible:ring-1 focus-visible:ring-moss aria-[invalid]:border-danger";
 
 function FieldError({ id, error }: { id: string; error?: string }) {
   if (!error) {
@@ -175,11 +175,9 @@ export let CodeField = React.forwardRef<HTMLInputElement, CodeFieldProps>(
               <div
                 key={i}
                 className={cn(
-                  "grid h-[52px] place-items-center rounded-lg border border-line bg-paper text-[22px] font-bold uppercase text-ink",
+                  "grid h-[52px] place-items-center rounded-lg border border-field bg-paper text-[22px] font-bold uppercase text-ink",
                   error && "border-danger",
-                  focused &&
-                    isActive(i) &&
-                    "border-moss ring-[3px] ring-moss-soft",
+                  focused && isActive(i) && "border-moss ring-1 ring-moss",
                 )}
               >
                 {char}
@@ -235,7 +233,7 @@ export function AuthSubmit({ className, ...props }: ButtonProps) {
     <Button
       type="submit"
       className={cn(
-        "h-11 w-full rounded-[10px] bg-moss text-sm font-semibold text-white shadow-none hover:bg-moss-edge focus-visible:ring-[3px] focus-visible:ring-moss-soft focus-visible:ring-offset-0",
+        "h-11 w-full rounded-[10px] bg-moss text-sm font-semibold text-white shadow-none hover:bg-moss-edge focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2",
         className,
       )}
       {...props}
@@ -247,7 +245,7 @@ export function AuthLink({ className, ...props }: LinkProps) {
   return (
     <Link
       className={cn(
-        "rounded-sm font-semibold text-ink underline decoration-ink-muted underline-offset-4 hover:decoration-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-moss-soft",
+        "rounded-sm font-semibold text-ink underline decoration-ink-muted underline-offset-4 hover:decoration-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2",
         className,
       )}
       {...props}

@@ -292,7 +292,7 @@ let DOCK_ITEM = {
   full: 64,
   compact: 44,
   className:
-    "group relative flex flex-none flex-col items-center rounded-full pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/60 duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] active:scale-95 motion-reduce:transition-none group-data-[compact]/dock:py-2.5",
+    "group relative flex flex-none flex-col items-center rounded-full pb-1.5 pt-2 text-[10.5px] font-semibold leading-none text-white/70 duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] active:scale-95 motion-reduce:transition-none group-data-[compact]/dock:py-2.5",
 };
 let DOCK_GAP = 2;
 
@@ -353,7 +353,7 @@ function useCompactOnScroll() {
  * light dismiss, Escape and focus return come from the browser.
  */
 export function AppMenu({ user }: { user: ShellUser }) {
-  let menu = useRef<HTMLDivElement>(null);
+  let menu = useRef<HTMLElement>(null);
   let location = useLocation();
 
   useEffect(() => {
@@ -401,10 +401,11 @@ export function AppMenu({ user }: { user: ShellUser }) {
     "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[13px] text-ink hover:bg-paper-muted focus-visible:bg-paper-muted focus-visible:outline-none";
 
   return (
-    <div
+    <nav
       ref={menu}
       id={MENU_ID}
       popover="auto"
+      aria-label="Account"
       className="app-menu m-0 w-[232px] rounded-[10px] border border-line bg-paper p-1.5 font-display text-ink shadow-[0_12px_32px_-12px_rgb(0_0_0/0.3)]"
     >
       <div className="mb-1 border-b border-line px-2.5 pb-2.5 pt-2">
@@ -446,7 +447,7 @@ export function AppMenu({ user }: { user: ShellUser }) {
           Sign out
         </button>
       </form>
-    </div>
+    </nav>
   );
 }
 
