@@ -123,8 +123,41 @@ export let CodeField = React.forwardRef<HTMLInputElement, CodeFieldProps>(
       setFocused(document.activeElement === inputRef.current);
     }, []);
 
+    // The real caret and selection are invisible, so the boxes draw them:
+    // Home, the arrow keys and selecting all move the highlight too.
+    let [selection, setSelection] = React.useState<[number, number]>([
+      value.length,
+      value.length,
+    ]);
+
+    function syncSelection(input: HTMLInputElement) {
+      let start = input.selectionStart ?? input.value.length;
+      let end = input.selectionEnd ?? start;
+      setSelection((current) =>
+        current[0] === start && current[1] === end ? current : [start, end],
+      );
+    }
+
+    // A tap lands somewhere in the invisible text, not on the box under the
+    // finger; put the caret before the box that was tapped instead.
+    function placeCaret(event: React.PointerEvent<HTMLInputElement>) {
+      let input = event.currentTarget;
+      if (input.selectionStart !== input.selectionEnd) return;
+
+      let { left, width } = input.getBoundingClientRect();
+      let box = Math.floor(((event.clientX - left) / width) * CODE_LENGTH);
+      let position = Math.max(0, Math.min(box, input.value.length));
+
+      input.setSelectionRange(position, position);
+      syncSelection(input);
+    }
+
     let chars = Array.from({ length: CODE_LENGTH }, (_, i) => value[i] ?? "");
-    let cursor = Math.min(value.length, CODE_LENGTH - 1);
+    let [start, end] = selection;
+    let isActive = (i: number) =>
+      start === end
+        ? i === Math.min(start, CODE_LENGTH - 1)
+        : i >= start && i < end;
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -145,7 +178,7 @@ export let CodeField = React.forwardRef<HTMLInputElement, CodeFieldProps>(
                   "grid h-[52px] place-items-center rounded-lg border border-line bg-paper text-[22px] font-bold uppercase text-ink",
                   error && "border-danger",
                   focused &&
-                    i === cursor &&
+                    isActive(i) &&
                     "border-moss ring-[3px] ring-moss-soft",
                 )}
               >
@@ -166,8 +199,16 @@ export let CodeField = React.forwardRef<HTMLInputElement, CodeFieldProps>(
             id={id}
             type="text"
             value={value}
-            onChange={(event) => onChange(event.target.value)}
-            onFocus={() => setFocused(true)}
+            onChange={(event) => {
+              onChange(event.target.value);
+              syncSelection(event.target);
+            }}
+            onSelect={(event) => syncSelection(event.currentTarget)}
+            onPointerUp={placeCaret}
+            onFocus={(event) => {
+              setFocused(true);
+              syncSelection(event.currentTarget);
+            }}
             onBlur={() => setFocused(false)}
             maxLength={CODE_LENGTH}
             aria-invalid={error ? true : undefined}

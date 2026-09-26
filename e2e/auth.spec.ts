@@ -88,6 +88,27 @@ test.describe("logged out", () => {
   });
 });
 
+test.describe("registration", () => {
+  test("rejects a user id that could never be used to sign in", async ({
+    page,
+    db,
+  }) => {
+    let registration = new GuestRegistrationPage(page);
+
+    await page.goto("/login/guest");
+    await registration.register({
+      id: "abc",
+      firstName: "Short",
+      lastName: "Id",
+    });
+
+    await expect(
+      page.getByText("Employee number must be 6 characters"),
+    ).toBeVisible();
+    await expect(db.user("abc")).resolves.toBeUndefined();
+  });
+});
+
 test.describe("logged in", () => {
   test.use({ storageState: authFile("alice") });
 

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { createRef, useState } from "react";
 import { Form } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -101,6 +101,30 @@ describe("CodeField", () => {
       "",
     ]);
     expect(boxes.children[0]).toHaveClass("uppercase");
+  });
+
+  it("highlights the box at the real caret and the real selection", async () => {
+    let { user } = renderWithRouter(<ControlledCode />);
+    let input = screen.getByLabelText("User ID");
+    let boxes = screen.getByTestId("user-id-boxes");
+    let active = () =>
+      Array.from(boxes.children).flatMap((box, i) =>
+        box.classList.contains("border-moss") ? [i] : [],
+      );
+
+    await user.type(input, "emp00");
+    expect(active()).toEqual([5]);
+
+    await user.keyboard("{Home}");
+    expect(active()).toEqual([0]);
+
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expect(active()).toEqual([2]);
+
+    // jsdom does not extend a selection with Shift+arrows; select directly.
+    (input as HTMLInputElement).setSelectionRange(2, 4);
+    fireEvent.select(input);
+    expect(active()).toEqual([2, 3]);
   });
 
   it("never holds more than six characters", async () => {

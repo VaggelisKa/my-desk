@@ -5,6 +5,7 @@ import {
   AuthField,
   AuthLink,
   AuthSubmit,
+  CODE_LENGTH,
   CodeField,
 } from "~/components/auth-card";
 import { createUserCookie, getAuthenticatedUser } from "~/cookies.server";
@@ -41,6 +42,10 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (!employeeNumber) {
     errors.employeeNumber = "Employee number is required";
+  } else if (employeeNumber.length !== CODE_LENGTH) {
+    // Sign-in only takes six characters, so a shorter one could never be
+    // used to sign in again.
+    errors.employeeNumber = `Employee number must be ${CODE_LENGTH} characters`;
   }
 
   if (!firstName) {
