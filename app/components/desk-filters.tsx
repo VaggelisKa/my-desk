@@ -1,4 +1,4 @@
-import { format, isAfter, startOfDay } from "date-fns";
+import { format, isAfter, isWeekend, startOfDay } from "date-fns";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, Link, useSearchParams, useSubmit } from "react-router";
@@ -270,7 +270,9 @@ export function DayStrip({
             focusRing,
           )}
         >
-          {inNextWeek ? "← This week" : "Next week →"}
+          {inNextWeek
+            ? `← ${isWeekend(today) ? "Upcoming week" : "This week"}`
+            : "Next week →"}
         </Link>
       )}
     </nav>

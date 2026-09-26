@@ -186,6 +186,15 @@ describe("DeskFilters", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("calls the week ahead the upcoming week on a weekend", () => {
+    vi.setSystemTime(new Date(2025, 2, 16, 10));
+    renderFilters("/?selected-day=25.03.2025");
+
+    expect(
+      screen.getByRole("link", { name: "← Upcoming week" }),
+    ).toHaveAttribute("href", "/?selected-day=21.03.2025");
+  });
+
   it("has desktop arrows that flip the week", () => {
     let { unmount } = renderFilters();
     expect(screen.getByRole("link", { name: "Next week" })).toHaveAttribute(

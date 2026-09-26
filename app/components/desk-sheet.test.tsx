@@ -346,6 +346,15 @@ describe("DeskSheet", () => {
       expect(
         within(dialog).queryByRole("img", { name: /10 Mar/ }),
       ).not.toBeInTheDocument();
+      expect(within(dialog).getByText("Upcoming week")).toBeInTheDocument();
+      expect(within(dialog).queryByText("This week")).not.toBeInTheDocument();
+    });
+
+    it("labels the first row this week on a weekday", async () => {
+      let { dialog } = await openSheet({ desk: makeDesk() });
+
+      expect(within(dialog).getByText("This week")).toBeInTheDocument();
+      expect(within(dialog).getByText("Next week")).toBeInTheDocument();
     });
 
     it.each([SATURDAY, new Date(2025, 2, 16, 10)])(

@@ -49,10 +49,13 @@ type DeskSheetProps = {
 // The owner can book a day until 11:00 on that day.
 const LAST_BOOKING_HOUR = 11;
 
-const WEEKS: { label: string; offset: 0 | 1 }[] = [
-  { label: "This week", offset: 0 },
-  { label: "Next week", offset: 1 },
-];
+// On a weekend the first row is the week ahead, so it is not "this" week.
+function weekRows(isWeekend: boolean): { label: string; offset: 0 | 1 }[] {
+  return [
+    { label: isWeekend ? "Upcoming week" : "This week", offset: 0 },
+    { label: "Next week", offset: 1 },
+  ];
+}
 
 type TravelStatus =
   | "entering"
@@ -115,7 +118,7 @@ export function DeskSheet({
     return desk.reservations.find((r) => r.day === day && r.week === week);
   }
 
-  let grid = WEEKS.map(({ label, offset }) => ({
+  let grid = weekRows(isWeekend).map(({ label, offset }) => ({
     label,
     days: workdaysOfWeek(gridStart, offset).map(({ day, date }) => {
       let reservation = reservationFor(day, gridWeek + offset);
@@ -310,7 +313,7 @@ export function DeskSheet({
 
                   <div
                     aria-hidden="true"
-                    className="grid grid-cols-[64px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
+                    className="grid grid-cols-[80px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
                   >
                     <span />
                     {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
@@ -321,7 +324,7 @@ export function DeskSheet({
                   {grid.map(({ label, days }) => (
                     <div
                       key={label}
-                      className="grid grid-cols-[64px_repeat(5,1fr)] items-center gap-1.5 text-[11px] text-ink-muted"
+                      className="grid grid-cols-[80px_repeat(5,1fr)] items-center gap-1.5 text-[11px] text-ink-muted"
                     >
                       <span>{label}</span>
                       {days.map((d) =>
