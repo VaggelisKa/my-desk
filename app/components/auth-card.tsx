@@ -46,7 +46,7 @@ export function AuthCard({
 }
 
 let inputClassName =
-  "h-11 rounded-lg border-line bg-paper px-3 text-[15px] shadow-none placeholder:text-dim focus-visible:border-moss focus-visible:ring-[3px] focus-visible:ring-moss-soft aria-[invalid]:border-danger";
+  "h-11 rounded-lg border-line bg-paper px-3 text-base shadow-none placeholder:text-dim focus-visible:border-moss focus-visible:ring-[3px] focus-visible:ring-moss-soft aria-[invalid]:border-danger";
 
 function FieldError({ id, error }: { id: string; error?: string }) {
   if (!error) {

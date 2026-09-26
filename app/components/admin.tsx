@@ -128,7 +128,7 @@ function SearchField({
         placeholder={label}
         autoFocus={autoFocus}
         autoComplete="off"
-        className="focus-visible:ring-moss/30 h-11 w-full rounded-[10px] border border-line bg-paper pl-9 pr-3 text-[15px] text-ink placeholder:text-ink-muted focus-visible:border-moss focus-visible:outline-none focus-visible:ring-2"
+        className="focus-visible:ring-moss/30 h-11 w-full rounded-[10px] border border-line bg-paper pl-9 pr-3 text-base text-ink placeholder:text-ink-muted focus-visible:border-moss focus-visible:outline-none focus-visible:ring-2"
       />
     </div>
   );
@@ -841,7 +841,7 @@ function RenameForm({ person }: { person: AdminPerson }) {
     firstName.trim() !== person.firstName ||
     lastName.trim() !== person.lastName;
   let input =
-    "h-10 w-full rounded-[10px] border border-line bg-paper px-3 text-[15px] text-ink focus-visible:border-moss focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/30";
+    "h-10 w-full rounded-[10px] border border-line bg-paper px-3 text-base text-ink focus-visible:border-moss focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/30";
 
   return (
     <fetcher.Form method="post" action="/admin" className="grid gap-2">
