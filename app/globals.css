@@ -77,8 +77,8 @@
      opacity with the sheet's travel, and the blur fades with it. */
   .desk-sheet-backdrop {
     background: rgb(31 42 46 / 0.3);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
   }
   /* Phones blur harder: the bottom sheet leaves most of the page in view.
      Silk keeps the backdrop at a third opacity (it also dims the status bar
@@ -88,46 +88,58 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
   }
+  /* Silk's detached sheet: the content is a transparent frame and the card
+     inside it floats clear of the screen edges with rounded corners. */
   .desk-sheet-content {
     box-sizing: border-box;
+    background: transparent;
   }
   .desk-sheet-content-bottom {
+    width: 100%;
     height: auto;
-    padding: 10px 16px calc(24px + env(safe-area-inset-bottom));
+    padding: 0 max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   }
-  /* Scrolls inside the sheet; the side padding keeps focus rings from
+  .desk-sheet-content-side {
+    width: min(92vw, 384px);
+    height: 100%;
+    padding: 12px calc(12px + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom)) 0;
+  }
+  .desk-sheet-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: clip;
+    border-radius: 24px;
+    background: var(--paper);
+    box-shadow:
+      0 20px 40px -12px rgb(0 0 0 / 0.25),
+      0 4px 8px -4px rgb(0 0 0 / 0.1);
+  }
+  .desk-sheet-content-bottom .desk-sheet-card {
+    padding: 10px 16px 20px;
+  }
+  .desk-sheet-content-side .desk-sheet-card {
+    height: 100%;
+    padding: 22px 20px;
+  }
+  /* Scrolls inside the card; the side padding keeps focus rings from
      being clipped by the overflow. */
   .desk-sheet-body {
     margin: 0 -4px;
     padding: 0 4px;
+    overflow-y: auto;
   }
   .desk-sheet-content-bottom .desk-sheet-body {
-    max-height: calc(92dvh - 40px - env(safe-area-inset-bottom));
-    overflow-y: auto;
-  }
-  .desk-sheet-content-side {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    width: min(92vw, 360px);
-    height: 100%;
-    padding: 22px 20px calc(22px + env(safe-area-inset-bottom))
-      calc(20px + env(safe-area-inset-right));
-    border-left: 1px solid var(--line);
+    max-height: calc(92dvh - 50px - env(safe-area-inset-bottom));
   }
   .desk-sheet-content-side .desk-sheet-body {
-    max-height: 100%;
-    overflow-y: auto;
-  }
-  .desk-sheet-bg {
-    background: var(--paper);
-  }
-  .desk-sheet-bg-bottom {
-    border-radius: 18px 18px 0 0;
-    box-shadow: 0 -8px 30px rgb(0 0 0 / 0.12);
+    flex: 1;
+    min-height: 0;
   }
   /* Admin sheets and their pages (Silk's "sheet with stacking" pattern):
      floating cards of one size, so the one underneath peeks out. */

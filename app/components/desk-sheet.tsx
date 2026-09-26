@@ -206,9 +206,10 @@ export function DeskSheet({
           // come to rest before interacting with it.
           data-travel-status={travelStatus}
           onTravelStatusChange={setTravelStatus}
+          // Silk's detached sheet: a floating card that rises from the
+          // bottom on phones and slides in from the right on larger screens.
           contentPlacement={isSmallDevice ? "bottom" : "right"}
           tracks={isSmallDevice ? "bottom" : "right"}
-          swipeOvershoot={isSmallDevice}
           nativeEdgeSwipePrevention
         >
           <Sheet.Backdrop
@@ -229,114 +230,109 @@ export function DeskSheet({
                 : "desk-sheet-content-side",
             )}
           >
-            <Sheet.BleedingBackground
-              className={cn(
-                "desk-sheet-bg",
-                isSmallDevice && "desk-sheet-bg-bottom",
+            <div className="desk-sheet-card">
+              {/* Kept out of the scrolling body so it stays put on long content. */}
+              {isSmallDevice ? (
+                <Sheet.Handle
+                  className="desk-sheet-handle"
+                  action="dismiss"
+                  aria-label="Close"
+                />
+              ) : (
+                <Sheet.Trigger
+                  action="dismiss"
+                  aria-label="Close"
+                  className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-paper-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
+                >
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </Sheet.Trigger>
               )}
-            />
 
-            {/* Kept out of the scrolling body so it stays put on long content. */}
-            {isSmallDevice ? (
-              <Sheet.Handle
-                className="desk-sheet-handle"
-                action="dismiss"
-                aria-label="Close"
-              />
-            ) : (
-              <Sheet.Trigger
-                action="dismiss"
-                aria-label="Close"
-                className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-paper-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
+              <div
+                ref={body}
+                className="desk-sheet-body flex flex-col gap-5 font-display text-ink"
               >
-                <X aria-hidden="true" className="h-4 w-4" />
-              </Sheet.Trigger>
-            )}
+                <div>
+                  <Sheet.Title className="text-lg font-bold tracking-tight sm:text-xl">
+                    {`Desk ${deskLabel(desk)}`}
+                  </Sheet.Title>
+                  <Sheet.Description className="mt-0.5 text-[13px] text-ink-muted">
+                    {/* The title already gives block and row, so only say where. */}
+                    {placement[desk.column] ?? `Column ${desk.column}`}
+                  </Sheet.Description>
+                </div>
 
-            <div
-              ref={body}
-              className="desk-sheet-body flex flex-col gap-5 font-display text-ink"
-            >
-              <div>
-                <Sheet.Title className="text-lg font-bold tracking-tight sm:text-xl">
-                  {`Desk ${deskLabel(desk)}`}
-                </Sheet.Title>
-                <Sheet.Description className="mt-0.5 text-[13px] text-ink-muted">
-                  {/* The title already gives block and row, so only say where. */}
-                  {placement[desk.column] ?? `Column ${desk.column}`}
-                </Sheet.Description>
+                <DeskDetails
+                  desk={desk}
+                  todaysReservation={todaysReservation}
+                  isWeekend={isWeekend}
+                  userId={userId}
+                />
+
+                <fetcher.Form
+                  method="POST"
+                  action="/?index"
+                  className="flex flex-col gap-6"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    let form = event.currentTarget;
+                    // The button turns disabled while it books and the days
+                    // it booked stop being checkboxes, so focus would drop
+                    // out of the sheet; keep it in the sheet instead.
+                    let hadFocus = form.contains(document.activeElement);
+                    void fetcher.submit(form).then(() => {
+                      if (hadFocus) rescueFocus(body.current);
+                    });
+                  }}
+                >
+                  <input type="hidden" name="deskId" value={desk.id} />
+
+                  <fieldset className="grid gap-3">
+                    <legend className="mb-3 flex w-full justify-between text-xs text-ink-muted">
+                      <span>
+                        {allowedToReserve ? "Book days" : "Next two weeks"}
+                      </span>
+                      {allowedToReserve && bookable.size > 0 && (
+                        <span aria-hidden="true">Tap to pick</span>
+                      )}
+                    </legend>
+
+                    <div
+                      aria-hidden="true"
+                      className="grid grid-cols-[80px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
+                    >
+                      <span />
+                      {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
+                        <span key={d}>{d}</span>
+                      ))}
+                    </div>
+
+                    <DayGrid
+                      grid={grid}
+                      picked={pickedSet}
+                      onToggle={togglePick}
+                      selectedDay={selectedDay}
+                      userId={userId}
+                    />
+
+                    <DayLegend />
+                  </fieldset>
+
+                  {allowedToReserve
+                    ? bookable.size > 0 && (
+                        <BookButton
+                          count={pickedDays.length}
+                          isSubmitting={isSubmitting}
+                        />
+                      )
+                    : showReserveForToday && (
+                        <ReserveTodayButton
+                          today={formatDate(todayDate)}
+                          isSubmitting={isSubmitting}
+                        />
+                      )}
+                </fetcher.Form>
               </div>
-
-              <DeskDetails
-                desk={desk}
-                todaysReservation={todaysReservation}
-                isWeekend={isWeekend}
-                userId={userId}
-              />
-
-              <fetcher.Form
-                method="POST"
-                action="/?index"
-                className="flex flex-col gap-6"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  let form = event.currentTarget;
-                  // The button turns disabled while it books and the days
-                  // it booked stop being checkboxes, so focus would drop
-                  // out of the sheet; keep it in the sheet instead.
-                  let hadFocus = form.contains(document.activeElement);
-                  void fetcher.submit(form).then(() => {
-                    if (hadFocus) rescueFocus(body.current);
-                  });
-                }}
-              >
-                <input type="hidden" name="deskId" value={desk.id} />
-
-                <fieldset className="grid gap-3">
-                  <legend className="mb-3 flex w-full justify-between text-xs text-ink-muted">
-                    <span>
-                      {allowedToReserve ? "Book days" : "Next two weeks"}
-                    </span>
-                    {allowedToReserve && bookable.size > 0 && (
-                      <span aria-hidden="true">Tap to pick</span>
-                    )}
-                  </legend>
-
-                  <div
-                    aria-hidden="true"
-                    className="grid grid-cols-[80px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
-                  >
-                    <span />
-                    {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
-                      <span key={d}>{d}</span>
-                    ))}
-                  </div>
-
-                  <DayGrid
-                    grid={grid}
-                    picked={pickedSet}
-                    onToggle={togglePick}
-                    selectedDay={selectedDay}
-                    userId={userId}
-                  />
-
-                  <DayLegend />
-                </fieldset>
-
-                {allowedToReserve
-                  ? bookable.size > 0 && (
-                      <BookButton
-                        count={pickedDays.length}
-                        isSubmitting={isSubmitting}
-                      />
-                    )
-                  : showReserveForToday && (
-                      <ReserveTodayButton
-                        today={formatDate(todayDate)}
-                        isSubmitting={isSubmitting}
-                      />
-                    )}
-              </fetcher.Form>
             </div>
           </Sheet.Content>
         </Sheet.View>
