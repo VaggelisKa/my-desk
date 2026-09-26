@@ -1,4 +1,12 @@
-import { addDays, format, isValid, parse, startOfWeek } from "date-fns";
+import {
+  addDays,
+  format,
+  isValid,
+  isWeekend,
+  nextMonday,
+  parse,
+  startOfWeek,
+} from "date-fns";
 
 /** The date format the app stores and passes around, e.g. "23.09.2026". */
 export const DATE_FORMAT = "dd.MM.yyyy";
@@ -45,4 +53,12 @@ export function workdaysOfWeek(from: Date, weekOffset: 0 | 1 = 0) {
     day,
     date: addDays(sunday, i + 1 + weekOffset * 7),
   }));
+}
+
+/**
+ * The day the desks page opens on when no day is picked: today, or on a
+ * weekend the Monday ahead, since there is nothing to book on the weekend.
+ */
+export function defaultDay(today: Date) {
+  return isWeekend(today) ? nextMonday(today) : today;
 }

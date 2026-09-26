@@ -13,7 +13,7 @@ import { ErrorCard } from "~/components/error-card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
-import { formatDate, normalizeDay, parseDate } from "~/lib/dates";
+import { defaultDay, formatDate, normalizeDay, parseDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reserveDesk } from "~/lib/reservations.server";
 import { cn } from "~/lib/utils";
@@ -133,9 +133,12 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 
   // "Today" comes from the server so the first render and hydration agree
   // even when the browser sits in another timezone. A missing or malformed
-  // `selected-day` means today.
-  let today = formatDate(new Date());
-  let selectedDay = normalizeDay(url.searchParams.get("selected-day")) ?? today;
+  // `selected-day` means today, or the coming Monday on a weekend.
+  let now = new Date();
+  let today = formatDate(now);
+  let selectedDay =
+    normalizeDay(url.searchParams.get("selected-day")) ??
+    formatDate(defaultDay(now));
 
   // Not awaited on purpose: the shell streams immediately and the desk grid
   // fills in once the query resolves.

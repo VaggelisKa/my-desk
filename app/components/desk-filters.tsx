@@ -1,8 +1,9 @@
-import { format, isAfter, isWeekend, startOfDay } from "date-fns";
+import { addDays, format, isAfter, isWeekend, startOfDay } from "date-fns";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, Link, useSearchParams, useSubmit } from "react-router";
 import {
+  defaultDay,
   formatDate,
   normalizeDay,
   parseDate,
@@ -166,12 +167,17 @@ export function DayStrip({
 }) {
   let [searchParams] = useSearchParams();
   let today = todayParam ? parseDate(todayParam) : new Date();
-  // A missing or malformed param means today, like the route.
+  // A missing or malformed param means today (the coming Monday on a
+  // weekend), like the route.
   let selectedParam = normalizeDay(searchParams.get("selected-day"));
-  let selected = selectedParam ? parseDate(selectedParam) : today;
+  let selected = selectedParam ? parseDate(selectedParam) : defaultDay(today);
 
-  let thisWeek = workdaysOfWeek(today, 0);
-  let nextWeek = workdaysOfWeek(today, 1);
+  // Weeks start on Sunday, so on a Saturday "this week" is already over.
+  // Count from Sunday instead, so the weekend works like Sunday does: the
+  // strip shows the coming week and the arrow reaches the one after.
+  let weekFrom = today.getDay() === 6 ? addDays(today, 1) : today;
+  let thisWeek = workdaysOfWeek(weekFrom, 0);
+  let nextWeek = workdaysOfWeek(weekFrom, 1);
   // Compared by calendar day: the strip's dates are midnight, `selected` is not.
   let inNextWeek = isAfter(startOfDay(selected), thisWeek[4].date);
   let days = inNextWeek ? nextWeek : thisWeek;

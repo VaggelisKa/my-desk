@@ -195,6 +195,41 @@ describe("DeskFilters", () => {
     ).toHaveAttribute("href", "/?selected-day=21.03.2025");
   });
 
+  it.each([
+    ["Saturday", new Date(2025, 2, 15, 10)],
+    ["Sunday", new Date(2025, 2, 16, 10)],
+  ])("opens on the coming Monday on a %s", (_, now) => {
+    vi.setSystemTime(now);
+    renderFilters();
+
+    expect(
+      screen.getByRole("link", { name: "Monday 17 March" }),
+    ).toHaveAttribute("aria-current", "date");
+    expect(screen.getByRole("link", { name: "Next week" })).toHaveAttribute(
+      "href",
+      "/?selected-day=24.03.2025",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Previous week" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("goes back from the week after to the coming week on a Saturday", () => {
+    vi.setSystemTime(new Date(2025, 2, 15, 10));
+    renderFilters("/?selected-day=25.03.2025");
+
+    expect(
+      screen.getByRole("link", { name: "Tuesday 25 March" }),
+    ).toHaveAttribute("aria-current", "date");
+    expect(screen.getByRole("link", { name: "Previous week" })).toHaveAttribute(
+      "href",
+      "/?selected-day=21.03.2025",
+    );
+    expect(
+      screen.getByRole("link", { name: "← Upcoming week" }),
+    ).toHaveAttribute("href", "/?selected-day=21.03.2025");
+  });
+
   it("has desktop arrows that flip the week", () => {
     let { unmount } = renderFilters();
     expect(screen.getByRole("link", { name: "Next week" })).toHaveAttribute(

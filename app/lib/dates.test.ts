@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeDay, workdaysOfWeek } from "./dates";
+import { defaultDay, formatDate, normalizeDay, workdaysOfWeek } from "./dates";
 
 describe("normalizeDay", () => {
   it("keeps a well-formed day", () => {
@@ -34,5 +34,22 @@ describe("workdaysOfWeek", () => {
     expect(days.map(({ date }) => date.getDate())).toEqual([
       17, 18, 19, 20, 21,
     ]);
+  });
+});
+
+describe("defaultDay", () => {
+  it("is today on a weekday", () => {
+    expect(formatDate(defaultDay(new Date(2025, 2, 14, 10)))).toBe(
+      "14.03.2025",
+    );
+  });
+
+  it("is the coming Monday on a weekend", () => {
+    expect(formatDate(defaultDay(new Date(2025, 2, 15, 10)))).toBe(
+      "17.03.2025",
+    );
+    expect(formatDate(defaultDay(new Date(2025, 2, 16, 10)))).toBe(
+      "17.03.2025",
+    );
   });
 });
