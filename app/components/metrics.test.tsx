@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingsBy, busiestDays, summarise } from "./metrics";
+import { bookingsBy, busiestDays, summarise } from "~/lib/metrics";
 
 function row(date: Date, bookings: number, guestBookings = 0) {
   return {

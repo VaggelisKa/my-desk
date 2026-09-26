@@ -28,8 +28,11 @@ Never commit credentials.
 npm test
 npm run test:e2e
 npm run typecheck
+npm run doctor
 npm run build
 ```
+
+CI also fails when the React Doctor score is 80 or below.
 
 Authentication tests mock the database and need no service credentials.
 

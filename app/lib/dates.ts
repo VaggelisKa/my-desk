@@ -11,7 +11,7 @@ import {
 } from "date-fns";
 
 /** The date format the app stores and passes around, e.g. "23.09.2026". */
-export const DATE_FORMAT = "dd.MM.yyyy";
+const DATE_FORMAT = "dd.MM.yyyy";
 
 export const WEEKDAYS = [
   "monday",
@@ -66,10 +66,21 @@ export function defaultDay(today: Date) {
 }
 
 /** Where the office is. The weekly cron job runs on the same clock. */
-export const OFFICE_TIMEZONE = "Europe/Copenhagen";
+const OFFICE_TIMEZONE = "Europe/Copenhagen";
 
 /** The owner can book a day until 11:00 on that day. */
 export const LAST_BOOKING_HOUR = 11;
+
+let officeClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: OFFICE_TIMEZONE,
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+  hourCycle: "h23",
+});
 
 /**
  * The office's wall-clock time, as a Date whose local fields read as that
@@ -78,16 +89,7 @@ export const LAST_BOOKING_HOUR = 11;
  */
 export function officeNow(now = new Date()) {
   let parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: OFFICE_TIMEZONE,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hourCycle: "h23",
-    })
+    officeClock
       .formatToParts(now)
       .map(({ type, value }) => [type, Number(value)]),
   );

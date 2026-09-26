@@ -38,7 +38,7 @@ export function NavigationProgress() {
         className={cn(
           "h-full bg-primary transition-[width,opacity] ease-out",
           isNavigating
-            ? "w-[85%] opacity-100 duration-[3000ms]"
+            ? "duration-[3000ms] w-[85%] opacity-100"
             : "w-full opacity-0 duration-300",
         )}
       />

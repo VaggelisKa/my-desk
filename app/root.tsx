@@ -19,13 +19,14 @@ import {
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { getToast } from "remix-toast";
-import { AppMenu, Dock, Masthead, PAGE_COLUMN } from "~/components/app-shell";
+import { AppMenu, Dock, Masthead } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { TabPending, usePendingTab } from "~/components/tab-pending";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
+import { PAGE_COLUMN } from "~/lib/app-shell";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -68,8 +69,10 @@ export let links: Route.LinksFunction = () => [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  let { toast, headers } = await getToast(request);
-  let user = await getAuthenticatedUser(request);
+  let [{ toast, headers }, user] = await Promise.all([
+    getToast(request),
+    getAuthenticatedUser(request),
+  ]);
 
   return data({ user, toast }, { headers });
 }
@@ -105,7 +108,9 @@ function useOutletScrollRestoration(
   let previous = useRef(location);
   let currentKey = useRef(location.key);
   let paused = useRef(switchingTab);
-  paused.current = switchingTab;
+  useLayoutEffect(() => {
+    paused.current = switchingTab;
+  }, [switchingTab]);
 
   // Recorded as you scroll: once the next page has rendered, the old one's
   // position is gone (or clamped to the new page's height).

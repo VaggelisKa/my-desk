@@ -31,14 +31,12 @@ export class AdminPage {
 
   /** The row's shortcut that opens the sheet at the person picker. */
   reassign(label: string) {
-    return this.page
-      .getByRole("main")
-      .getByRole("button", {
-        name: new RegExp(
-          `^(Re)?assign desk ${label.replace(/\./g, "\\.")}$`,
-          "i",
-        ),
-      });
+    return this.page.getByRole("main").getByRole("button", {
+      name: new RegExp(
+        `^(Re)?assign desk ${label.replace(/\./g, "\\.")}$`,
+        "i",
+      ),
+    });
   }
 
   /** A person's row, by full name. */

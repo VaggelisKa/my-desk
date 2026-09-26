@@ -4,16 +4,11 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, Search, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFetcher, useOutletContext } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
-import {
-  DeskChip,
-  deskLabel,
-  deskPlace,
-  SegmentSwitch,
-} from "~/components/bookings";
+import { DeskChip, SegmentSwitch } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
 import type { AdminBooking, AdminDesk, AdminPerson } from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
-import { cn } from "~/lib/utils";
+import { capitalize, cn, deskLabel, deskPlace, plural } from "~/lib/utils";
 
 // The Admin tab (design option B): a sliding Desks · People · Bookings switch
 // over searchable lists. Every row opens a sheet where the work happens, so
@@ -56,10 +51,6 @@ let focusRing =
 
 function fullName(person: { firstName: string; lastName: string }) {
   return `${person.firstName} ${person.lastName}`.trim();
-}
-
-function plural(count: number, word: string) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
 /** Lookups every list and sheet shares. */
@@ -583,10 +574,6 @@ function unassignQuestion(desk: AdminDesk, index: Index) {
     : sentence;
 }
 
-function capitalize(name: string) {
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
 /** What moving `desk` to `person` changes, one line per person affected. */
 function moveConsequences(desk: AdminDesk, person: AdminPerson, index: Index) {
   let lines: string[] = [];
@@ -641,14 +628,17 @@ function MoveConfirm({
   let fetcher = useFetcher();
   let busy = fetcher.state !== "idle";
   let lines = moveConsequences(desk, person, index);
-  let wasBusy = useWasBusy(busy);
-
-  useEffect(() => {
-    if (wasBusy && !busy) onDone();
-  }, [busy, wasBusy, onDone]);
 
   return (
-    <fetcher.Form method="post" action="/admin" className="flex flex-col gap-4">
+    <fetcher.Form
+      method="post"
+      action="/admin"
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void fetcher.submit(event.currentTarget).then(onDone);
+      }}
+    >
       <input type="hidden" name="intent" value="reassign" />
       <input type="hidden" name="deskId" value={desk.id} />
       <input type="hidden" name="userId" value={person.id} />
@@ -677,14 +667,6 @@ function MoveConfirm({
       </div>
     </fetcher.Form>
   );
-}
-
-function useWasBusy(busy: boolean) {
-  let [wasBusy, setWasBusy] = useState(false);
-  useEffect(() => {
-    if (busy) setWasBusy(true);
-  }, [busy]);
-  return wasBusy;
 }
 
 function PersonPicker({
@@ -984,7 +966,6 @@ function PersonSheet({
         step.name === "pick-desk" ? (
           <DeskPicker
             data={data}
-            index={index}
             exclude={desk?.id}
             onBack={() => setStep({ name: "view" })}
             onPick={(picked) => setStep({ name: "confirm", deskId: picked.id })}
@@ -1086,13 +1067,11 @@ function PersonSheet({
 
 function DeskPicker({
   data,
-  index,
   exclude,
   onBack,
   onPick,
 }: {
   data: AdminData;
-  index: Index;
   exclude?: number;
   onBack: () => void;
   onPick: (desk: AdminDesk) => void;
@@ -1437,17 +1416,7 @@ function BookingRow({
     return null;
   }
 
-  // The chip carries the desk number where there is one, so the second line
-  // says whose desk it is rather than repeating it.
-  let title = show === "desk" ? when : name;
-  let detail =
-    show === "person"
-      ? `${when}${borrowed ? " · borrowed" : ""}`
-      : show === "desk"
-        ? `Desk ${label}${borrowed ? " · borrowed" : ""}`
-        : borrowed
-          ? "Borrowed"
-          : "Own desk";
+  let { title, detail } = bookingRowText({ show, when, name, label, borrowed });
 
   return (
     <li className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0 sm:px-5">
@@ -1490,6 +1459,27 @@ function BookingRow({
       </fetcher.Form>
     </li>
   );
+}
+
+// The chip carries the desk number where there is one, so the second line
+// says whose desk it is rather than repeating it.
+function bookingRowText({
+  show,
+  when,
+  name,
+  label,
+  borrowed,
+}: {
+  show: "person" | "desk" | "both";
+  when: string;
+  name: string;
+  label: string;
+  borrowed: boolean;
+}) {
+  let suffix = borrowed ? " · borrowed" : "";
+  if (show === "person") return { title: name, detail: `${when}${suffix}` };
+  if (show === "desk") return { title: when, detail: `Desk ${label}${suffix}` };
+  return { title: name, detail: borrowed ? "Borrowed" : "Own desk" };
 }
 
 /** Bookings inside a sheet, with "Clear all" for the lot. */
@@ -1572,11 +1562,6 @@ function ConfirmAction({
   let fetcher = useFetcher();
   let [asking, setAsking] = useState(false);
   let busy = fetcher.state !== "idle";
-  let wasBusy = useWasBusy(busy);
-
-  useEffect(() => {
-    if (wasBusy && !busy) setAsking(false);
-  }, [busy, wasBusy]);
 
   if (!asking) {
     return variant === "link" ? (
@@ -1608,6 +1593,10 @@ function ConfirmAction({
     <fetcher.Form
       method="post"
       action="/admin"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void fetcher.submit(event.currentTarget).then(() => setAsking(false));
+      }}
       className={cn(
         "flex w-full basis-full flex-col gap-2.5 rounded-[10px] border px-3.5 py-3 text-[13px] normal-case leading-snug tracking-normal text-ink",
         tone === "danger"

@@ -253,53 +253,16 @@ export function DayStrip({
         )}
         {days.map(({ day, date }) => {
           let key = formatDate(date);
-          let isSelected = key === selectedKey;
-          let isPast = key !== todayKey && date < today;
-          let className = cn(
-            "relative grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors duration-300 sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
-            focusRing,
-            isSelected
-              ? // The sliding pill draws the fill once it has been measured.
-                cn(
-                  "text-white",
-                  position
-                    ? "border-transparent bg-transparent"
-                    : "border-ink bg-ink sm:bg-ink",
-                )
-              : "text-ink-muted hover:text-ink",
-          );
-
-          // Past days cannot be booked and their reservations are cleaned up,
-          // so they are shown but not offered.
-          if (isPast && !isSelected) {
-            return (
-              <span
-                key={day}
-                ref={itemRef(day)}
-                aria-disabled="true"
-                aria-label={`${format(date, "EEEE d MMMM")}, past`}
-                className={cn(
-                  className,
-                  "border-transparent bg-transparent text-dim line-through decoration-1 hover:text-dim",
-                )}
-              >
-                {format(date, "EEE")}
-              </span>
-            );
-          }
-
           return (
-            <Link
+            <DayPill
               key={day}
-              ref={itemRef(day)}
+              date={date}
               to={linkTo(date)}
-              preventScrollReset
-              aria-current={isSelected ? "date" : undefined}
-              aria-label={format(date, "EEEE d MMMM")}
-              className={className}
-            >
-              {format(date, "EEE")}
-            </Link>
+              isSelected={key === selectedKey}
+              isPast={key !== todayKey && date < today}
+              measured={!!position}
+              pillRef={itemRef(day)}
+            />
           );
         })}
       </div>
@@ -362,6 +325,69 @@ function WeekArrow({
       )}
     >
       {children}
+    </Link>
+  );
+}
+
+/** One day in the strip: a link, or a struck-through label once it has passed. */
+function DayPill({
+  date,
+  to,
+  isSelected,
+  isPast,
+  measured,
+  pillRef,
+}: {
+  date: Date;
+  to: string;
+  isSelected: boolean;
+  isPast: boolean;
+  /** The sliding pill has been measured and draws the fill. */
+  measured: boolean;
+  pillRef: (node: HTMLElement | null) => void;
+}) {
+  let className = cn(
+    "relative grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors duration-300 sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
+    focusRing,
+    isSelected
+      ? // The sliding pill draws the fill once it has been measured.
+        cn(
+          "text-white",
+          measured
+            ? "border-transparent bg-transparent"
+            : "border-ink bg-ink sm:bg-ink",
+        )
+      : "text-ink-muted hover:text-ink",
+  );
+
+  // Past days cannot be booked and their reservations are cleaned up,
+  // so they are shown but not offered.
+  if (isPast && !isSelected) {
+    return (
+      <span
+        ref={pillRef}
+        aria-disabled="true"
+        aria-label={`${format(date, "EEEE d MMMM")}, past`}
+        className={cn(
+          className,
+          "border-transparent bg-transparent text-dim line-through decoration-1 hover:text-dim",
+        )}
+      >
+        {format(date, "EEE")}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      ref={pillRef}
+      to={to}
+      preventScrollReset
+      aria-current={isSelected ? "date" : undefined}
+      aria-label={format(date, "EEEE d MMMM")}
+      className={className}
+    >
+      {format(date, "EEE")}
     </Link>
   );
 }
