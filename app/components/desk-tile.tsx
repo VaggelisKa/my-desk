@@ -10,6 +10,8 @@ type DeskTileProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   /** Row inside the block; decides which side the chair sits on. */
   row: number;
+  /** Where it sits, e.g. "by the window". The map shows it by column. */
+  place?: string;
   state?: DeskTileState;
   /** First name of whoever has the desk on the shown day, when it is not the owner. */
   sitter?: string | null;
@@ -26,8 +28,9 @@ let stateWords: Record<DeskTileState, string> = {
 /**
  * A desk drawn as a flat slab with a solid lower edge, the one raised thing in
  * the design. The accessible name is the owner's first name (or "Unclaimed"),
- * which the desk map, tests and screen readers all key on; the number, state
- * and who is sitting there are read out as the description.
+ * which the desk map, tests and screen readers all key on; the number, where
+ * it sits, the state and who is sitting there are read out as the
+ * description.
  *
  * The state is written on the tile as well as coloured, so it reads without
  * telling the colours apart. The desk number lives in the sheet instead.
@@ -44,6 +47,7 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
       name,
       label,
       row,
+      place,
       state = "free",
       sitter,
       dimmed = false,
@@ -57,7 +61,7 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
     let status = dimmed ? "Filtered out" : stateWords[state];
     let descriptionId = React.useId();
     let description = [
-      `Desk ${label}`,
+      place ? `Desk ${label} ${place}` : `Desk ${label}`,
       status.toLowerCase(),
       sitter ? `${sitter} is sitting here` : null,
     ]

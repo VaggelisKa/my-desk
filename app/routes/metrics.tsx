@@ -8,6 +8,8 @@ import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics } from "~/lib/db/schema";
 import type { Route } from "./+types/metrics";
 
+export let meta: Route.MetaFunction = () => [{ title: "Metrics" }];
+
 // One row per workday from cron.log-metrics; the page does the grouping.
 async function loadMetrics() {
   return await db

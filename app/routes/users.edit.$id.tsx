@@ -6,6 +6,8 @@ import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
 import type { Route } from "./+types/users.edit.$id";
 
+export let meta: Route.MetaFunction = () => [{ title: "Profile" }];
+
 export async function loader({ params, request }: Route.LoaderArgs) {
   let { userId, role } = await requireAuthCookie(request);
   let paramsUserId = params?.id?.toLowerCase();

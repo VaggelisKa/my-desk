@@ -68,6 +68,10 @@ export let links: Route.LinksFunction = () => [
   })),
 ];
 
+// Pages set their own title; this covers the rest (the error page, a missing
+// page), so the tab and screen readers never get a blank one.
+export let meta: Route.MetaFunction = () => [{ title: "My desk" }];
+
 export async function loader({ request }: Route.LoaderArgs) {
   let [{ toast, headers }, user] = await Promise.all([
     getToast(request),
@@ -158,6 +162,38 @@ function useOutletScrollRestoration(
       element.scrollTo(0, 0);
     }
   }, [location, navigationType, outlet]);
+}
+
+/**
+ * Reads out the new page's title after moving to another page in the app.
+ * A full page load does that on its own; client-side navigation is silent
+ * to screen readers otherwise. Changes within a page (filters, the day
+ * strip) keep the path and stay quiet.
+ */
+function RouteAnnouncer() {
+  let { pathname } = useLocation();
+  let region = useRef<HTMLDivElement>(null);
+  let previous = useRef(pathname);
+
+  useEffect(() => {
+    if (previous.current === pathname) return;
+    previous.current = pathname;
+
+    // After React Router has put the new page's <title> in.
+    let frame = requestAnimationFrame(() => {
+      if (region.current) region.current.textContent = document.title;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
+
+  return (
+    <div
+      ref={region}
+      aria-live="polite"
+      aria-atomic="true"
+      className="sr-only"
+    />
+  );
 }
 
 /**
@@ -263,7 +299,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </main>
             {/* An island stays interactive and announced while a Silk sheet
             makes the rest of the page inert, so toasts still get through. */}
-            <Island.Root>
+            {/* Silk makes the island a scroll box, which Chrome would stop
+            on while tabbing even with no toast in it. */}
+            <Island.Root tabIndex={-1}>
               <Island.Content>
                 <Toaster />
               </Island.Content>
@@ -278,6 +316,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </>
         )}
 
+        <RouteAnnouncer />
         <ScrollRestoration />
         <Scripts />
       </body>

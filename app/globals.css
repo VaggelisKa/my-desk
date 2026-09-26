@@ -52,6 +52,14 @@
     .app-outlet {
       height: 100dvh;
       overflow-y: auto;
+      /* Whatever gets keyboard focus scrolls clear of the floating dock. */
+      scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    }
+  }
+  /* ...and clear of the sticky masthead on desktop. */
+  @media (min-width: 768px) {
+    html {
+      scroll-padding-top: 64px;
     }
   }
 }
@@ -230,4 +238,10 @@ html[data-touch] .group:focus-visible * {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Headings and panels that only take focus from script, to keep keyboard
+   users in place (see app/lib/focus.ts), show no ring. */
+[tabindex="-1"]:focus {
+  outline: none;
 }

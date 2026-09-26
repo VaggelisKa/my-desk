@@ -1,7 +1,7 @@
 import { Sheet } from "@silk-hq/components";
 import { addDays, format, isBefore, isSameDay } from "date-fns";
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
@@ -13,6 +13,7 @@ import {
   type Weekday,
 } from "~/lib/dates";
 import type { reservations, users } from "~/lib/db/schema";
+import { rescueFocus } from "~/lib/focus";
 import { cn, deskLabel } from "~/lib/utils";
 
 type DeskSheetProps = {
@@ -108,6 +109,7 @@ export function DeskSheet({
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
   let fetcher = useFetcher();
+  let body = useRef<HTMLDivElement>(null);
   let now = new Date();
   let todayDate = parseDate(todayValue ?? formatDate(now));
   let todaysDay = days[todayDate.getDay()];
@@ -251,7 +253,10 @@ export function DeskSheet({
               </Sheet.Trigger>
             )}
 
-            <div className="desk-sheet-body flex flex-col gap-5 font-display text-ink">
+            <div
+              ref={body}
+              className="desk-sheet-body flex flex-col gap-5 font-display text-ink"
+            >
               <div>
                 <Sheet.Title className="text-lg font-bold tracking-tight sm:text-xl">
                   {`Desk ${deskLabel(desk)}`}
@@ -273,6 +278,17 @@ export function DeskSheet({
                 method="POST"
                 action="/?index"
                 className="flex flex-col gap-6"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  let form = event.currentTarget;
+                  // The button turns disabled while it books and the days
+                  // it booked stop being checkboxes, so focus would drop
+                  // out of the sheet; keep it in the sheet instead.
+                  let hadFocus = form.contains(document.activeElement);
+                  void fetcher.submit(form).then(() => {
+                    if (hadFocus) rescueFocus(body.current);
+                  });
+                }}
               >
                 <input type="hidden" name="deskId" value={desk.id} />
 

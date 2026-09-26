@@ -22,7 +22,7 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reserveDesk } from "~/lib/reservations.server";
-import { cn, deskLabel, enterAt } from "~/lib/utils";
+import { cn, deskLabel, deskPlacement, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
@@ -325,7 +325,7 @@ function FloorPlan({
         >
           {block === "7" && <Wall />}
 
-          <div className="mt-2 text-[13px] font-bold">Block {block}</div>
+          <h2 className="mt-2 text-[13px] font-bold">Block {block}</h2>
 
           <div
             className={cn(
@@ -370,6 +370,8 @@ function FloorPlan({
                     name={desk.user?.firstName}
                     label={deskLabel(desk)}
                     row={desk.row}
+                    // The window · middle · aisle header is only drawn.
+                    place={deskPlacement(desk.column)}
                     state={state}
                     sitter={sitter}
                     dimmed={desk.disabled}

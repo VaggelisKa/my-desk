@@ -1,7 +1,14 @@
 import { format, nextDay, startOfDay } from "date-fns";
 import { and, eq } from "drizzle-orm";
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { Form, redirect, useNavigation } from "react-router";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from "react";
+import { Form, redirect, useNavigation, useSubmit } from "react-router";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import { DeskChip, type OwnDesk } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
@@ -19,6 +26,7 @@ import {
 import { formatDate, parseDate, WEEKDAYS, type Weekday } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
+import { rescueFocus } from "~/lib/focus";
 import { cn, deskLabel } from "~/lib/utils";
 import type { Route } from "./+types/_bookings.automatic-reservations";
 
@@ -225,11 +233,27 @@ export default function AutomaticReservationsPage({
     }
   }, [scheduledDays]);
   let nextRunLabel = format(parseDate(nextRun), "EEE d MMM");
+  let heading = useRef<HTMLHeadingElement>(null);
+  let submit = useSubmit();
+
+  // Every action here swaps or disables the button you pressed (Set up
+  // becomes the summary, Stop brings the setup back, Pause turns Resume),
+  // so once it is done focus goes back to the card instead of the page.
+  function submitKeepingFocus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    let form = event.currentTarget;
+    let hadFocus = form.contains(document.activeElement);
+    void submit(form).then(() => {
+      if (hadFocus) rescueFocus(heading.current);
+    });
+  }
 
   return (
     <div className="enter flex flex-col gap-7 rounded-xl border border-line bg-paper px-5 py-6 sm:px-8 sm:py-8">
       <div className="flex flex-col gap-1.5">
-        <h2 className="text-[15px] font-bold">Weekly booking</h2>
+        <h2 ref={heading} className="text-[15px] font-bold">
+          Weekly booking
+        </h2>
         <p className="max-w-[52ch] text-pretty text-sm leading-relaxed text-ink-muted">
           Book your own desk every week without thinking about it. It runs every
           Sunday at 10:00 and books the week ahead.
@@ -250,6 +274,7 @@ export default function AutomaticReservationsPage({
           enabled={enabled}
           nextRunLabel={nextRunLabel}
           pendingIntent={pendingIntent}
+          onSubmit={submitKeepingFocus}
         />
       ) : (
         <SetupForm
@@ -258,6 +283,7 @@ export default function AutomaticReservationsPage({
           onPickedChange={setPicked}
           nextRunLabel={nextRunLabel}
           pendingIntent={pendingIntent}
+          onSubmit={submitKeepingFocus}
         />
       )}
     </div>
@@ -265,6 +291,7 @@ export default function AutomaticReservationsPage({
 }
 
 type PendingIntent = FormDataEntryValue | null | undefined;
+type OnSubmit = (event: FormEvent<HTMLFormElement>) => void;
 
 function ScheduleSummary({
   desk,
@@ -272,12 +299,14 @@ function ScheduleSummary({
   enabled,
   nextRunLabel,
   pendingIntent,
+  onSubmit,
 }: {
   desk: OwnDesk;
   days: Weekday[];
   enabled: boolean;
   nextRunLabel: string;
   pendingIntent: PendingIntent;
+  onSubmit: OnSubmit;
 }) {
   let isSubmitting = pendingIntent != null;
 
@@ -338,7 +367,7 @@ function ScheduleSummary({
       </div>
 
       <div className="flex flex-col gap-2.5 border-t border-line pt-6 sm:flex-row">
-        <Form method="POST">
+        <Form method="POST" onSubmit={onSubmit}>
           <input
             type="hidden"
             name="intent"
@@ -354,7 +383,7 @@ function ScheduleSummary({
           </Button>
         </Form>
 
-        <Form method="POST">
+        <Form method="POST" onSubmit={onSubmit}>
           <input type="hidden" name="intent" value="DELETE" />
           <Button
             variant="quiet"
@@ -377,17 +406,19 @@ function SetupForm({
   onPickedChange,
   nextRunLabel,
   pendingIntent,
+  onSubmit,
 }: {
   desk: OwnDesk;
   picked: Weekday[];
   onPickedChange: Dispatch<SetStateAction<Weekday[]>>;
   nextRunLabel: string;
   pendingIntent: PendingIntent;
+  onSubmit: OnSubmit;
 }) {
   let isSubmitting = pendingIntent != null;
 
   return (
-    <Form method="POST" className="flex flex-col gap-7">
+    <Form method="POST" className="flex flex-col gap-7" onSubmit={onSubmit}>
       <input type="hidden" name="intent" value="ADD" />
 
       <fieldset className="flex flex-col gap-3.5">

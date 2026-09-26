@@ -20,13 +20,14 @@ export function Toaster() {
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let placement = isNarrow ? ("top" as const) : ("right" as const);
   let [travelStatus, setTravelStatus] = useState<TravelStatus>("idleOutside");
-  let [pointerOver, setPointerOver] = useState(false);
+  // Hovered, or focused from the keyboard: either way someone is reading it.
+  let [held, setHeld] = useState(false);
   let isError = current?.variant === "error";
 
   // The timer only runs once the toast has settled, so a slow entrance or a
   // half-finished swipe does not eat into the time it is readable.
   useEffect(() => {
-    if (!presented || !current || pointerOver) return;
+    if (!presented || !current || held) return;
     if (travelStatus !== "idleInside") return;
 
     let timeout = setTimeout(
@@ -34,7 +35,7 @@ export function Toaster() {
       current.duration ?? DEFAULT_DURATION,
     );
     return () => clearTimeout(timeout);
-  }, [presented, current, pointerOver, travelStatus, dismiss]);
+  }, [presented, current, held, travelStatus, dismiss]);
 
   return (
     <>
@@ -77,8 +78,10 @@ export function Toaster() {
                   <div
                     data-toast={current?.variant ?? "success"}
                     className="toast-card font-display text-ink"
-                    onPointerEnter={() => setPointerOver(true)}
-                    onPointerLeave={() => setPointerOver(false)}
+                    onPointerEnter={() => setHeld(true)}
+                    onPointerLeave={() => setHeld(false)}
+                    onFocus={() => setHeld(true)}
+                    onBlur={() => setHeld(false)}
                   >
                     <span
                       aria-hidden="true"

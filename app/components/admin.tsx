@@ -1,13 +1,21 @@
 import { Sheet } from "@silk-hq/components";
 import { differenceInCalendarDays, format } from "date-fns";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Search, X } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useFetcher, useOutletContext } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { DeskChip, SegmentSwitch } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
 import type { AdminBooking, AdminDesk, AdminPerson } from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
+import { focusNeighbour, rescueFocus } from "~/lib/focus";
 import { capitalize, cn, deskLabel, deskPlace, plural } from "~/lib/utils";
 
 // The Admin tab (design option B): a sliding Desks · People · Bookings switch
@@ -95,15 +103,21 @@ function SearchField({
   value,
   onChange,
   autoFocus,
+  results,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
   autoFocus?: boolean;
+  /** How many rows the search leaves, read out as you type ("3 desks"). */
+  results?: string;
 }) {
   return (
     <div className="relative">
+      <p aria-live="polite" className="sr-only">
+        {value.trim() && results ? `${results} shown` : ""}
+      </p>
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
@@ -290,6 +304,7 @@ export function DeskList({ data }: { data: AdminData }) {
         label="Search desk or person"
         value={query}
         onChange={setQuery}
+        results={plural(shown.length, "desk")}
       />
 
       {blocks.length === 0 && (
@@ -387,6 +402,8 @@ export function DeskList({ data }: { data: AdminData }) {
                       label={deskLabel(desk)}
                       tone={desk.owner ? "taken" : "free"}
                     />
+                    {/* The chip is hidden from screen readers. */}
+                    <span className="sr-only">{deskLabel(desk)}</span>
                   </td>
                   <td className={td}>
                     {desk.owner ? (
@@ -449,8 +466,22 @@ function BookedCount({ count, short }: { count: number; short?: boolean }) {
         count ? "font-semibold text-ink" : "text-dim",
       )}
     >
-      {short ? count || "–" : count ? `${count} booked` : "None booked"}
+      {short
+        ? count || <Dash spoken="None" />
+        : count
+          ? `${count} booked`
+          : "None booked"}
     </span>
+  );
+}
+
+/** An empty table cell's dash, with a word for screen readers. */
+function Dash({ spoken }: { spoken: string }) {
+  return (
+    <>
+      <span aria-hidden="true">–</span>
+      <span className="sr-only">{spoken}</span>
+    </>
   );
 }
 
@@ -707,6 +738,7 @@ function PersonPicker({
         label="Search name or ID"
         value={query}
         onChange={setQuery}
+        results={`${people.length} ${people.length === 1 ? "person" : "people"}`}
       />
       <ul className={listClass}>
         {people.map((person) => {
@@ -792,6 +824,7 @@ export function PeopleList({ data }: { data: AdminData }) {
         label="Search name, ID or desk"
         value={query}
         onChange={setQuery}
+        results={`${shown.length} ${shown.length === 1 ? "person" : "people"}`}
       />
 
       {shown.length === 0 ? (
@@ -897,7 +930,7 @@ export function PeopleList({ data }: { data: AdminData }) {
                       )}
                     </td>
                     <td className={cn(td, "text-ink-muted")}>
-                      {person.hasRecurring ? "On" : "–"}
+                      {person.hasRecurring ? "On" : <Dash spoken="Off" />}
                     </td>
                     <td className={cn(td, "text-right")}>
                       <BookedCount
@@ -1103,6 +1136,7 @@ function DeskPicker({
         label="Search desk or owner"
         value={query}
         onChange={setQuery}
+        results={plural(desks.length, "desk")}
       />
       <ul className={listClass}>
         {desks.map((desk) => (
@@ -1230,6 +1264,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
         label="Search person or desk"
         value={query}
         onChange={setQuery}
+        results={plural(shown.length, "booking")}
       />
 
       {data.bookings.length === 0 ? (
@@ -1366,6 +1401,7 @@ function BookingTableRow({
     <tr className="border-t border-line hover:bg-paper-muted">
       <td className={cn(td, "w-px")}>
         <DeskChip label={label} tone={borrowed ? "taken" : "mine"} />
+        <span className="sr-only">{label}</span>
       </td>
       <td className={td}>
         <span className="font-semibold capitalize">{name}</span>
@@ -1375,12 +1411,19 @@ function BookingTableRow({
         {borrowed ? "Borrowed" : "Own desk"}
       </td>
       <td className={cn(td, "w-px pr-2")}>
-        <fetcher.Form method="post" action="/admin">
+        <fetcher.Form
+          method="post"
+          action="/admin"
+          onSubmit={(event) =>
+            focusNeighbour(event.currentTarget, "[data-cancel-booking]")
+          }
+        >
           <input type="hidden" name="intent" value="cancel" />
           <input type="hidden" name="deskId" value={booking.deskId} />
           <input type="hidden" name="date" value={booking.date} />
           <button
             type="submit"
+            data-cancel-booking
             aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
             className={cn(rowButton, "hover:text-danger")}
           >
@@ -1439,12 +1482,23 @@ function BookingRow({
           {detail}
         </span>
       </div>
-      <fetcher.Form method="post" action="/admin">
+      <fetcher.Form
+        method="post"
+        action="/admin"
+        onSubmit={(event) =>
+          focusNeighbour(
+            event.currentTarget,
+            "[data-cancel-booking]",
+            event.currentTarget.closest<HTMLElement>("[data-sheet-step]"),
+          )
+        }
+      >
         <input type="hidden" name="intent" value="cancel" />
         <input type="hidden" name="deskId" value={booking.deskId} />
         <input type="hidden" name="date" value={booking.date} />
         <button
           type="submit"
+          data-cancel-booking
           aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
           className={cn(
             "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
@@ -1562,10 +1616,21 @@ function ConfirmAction({
   let fetcher = useFetcher();
   let [asking, setAsking] = useState(false);
   let busy = fetcher.state !== "idle";
+  let questionId = useId();
+  // Set when the question closes with focus inside it, so the button that
+  // asked gets focus back rather than the page.
+  let returnFocus = useRef(false);
+  let focusOnReturn = (node: HTMLButtonElement | null) => {
+    if (node && returnFocus.current) {
+      returnFocus.current = false;
+      node.focus();
+    }
+  };
 
   if (!asking) {
     return variant === "link" ? (
       <button
+        ref={focusOnReturn}
         type="button"
         onClick={() => setAsking(true)}
         className={cn(
@@ -1578,6 +1643,7 @@ function ConfirmAction({
       </button>
     ) : (
       <Button
+        ref={focusOnReturn}
         type="button"
         variant="quiet"
         size="tall"
@@ -1595,7 +1661,16 @@ function ConfirmAction({
       action="/admin"
       onSubmit={(event) => {
         event.preventDefault();
-        void fetcher.submit(event.currentTarget).then(() => setAsking(false));
+        let form = event.currentTarget;
+        let hadFocus = form.contains(document.activeElement);
+        // What was asked about may be gone afterwards (the bookings it
+        // cleared, the owner it removed); then focus goes to the sheet.
+        let home = form.closest<HTMLElement>("[data-sheet-step]");
+        void fetcher.submit(form).then(() => {
+          returnFocus.current = hadFocus;
+          setAsking(false);
+          if (hadFocus) rescueFocus(home);
+        });
       }}
       className={cn(
         "flex w-full basis-full flex-col gap-2.5 rounded-[10px] border px-3.5 py-3 text-[13px] normal-case leading-snug tracking-normal text-ink",
@@ -1608,7 +1683,7 @@ function ConfirmAction({
       {Object.entries(fields).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
-      <p>{question}</p>
+      <p id={questionId}>{question}</p>
       <div className="flex gap-2">
         <Button
           type="submit"
@@ -1616,6 +1691,8 @@ function ConfirmAction({
           variant="primary"
           disabled={busy}
           autoFocus
+          // Focus lands here, so the question is read out with it.
+          aria-describedby={questionId}
           className={cn(
             "flex-1",
             tone === "danger" &&
@@ -1629,7 +1706,12 @@ function ConfirmAction({
           variant="quiet"
           size="tall"
           className="flex-1"
-          onClick={() => setAsking(false)}
+          onClick={(event) => {
+            returnFocus.current = event.currentTarget.contains(
+              document.activeElement,
+            );
+            setAsking(false);
+          }}
         >
           Keep
         </Button>
@@ -1670,6 +1752,13 @@ function AdminSheet({
   let [presented, setPresented] = useState(false);
   let [step, setStep] = useState<Step>({ name: "view" });
   let [opened, setOpened] = useState(0);
+  // Moving between steps replaces what had focus (the button you pressed),
+  // so the new step takes focus instead of the page.
+  let focusStep = useRef(false);
+  let goTo = (next: Step) => {
+    focusStep.current = true;
+    setStep(next);
+  };
   let [travelStatus, setTravelStatus] = useState("idleOutside");
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
@@ -1779,7 +1868,20 @@ function AdminSheet({
                   {description}
                 </Sheet.Description>
               </div>
-              <Fragment key={opened}>{children(step, setStep)}</Fragment>
+              <div
+                key={`${opened}-${step.name}`}
+                ref={(node) => {
+                  if (node && focusStep.current) {
+                    focusStep.current = false;
+                    node.focus();
+                  }
+                }}
+                tabIndex={-1}
+                data-sheet-step
+                className="flex flex-col gap-6"
+              >
+                {children(step, goTo)}
+              </div>
             </div>
           </Sheet.Content>
         </Sheet.View>

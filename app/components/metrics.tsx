@@ -267,7 +267,13 @@ function BookingsChart({ days, now }: { days: Day[]; now: Date }) {
         <PeriodSwitch value={period} onChange={setPeriod} />
       </div>
 
-      <ChartContainer className="aspect-auto h-[240px] sm:h-[300px]">
+      <ChartTable data={data} period={period} />
+
+      {/* Drawn only; the table above carries the same numbers. */}
+      <ChartContainer
+        aria-hidden
+        className="aspect-auto h-[240px] sm:h-[300px]"
+      >
         <BarChart data={data} margin={{ top: 22, left: -12, right: 4 }}>
           <defs>
             <pattern
@@ -354,6 +360,43 @@ function BookingsChart({ days, now }: { days: Day[]; now: Date }) {
         </span>
       </div>
     </section>
+  );
+}
+
+/** The chart's numbers as a table, for screen readers. */
+function ChartTable({
+  data,
+  period,
+}: {
+  data: ReturnType<typeof bookingsBy>;
+  period: Period;
+}) {
+  return (
+    <table className="sr-only">
+      <caption>
+        {period === "weeks" ? "Bookings each week" : "Bookings each month"}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">{period === "weeks" ? "Week of" : "Month"}</th>
+          <th scope="col">At their own desk</th>
+          <th scope="col">Guests on a borrowed desk</th>
+          <th scope="col">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((row) => (
+          <tr key={row.start}>
+            <th scope="row">
+              {format(row.start, period === "weeks" ? "d MMMM" : "MMMM yyyy")}
+            </th>
+            <td>{row.own}</td>
+            <td>{row.guests}</td>
+            <td>{row.total}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

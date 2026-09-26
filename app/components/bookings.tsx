@@ -8,6 +8,7 @@ import {
 import { X } from "lucide-react";
 import { NavLink, useFetcher, useLocation, useNavigation } from "react-router";
 import { parseDate } from "~/lib/dates";
+import { focusNeighbour } from "~/lib/focus";
 import { capitalize, cn, deskLabel, deskPlace, enterAt } from "~/lib/utils";
 
 // The Bookings tab (design/design-options.html, "My reservations" and
@@ -292,7 +293,15 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
         </div>
       </div>
 
-      <fetcher.Form method="DELETE" action="/reservations">
+      <fetcher.Form
+        method="DELETE"
+        action="/reservations"
+        // The row hides as soon as this submits; keep keyboard focus on
+        // the list instead of losing it to the page.
+        onSubmit={(event) =>
+          focusNeighbour(event.currentTarget, "[data-remove-booking]")
+        }
+      >
         <input type="hidden" name="reservation-date" value={booking.date} />
         <input
           type="hidden"
@@ -303,6 +312,7 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
         <input type="hidden" name="desk-id" value={booking.deskId} />
         <button
           type="submit"
+          data-remove-booking
           aria-label={`Remove ${format(date, "EEE d MMM")}, desk ${label}`}
           className={cn(
             "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
