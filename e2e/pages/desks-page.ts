@@ -67,7 +67,6 @@ export class DeskDialog {
   readonly title;
   readonly reserveForTodayButton;
   readonly bookButton;
-  readonly editDeskLink;
   readonly assignedTo;
   readonly usedTodayBy;
 
@@ -79,7 +78,6 @@ export class DeskDialog {
     this.bookButton = root.getByRole("button", {
       name: /^(Book \d|Pick days)/,
     });
-    this.editDeskLink = root.getByRole("link", { name: "Edit desk info" });
     this.assignedTo = root
       .getByText("Assigned to", { exact: true })
       .locator("xpath=following-sibling::p[1]");

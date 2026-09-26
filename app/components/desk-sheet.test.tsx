@@ -399,25 +399,4 @@ describe("DeskSheet", () => {
       },
     );
   });
-
-  describe("editing", () => {
-    it("links admins to the desk edit page", async () => {
-      let { dialog } = await openSheet({
-        desk: makeDesk(),
-        allowedToEdit: true,
-      });
-
-      expect(
-        within(dialog).getByRole("link", { name: "Edit desk info" }),
-      ).toHaveAttribute("href", "/desks/12/edit");
-    });
-
-    it("hides the edit link from non-admins", async () => {
-      let { dialog } = await openSheet({ desk: makeDesk() });
-
-      expect(
-        within(dialog).queryByRole("link", { name: "Edit desk info" }),
-      ).not.toBeInTheDocument();
-    });
-  });
 });

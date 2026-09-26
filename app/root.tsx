@@ -19,13 +19,7 @@ import {
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { getToast } from "remix-toast";
-import {
-  AppMenu,
-  Dock,
-  Masthead,
-  PAGE_COLUMN,
-  PageHeading,
-} from "~/components/app-shell";
+import { AppMenu, Dock, Masthead, PAGE_COLUMN } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { Toaster } from "~/components/ui/toaster";
@@ -207,7 +201,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <ErrorCard message={error?.message} />
               ) : user ? (
                 <div className={cn(PAGE_COLUMN, "flex flex-col")}>
-                  <PageHeading />
                   {children}
                 </div>
               ) : (
