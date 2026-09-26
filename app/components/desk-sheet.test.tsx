@@ -141,9 +141,7 @@ describe("DeskSheet", () => {
     expect(
       within(dialog).getByRole("heading", { name: "Desk 3.2.1" }),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText("Block 3 · row 2 · by the window"),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText("By the window")).toBeInTheDocument();
     expect(within(dialog).getByText("jane doe")).toBeInTheDocument();
   });
 

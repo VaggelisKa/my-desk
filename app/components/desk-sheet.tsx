@@ -75,9 +75,9 @@ let days = [
 ] as const;
 
 let placement: Record<number, string> = {
-  1: "by the window",
-  2: "in the middle",
-  3: "by the aisle",
+  1: "By the window",
+  2: "In the middle",
+  3: "By the aisle",
 };
 
 /**
@@ -255,7 +255,8 @@ export function DeskSheet({
                   {`Desk ${desk.block}.${desk.row}.${desk.column}`}
                 </Sheet.Title>
                 <Sheet.Description className="mt-0.5 text-[13px] text-ink-muted">
-                  {`Block ${desk.block} · row ${desk.row} · ${placement[desk.column] ?? `column ${desk.column}`}`}
+                  {/* The title already gives block and row, so only say where. */}
+                  {placement[desk.column] ?? `Column ${desk.column}`}
                 </Sheet.Description>
               </div>
 
