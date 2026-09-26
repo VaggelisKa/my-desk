@@ -424,11 +424,6 @@ let PAGE_HEADINGS: {
     title: "Edit desk",
     back: { to: "/", label: "Desks" },
   },
-  {
-    match: (p) => p.startsWith("/users/edit/"),
-    title: "Edit your profile",
-    back: { to: "/", label: "Desks" },
-  },
 ];
 
 /**
