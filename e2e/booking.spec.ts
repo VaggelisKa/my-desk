@@ -128,3 +128,28 @@ test.describe("someone else's desk", () => {
     await expect(db.reservationsForDesk(desks.bob.id)).resolves.toEqual([]);
   });
 });
+
+test("a desk sits at its place in the block even when the block has gaps", async ({
+  page,
+  db,
+  desksPage,
+}) => {
+  // Alone in block 2, at the aisle end of its second row.
+  await db.moveDesk(desks.unclaimed.id, { row: 2, column: 3 });
+  await desksPage.goto();
+
+  let tile = page.getByRole("button", { name: "Unclaimed" });
+  let block = tile.locator(
+    "xpath=ancestor::div[contains(@class,'grid-rows-2')]",
+  );
+  let [tileBox, blockBox] = await Promise.all([
+    tile.boundingBox(),
+    block.boundingBox(),
+  ]);
+
+  // Right-hand third of the block, and its lower half.
+  expect(tileBox!.x).toBeGreaterThan(
+    blockBox!.x + (blockBox!.width * 2) / 3 - 10,
+  );
+  expect(tileBox!.y).toBeGreaterThan(blockBox!.y + blockBox!.height / 2 - 10);
+});

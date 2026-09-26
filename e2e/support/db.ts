@@ -127,6 +127,13 @@ export class TestDatabase {
       .where(eq(schema.users.id, users[user].id));
   }
 
+  async moveDesk(id: number, place: { row: number; column: number }) {
+    await this.db
+      .update(schema.desks)
+      .set(place)
+      .where(eq(schema.desks.id, id));
+  }
+
   reservationsForDesk(deskId: number) {
     return this.db.query.reservations.findMany({
       where: eq(schema.reservations.deskId, deskId),

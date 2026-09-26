@@ -1,18 +1,16 @@
 import { Sheet } from "@silk-hq/components";
-import {
-  addDays,
-  format,
-  getWeek,
-  isBefore,
-  isSameDay,
-  startOfDay,
-} from "date-fns";
+import { addDays, format, isBefore, isSameDay } from "date-fns";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
-import { formatDate, workdaysOfWeek, type Weekday } from "~/lib/dates";
+import {
+  formatDate,
+  parseDate,
+  workdaysOfWeek,
+  type Weekday,
+} from "~/lib/dates";
 import type { reservations, users } from "~/lib/db/schema";
 import { cn } from "~/lib/utils";
 
@@ -41,6 +39,14 @@ type DeskSheetProps = {
   userId?: string;
   /** The day shown on the map, in `dd.MM.yyyy`; marked in the two-week grid. */
   selectedDay?: string;
+  /**
+   * Today in `dd.MM.yyyy`, from the loader, so the sheet agrees with the map
+   * and the server on which day it is even when the browser's clock or
+   * timezone does not.
+   */
+  today?: string;
+  /** Placement in the floor plan; Silk wraps the tile, so it goes on the wrapper. */
+  style?: React.CSSProperties;
   /** Opens the sheet once the page is interactive, for links to a desk. */
   autoOpen?: boolean;
   onClose?: () => void;
@@ -93,6 +99,8 @@ export function DeskSheet({
   allowedToEdit,
   userId,
   selectedDay,
+  today: todayValue,
+  style,
   autoOpen = false,
   onClose,
 }: DeskSheetProps) {
@@ -105,26 +113,29 @@ export function DeskSheet({
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
   let fetcher = useFetcher();
   let now = new Date();
-  let currentWeek = getWeek(now);
-  let todaysDay = days[now.getDay()];
+  let todayDate = parseDate(todayValue ?? formatDate(now));
+  let todaysDay = days[todayDate.getDay()];
   let isWeekend = todaysDay === "saturday" || todaysDay === "sunday";
   // Weeks start on Sunday, so on a Saturday "this week" is already over and
   // the grid starts from the coming one (the day strip does the same).
-  let gridStart = todaysDay === "saturday" ? addDays(now, 1) : now;
-  let gridWeek = getWeek(gridStart);
+  let gridStart = todaysDay === "saturday" ? addDays(todayDate, 1) : todayDate;
   let isSubmitting = fetcher.state !== "idle";
 
-  function reservationFor(day: string, week: number) {
-    return desk.reservations.find((r) => r.day === day && r.week === week);
+  // By the full date: week numbers restart around New Year, so "next week"
+  // is not always this week's number plus one.
+  function reservationOn(date: Date) {
+    let value = formatDate(date);
+    return desk.reservations.find((r) => r.date === value);
   }
 
   let grid = weekRows(isWeekend).map(({ label, offset }) => ({
     label,
     days: workdaysOfWeek(gridStart, offset).map(({ day, date }) => {
-      let reservation = reservationFor(day, gridWeek + offset);
-      let isPast = isBefore(date, startOfDay(now));
+      let reservation = reservationOn(date);
+      let isPast = isBefore(date, todayDate);
       let isClosed =
-        isPast || (isSameDay(date, now) && now.getHours() >= LAST_BOOKING_HOUR);
+        isPast ||
+        (isSameDay(date, todayDate) && now.getHours() >= LAST_BOOKING_HOUR);
 
       return {
         day,
@@ -154,7 +165,7 @@ export function DeskSheet({
     );
   }
 
-  let todaysReservation = reservationFor(todaysDay, currentWeek);
+  let todaysReservation = reservationOn(todayDate);
   let borrower =
     todaysReservation && todaysReservation.users.id !== desk.user?.id
       ? todaysReservation.users
@@ -198,6 +209,7 @@ export function DeskSheet({
       sheetRole="dialog"
       presented={presented}
       onPresentedChange={handlePresentedChange}
+      style={style}
     >
       <Sheet.Trigger asChild>{children}</Sheet.Trigger>
 
@@ -376,7 +388,7 @@ export function DeskSheet({
                         <input
                           type="hidden"
                           name="date"
-                          value={formatDate(now)}
+                          value={formatDate(todayDate)}
                         />
                         <Button
                           variant="primary"

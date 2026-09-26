@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { getWeek } from "date-fns";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatDate, workdaysOfWeek, type Weekday } from "~/lib/dates";
 import { renderWithRouter } from "../../test/render-with-router";
 import { DeskSheet } from "./desk-sheet";
 
@@ -89,12 +90,14 @@ function makeDesk(
   };
 }
 
-function reservation(
-  day: string,
-  users: typeof owner,
-  week = getWeek(new Date()),
-) {
-  return { day, week, date: null, users };
+// A reservation on `day` of this week (or the next, with `weekOffset` 1),
+// relative to the faked "now".
+function reservation(day: Weekday, users: typeof owner, weekOffset: 0 | 1 = 0) {
+  let { date } = workdaysOfWeek(new Date(), weekOffset).find(
+    (d) => d.day === day,
+  )!;
+
+  return { day, week: getWeek(date), date: formatDate(date), users };
 }
 
 function setToday(date: Date) {
@@ -206,9 +209,7 @@ describe("DeskSheet", () => {
     it("ignores reservations for the same weekday in another week", async () => {
       let { dialog } = await openSheet({
         desk: makeDesk({
-          reservations: [
-            reservation("wednesday", guest, getWeek(WEDNESDAY) + 1),
-          ],
+          reservations: [reservation("wednesday", guest, 1)],
         }),
       });
 
@@ -219,6 +220,36 @@ describe("DeskSheet", () => {
         within(dialog).getByRole("button", { name: "Reserve for today" }),
       ).toBeEnabled();
     });
+  });
+
+  it("finds next week's bookings across New Year, when week numbers restart", async () => {
+    // Monday 21 Dec 2026 is in week 52; Monday 28 Dec is already week 1.
+    setToday(new Date(2026, 11, 21, 9));
+
+    let { dialog } = await openSheet({
+      desk: makeDesk({ reservations: [reservation("monday", owner, 1)] }),
+      userId: owner.id,
+      allowedToReserve: true,
+    });
+
+    expect(
+      within(dialog).getByRole("img", { name: "Mon 28 Dec, reserved by you" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("checkbox", { name: "Mon 28 Dec, free" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("takes today from the page rather than the browser clock", async () => {
+    // The browser already thinks it is Thursday; the server says Wednesday.
+    setToday(new Date(2025, 2, 13, 0, 30));
+
+    let { dialog } = await openSheet({
+      desk: makeDesk({ reservations: [reservation("wednesday", guest)] }),
+      today: "12.03.2025",
+    });
+
+    expect(within(dialog).getByText("is borrowing it")).toBeInTheDocument();
   });
 
   it("marks the next two weeks with real dates and who has them", async () => {

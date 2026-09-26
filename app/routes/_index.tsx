@@ -221,6 +221,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
               userId={loaderData.userId}
               role={loaderData.role}
               selectedDay={selectedDay}
+              today={today}
             />
           )}
         </Await>
@@ -261,11 +262,13 @@ function FloorPlan({
   userId,
   role,
   selectedDay,
+  today,
 }: {
   desks: Desks;
   userId: string;
   role?: "admin" | "user" | null;
   selectedDay: string;
+  today: string;
 }) {
   let [searchParams, setSearchParams] = useSearchParams();
   let all = Object.values(desks).flat();
@@ -350,11 +353,14 @@ function FloorPlan({
                   allowedToReserve={desk.user?.id === userId}
                   allowedToEdit={role === "admin"}
                   selectedDay={selectedDay}
+                  today={today}
+                  // Silk wraps the tile in a div, and that wrapper is the
+                  // grid item, so the desk's place goes on it.
+                  style={{ gridColumn: desk.column, gridRow: desk.row }}
                   autoOpen={openDesk === String(desk.id)}
                   onClose={closeDeskLink}
                 >
                   <DeskTile
-                    style={{ gridColumn: desk.column, gridRow: desk.row }}
                     name={desk.user?.firstName}
                     label={`${desk.block}.${desk.row}.${desk.column}`}
                     row={desk.row}
