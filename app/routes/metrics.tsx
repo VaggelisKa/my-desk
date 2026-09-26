@@ -1,6 +1,7 @@
 import { isSameMonth, subMonths } from "date-fns";
 import { Suspense } from "react";
-import { Await } from "react-router";
+import { Await, useSearchParams } from "react-router";
+import { OptionBusiest, OptionTrend, OptionWeekly } from "~/components/metrics";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { ErrorCard } from "~/components/error-card";
 import { InfoTooltip } from "~/components/info-tooltip";
@@ -158,6 +159,11 @@ function MetricsContent({
 }: {
   data: Awaited<ReturnType<typeof loadMetrics>>;
 }) {
+  let [params] = useSearchParams();
+  let option = params.get("option");
+  if (option === "a") return <OptionTrend rows={loaderData.metrics} />;
+  if (option === "b") return <OptionWeekly rows={loaderData.metrics} />;
+  if (option === "c") return <OptionBusiest rows={loaderData.metrics} />;
   function formatPercentage(value: number | null) {
     if (value === null) {
       return "No data from last month";
