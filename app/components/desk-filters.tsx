@@ -1,7 +1,14 @@
 import { addDays, format, isAfter, isWeekend, startOfDay } from "date-fns";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Form, Link, useSearchParams, useSubmit } from "react-router";
+import {
+  Form,
+  Link,
+  useLocation,
+  useNavigation,
+  useSearchParams,
+  useSubmit,
+} from "react-router";
 import {
   defaultDay,
   formatDate,
@@ -10,6 +17,7 @@ import {
   workdaysOfWeek,
 } from "~/lib/dates";
 import { cn } from "~/lib/utils";
+import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 let COLUMNS = [
   { value: "1", label: "Window" },
@@ -165,7 +173,15 @@ export function DayStrip({
   today?: string;
   className?: string;
 }) {
-  let [searchParams] = useSearchParams();
+  let [currentParams] = useSearchParams();
+  let { pathname } = useLocation();
+  let navigation = useNavigation();
+  // Follow a day or week you just picked straight away, so the highlight
+  // slides while the desks load instead of after.
+  let searchParams =
+    navigation.location?.pathname === pathname
+      ? new URLSearchParams(navigation.location.search)
+      : currentParams;
   let today = todayParam ? parseDate(todayParam) : new Date();
   // A missing or malformed param means today (the coming Monday on a
   // weekend), like the route.
@@ -199,6 +215,12 @@ export function DayStrip({
 
   let canGoBack = inNextWeek && !thisWeekIsOver;
 
+  // Keyed by weekday, so flipping the week slides the pill across too.
+  let selectedWeekday = days.find(
+    ({ date }) => formatDate(date) === selectedKey,
+  )?.day;
+  let { position, animate, itemRef } = useSlidingHighlight(selectedWeekday);
+
   return (
     <nav
       aria-label="Day"
@@ -214,16 +236,36 @@ export function DayStrip({
         <ChevronLeft className="h-4 w-4" />
       </WeekArrow>
 
-      <div className="grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
+      <div className="relative grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
+        {position && (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute left-0 top-0 rounded-lg bg-ink sm:rounded-full",
+              animate && SLIDE,
+            )}
+            style={{
+              width: position.width,
+              height: position.height,
+              transform: `translate(${position.left}px, ${position.top}px)`,
+            }}
+          />
+        )}
         {days.map(({ day, date }) => {
           let key = formatDate(date);
           let isSelected = key === selectedKey;
           let isPast = key !== todayKey && date < today;
           let className = cn(
-            "grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
+            "relative grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors duration-300 sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
             focusRing,
             isSelected
-              ? "border-ink bg-ink text-white sm:bg-ink"
+              ? // The sliding pill draws the fill once it has been measured.
+                cn(
+                  "text-white",
+                  position
+                    ? "border-transparent bg-transparent"
+                    : "border-ink bg-ink sm:bg-ink",
+                )
               : "text-ink-muted hover:text-ink",
           );
 
@@ -233,6 +275,7 @@ export function DayStrip({
             return (
               <span
                 key={day}
+                ref={itemRef(day)}
                 aria-disabled="true"
                 aria-label={`${format(date, "EEEE d MMMM")}, past`}
                 className={cn(
@@ -248,6 +291,7 @@ export function DayStrip({
           return (
             <Link
               key={day}
+              ref={itemRef(day)}
               to={linkTo(date)}
               preventScrollReset
               aria-current={isSelected ? "date" : undefined}
