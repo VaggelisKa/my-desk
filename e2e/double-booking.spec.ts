@@ -1,5 +1,5 @@
 import { authFile, expect, expectNoToast, expectToast, test } from "./fixtures";
-import { desks, users } from "./support/db";
+import { bookingDay, desks, users } from "./support/db";
 
 test.describe("as a guest", () => {
   test.use({ storageState: authFile("guest") });
@@ -56,8 +56,7 @@ test.describe("as a guest", () => {
       day: "monday",
     });
     let response = page.waitForResponse(
-      (res) =>
-        res.request().method() === "POST" && res.url().includes("/reserve"),
+      (res) => res.request().method() === "POST" && res.url().includes("index"),
     );
     await dialog.reserveForTodayButton.click();
 
@@ -76,7 +75,7 @@ test.describe("as the desk owner", () => {
 
   test("today cannot be reserved once a guest has booked it", async ({
     db,
-    reservePage,
+    desksPage,
   }) => {
     await db.addReservation({
       user: "guest",
@@ -84,9 +83,36 @@ test.describe("as the desk owner", () => {
       day: "monday",
     });
 
-    await reservePage.goto();
+    await desksPage.goto();
+    let dialog = await desksPage.openDesk(users.alice.firstName);
+    let today = bookingDay("monday").label;
 
-    await expect(reservePage.day("monday")).toBeDisabled();
-    await expect(reservePage.day("monday")).toHaveAccessibleName(/reserved/i);
+    await expect(dialog.day(today)).toHaveCount(0);
+    await expect(dialog.dayStatus(today)).toHaveAccessibleName(/taken by Gary/);
+  });
+
+  test("a day taken while the sheet was open is not double booked", async ({
+    page,
+    db,
+    desksPage,
+  }) => {
+    await desksPage.goto();
+    let dialog = await desksPage.openDesk(users.alice.firstName);
+    let friday = bookingDay("friday").label;
+    await dialog.day(friday).check();
+
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.alice.id,
+      day: "friday",
+    });
+    let response = page.waitForResponse(
+      (res) => res.request().method() === "POST" && res.url().includes("index"),
+    );
+    await dialog.bookButton.click();
+
+    expect((await response).status()).toBe(409);
+    await expectToast(page, "Desk already reserved");
+    await expect(dialog.dayStatus(friday)).toHaveAccessibleName(/taken by Bob/);
   });
 });

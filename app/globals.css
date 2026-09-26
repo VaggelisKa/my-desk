@@ -7,26 +7,11 @@
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-
     --primary: 0 0% 9%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-
     --muted: 0 0% 96.1%;
     --muted-foreground: 0 0% 45.1%;
-
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
@@ -34,71 +19,218 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* Redesign tokens ("Slate & Moss"), see design/design-options.html */
+    --ink: #1f2a2e;
+    --ink-muted: #5f6b70;
+    --paper: #ffffff;
+    --paper-muted: #f4f5f2;
+    --line: #d8ddda;
+    /* Text field borders: darker than --line so the field stands out
+       (3:1 on white). */
+    --field: #8a9599;
+    --moss: #4f7a5a;
+    --moss-edge: #2f5039;
+    --moss-soft: #e2ede5;
+    --taken: #34434a;
+    --mist: #cfe3ea;
+    --mist-edge: #6f95a3;
+    --dim: #a3aeb2;
+    --danger: #9a3b2e;
   }
+}
 
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+@layer components {
+  /* The page wrapper Silk pushes back behind a bottom sheet. On phones it is
+     the scroll container rather than the window: the depth effect scales it
+     around its own top edge, so if the window scrolled instead, a scrolled
+     page would lurch by a share of the scroll offset every time a sheet
+     opened. Desktop keeps window scrolling (and scroll restoration). */
+  .app-outlet {
+    min-height: 100dvh;
+    /* clip rather than hidden, so the sticky masthead still sticks to the
+       window on desktop. */
+    overflow: clip;
+  }
+  @media (max-width: 767px) {
+    .app-outlet {
+      height: 100dvh;
+      overflow-y: auto;
+      /* Whatever gets keyboard focus scrolls clear of the floating dock. */
+      scroll-padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    }
+  }
+  /* ...and clear of the sticky masthead on desktop. */
+  @media (min-width: 768px) {
+    html {
+      scroll-padding-top: 64px;
+    }
+  }
+}
 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
+/* Desk detail sheet (Silk). Sized here because Silk ships unstyled. */
+@layer components {
+  .desk-sheet-view {
+    z-index: 40;
+    height: var(--silk-100-lvh-dvh-pct);
+  }
+  /* The page dims and blurs behind the sheet; Silk fades the backdrop's
+     opacity with the sheet's travel, and the blur fades with it. */
+  .desk-sheet-backdrop {
+    background: rgb(31 42 46 / 0.3);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  /* Phones blur harder: the bottom sheet leaves most of the page in view.
+     Silk keeps the backdrop at a third opacity (it also dims the status bar
+     from it), which would thin any blur on it, so a separate layer carries
+     the blur and fades in fully with the sheet. */
+  .desk-sheet-blur {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+  .desk-sheet-content {
+    box-sizing: border-box;
+  }
+  .desk-sheet-content-bottom {
+    height: auto;
+    padding: 10px 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  /* Scrolls inside the sheet; the side padding keeps focus rings from
+     being clipped by the overflow. */
+  .desk-sheet-body {
+    margin: 0 -4px;
+    padding: 0 4px;
+  }
+  .desk-sheet-content-bottom .desk-sheet-body {
+    max-height: calc(92dvh - 40px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .desk-sheet-content-side {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(92vw, 360px);
+    height: 100%;
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom))
+      calc(20px + env(safe-area-inset-right));
+    border-left: 1px solid var(--line);
+  }
+  .desk-sheet-content-side .desk-sheet-body {
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  .desk-sheet-bg {
+    background: var(--paper);
+  }
+  .desk-sheet-bg-bottom {
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -8px 30px rgb(0 0 0 / 0.12);
+  }
+  .desk-sheet-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 16px;
+    border-radius: 2px;
+    background: var(--line);
+    cursor: pointer;
+  }
+}
 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
+/* Focus rings follow :focus-visible, but Safari on iOS also counts focus
+   that a script moves (a sheet focusing its handle, focus returning to the
+   desk tile or menu button on close) as visible, because a tap never focuses
+   a button. So after a touch those rings stay hidden; text fields still show
+   theirs, and any key press brings every ring back (see useTouchFocusRings). */
+html[data-touch]
+  :focus-visible:not(
+    input:not([type="checkbox"], [type="radio"]),
+    textarea,
+    select
+  ),
+html[data-touch] :has(> :focus-visible:is([type="checkbox"], [type="radio"])) {
+  outline: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+}
+html[data-touch] .group:focus-visible * {
+  outline: none;
+}
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+/* Toasts (Silk). Silk stretches a sheet's content to the full view, so the
+   view itself is sized to a short strip at the top (phones) or bottom right
+   (desktop). Only the card takes pointer events, so the page around it
+   stays clickable. */
+.toast-view {
+  z-index: 60;
+}
+.toast-view-top {
+  height: calc(168px + env(safe-area-inset-top));
+}
+.toast-view-right {
+  top: auto;
+  bottom: 0;
+  height: 200px;
+}
+.toast-content,
+.toast-frame {
+  pointer-events: none;
+  background: transparent;
+}
+.toast-frame {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.toast-view-top .toast-content {
+  width: 100%;
+}
+.toast-view-top .toast-frame {
+  justify-content: flex-start;
+  padding: calc(12px + env(safe-area-inset-top)) 12px 0;
+}
+.toast-view-right .toast-content {
+  width: min(92vw, 400px);
+}
+.toast-view-right .toast-frame {
+  justify-content: flex-end;
+  padding: 0 calc(24px + env(safe-area-inset-right)) 24px 24px;
+}
+.toast-card {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow:
+    0 1px 2px rgb(31 42 46 / 0.06),
+    0 10px 30px rgb(31 42 46 / 0.12);
+}
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+/* Content that replaces a skeleton eases in instead of popping in. `.enter`
+   elements drift up a few pixels as they fade in, on a gentle symmetric ease
+   rather than a sharp ease-out that reads as springy, staggered by
+   --enter-index (see `enterAt`). Only the start is held (`backwards`), so no
+   transform lingers once it has played. */
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.enter {
+  animation: enter 380ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+  animation-delay: calc(var(--enter-index, 0) * 30ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation: none;
   }
 }
 
@@ -109,4 +241,10 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Headings and panels that only take focus from script, to keep keyboard
+   users in place (see app/lib/focus.ts), show no ring. */
+[tabindex="-1"]:focus {
+  outline: none;
 }

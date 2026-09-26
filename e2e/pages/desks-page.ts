@@ -2,15 +2,17 @@ import type { Locator, Page } from "@playwright/test";
 import { gotoHydrated } from "./hydration";
 
 export class DesksPage {
-  readonly sidebar;
-  readonly logoutButton;
+  readonly accountMenu;
+  readonly signOutButton;
   readonly showFreeDesksOnly;
 
   constructor(private readonly page: Page) {
-    this.sidebar = page.locator("[data-sidebar='sidebar']");
-    this.logoutButton = page.getByRole("button", { name: "Logout" });
+    this.accountMenu = page.locator("#app-menu");
+    this.signOutButton = this.accountMenu.getByRole("button", {
+      name: "Sign out",
+    });
     this.showFreeDesksOnly = page.getByRole("checkbox", {
-      name: "Show free desks only",
+      name: "Free only",
     });
   }
 
@@ -23,14 +25,39 @@ export class DesksPage {
     return this.page.getByRole("button", { name: label, exact: true });
   }
 
-  sidebarLink(name: string) {
-    return this.sidebar.getByRole("link", { name });
+  /** Opens the avatar menu in the masthead (the tests run at desktop size). */
+  async openAccountMenu() {
+    await this.page.getByRole("button", { name: /^Account menu/ }).click();
+    await this.accountMenu.waitFor();
+  }
+
+  async menuLink(name: string) {
+    await this.openAccountMenu();
+    return this.accountMenu.getByRole("link", { name });
+  }
+
+  tab(name: string) {
+    return this.page
+      .locator(".app-masthead")
+      .getByRole("link", { name, exact: true });
+  }
+
+  /** The desk sheet opened by a link, once it has come to rest. */
+  async dialog() {
+    let dialog = new DeskDialog(this.page.getByRole("dialog"));
+    await dialog.root.waitFor();
+    await this.page.locator("[data-travel-status='idleInside']").waitFor();
+
+    return dialog;
   }
 
   async openDesk(label: string) {
     await this.desk(label).click();
     let dialog = new DeskDialog(this.page.getByRole("dialog"));
+    // The sheet slides in; interacting with it before it has come to rest
+    // fights the animation (and Playwright's scroll-into-view can dismiss it).
     await dialog.root.waitFor();
+    await this.page.locator("[data-travel-status='idleInside']").waitFor();
 
     return dialog;
   }
@@ -39,8 +66,7 @@ export class DesksPage {
 export class DeskDialog {
   readonly title;
   readonly reserveForTodayButton;
-  readonly reserveLink;
-  readonly editDeskLink;
+  readonly bookButton;
   readonly assignedTo;
   readonly usedTodayBy;
 
@@ -49,13 +75,36 @@ export class DeskDialog {
     this.reserveForTodayButton = root.getByRole("button", {
       name: "Reserve for today",
     });
-    this.reserveLink = root.getByRole("link", { name: "Reserve" });
-    this.editDeskLink = root.getByRole("link", { name: "Edit desk info" });
+    this.bookButton = root.getByRole("button", {
+      name: /^(Book \d|Pick days)/,
+    });
     this.assignedTo = root
       .getByText("Assigned to", { exact: true })
-      .locator("xpath=following-sibling::p");
+      .locator("xpath=following-sibling::p[1]");
+    // The "Today" row: the sitter's name sits in a <p> next to the avatar.
     this.usedTodayBy = root
-      .getByText("Used for today by", { exact: true })
-      .locator("xpath=following-sibling::p");
+      .getByText("Today", { exact: true })
+      .locator("xpath=following-sibling::*//p");
+  }
+
+  /** A day in the two-week grid, e.g. "Mon 17 Mar". Free days the owner can
+   * book are checkboxes; every other day is a readout image. */
+  day(label: string) {
+    return this.root.getByRole("checkbox", { name: new RegExp(`^${label},`) });
+  }
+
+  dayStatus(label: string) {
+    return this.root.getByRole("img", { name: new RegExp(`^${label},`) });
+  }
+
+  bookableDays() {
+    return this.root.getByRole("checkbox");
+  }
+
+  async book(labels: string[]) {
+    for (let label of labels) {
+      await this.day(label).check();
+    }
+    await this.bookButton.click();
   }
 }

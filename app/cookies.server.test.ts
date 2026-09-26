@@ -134,9 +134,7 @@ describe("authenticated principal", () => {
   });
 
   it("ignores stale cookie roles and reflects an admin demotion immediately", async () => {
-    const { userCookie, requireAuthCookie } = await import(
-      "./cookies.server"
-    );
+    const { userCookie, requireAuthCookie } = await import("./cookies.server");
     const cookie = await userCookie.serialize({
       userId: "u00001",
       role: "admin",
@@ -245,24 +243,22 @@ describe("route integration", () => {
         userId: "u00001",
         role: "admin",
       });
-      expect(
-        await loader({
+      await expect(
+        loader({
           request: requestWithCookie(cookie),
           params: {},
           context: new RouterContextProvider(),
           url: new URL("https://desk.test/desks/1/edit"),
           pattern: "/desks/:id/edit",
         }),
-      ).toBeNull();
+      ).resolves.not.toBeInstanceOf(Response);
       expect(findUser).not.toHaveBeenCalled();
     },
   );
 
   it("employee login issues a signed expiring cookie usable by the guard", async () => {
     const { action } = await import("./routes/login");
-    const { userCookie, requireAuthCookie } = await import(
-      "./cookies.server"
-    );
+    const { userCookie, requireAuthCookie } = await import("./cookies.server");
     const response = await action({
       request: new Request("https://desk.test/login", {
         method: "POST",
@@ -301,8 +297,8 @@ it("the root loader exposes no user data for an unsigned cookie", async () => {
   expect(findUser).not.toHaveBeenCalled();
 });
 
-it("the admin desk action rejects a cookie role that disagrees with the database", async () => {
-  const { action } = await import("./routes/desks.$id.edit");
+it("the admin action rejects a cookie role that disagrees with the database", async () => {
+  const { action } = await import("./routes/admin");
   const { userCookie } = await import("./cookies.server");
   const cookie = await userCookie.serialize({
     userId: "u00001",
@@ -311,11 +307,11 @@ it("the admin desk action rejects a cookie role that disagrees with the database
   });
   const response = await action({
     request: requestWithCookie(cookie),
-    params: { id: "1" },
+    params: {},
     context: new RouterContextProvider(),
-    url: new URL("https://desk.test/desks/1/edit"),
-    pattern: "/desks/:id/edit",
-  });
+    url: new URL("https://desk.test/admin"),
+    pattern: "/admin",
+  }).catch((thrown: unknown) => thrown);
   expect(response).toBeInstanceOf(Response);
   if (!(response instanceof Response))
     throw new Error("Expected unauthorized redirect");

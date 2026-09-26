@@ -22,12 +22,15 @@ test.describe("logged out", () => {
     await loginPage.login(users.alice.id.toUpperCase());
 
     await expect(page).toHaveURL("/");
-    await expect(desksPage.logoutButton).toBeVisible();
-    await expect(desksPage.sidebarLink("Add reservation")).toBeVisible();
-    await expect(desksPage.sidebarLink("Edit profile")).toHaveAttribute(
-      "href",
-      `/users/edit/${users.alice.id}`,
+    await expect(desksPage.tab("Desks")).toHaveAttribute(
+      "aria-current",
+      "page",
     );
+    await desksPage.openAccountMenu();
+    await expect(desksPage.signOutButton).toBeVisible();
+    await expect(
+      desksPage.accountMenu.getByRole("link", { name: "Edit profile" }),
+    ).toHaveAttribute("href", `/users/edit/${users.alice.id}`);
   });
 
   test("an unknown user id is rejected", async ({ page, loginPage }) => {
@@ -35,6 +38,9 @@ test.describe("logged out", () => {
     await loginPage.login("zzz999");
 
     await expect(page.getByText("No user found")).toBeVisible();
+    await expect(loginPage.userIdInput).toHaveAccessibleDescription(
+      "No user found",
+    );
     await expect(page).toHaveURL("/login");
     await expect(loginPage.userIdInput).toBeEmpty();
     await expect(loginPage.userIdInput).toBeFocused();
@@ -70,14 +76,36 @@ test.describe("logged out", () => {
     });
 
     await expect(page).toHaveURL("/");
-    await expect(desksPage.logoutButton).toBeVisible();
-    // Guests have no permanent desk, so they cannot plan reservations ahead.
-    await expect(desksPage.sidebarLink("Add reservation")).toBeHidden();
+    await desksPage.openAccountMenu();
+    await expect(desksPage.signOutButton).toBeVisible();
+    // Guests have no permanent desk.
+    await expect(desksPage.accountMenu).toContainText("No desk");
     await expect(db.user("gst777")).resolves.toMatchObject({
       firstName: "Grace",
       lastName: "Visitor",
       role: "user",
     });
+  });
+});
+
+test.describe("registration", () => {
+  test("rejects a user id that could never be used to sign in", async ({
+    page,
+    db,
+  }) => {
+    let registration = new GuestRegistrationPage(page);
+
+    await page.goto("/login/guest");
+    await registration.register({
+      id: "abc",
+      firstName: "Short",
+      lastName: "Id",
+    });
+
+    await expect(
+      page.getByText("Employee number must be 6 characters"),
+    ).toBeVisible();
+    await expect(db.user("abc")).resolves.toBeUndefined();
   });
 });
 
@@ -96,12 +124,16 @@ test.describe("logged in", () => {
     loginPage,
   }) => {
     await desksPage.goto();
-    await desksPage.logoutButton.click();
+    await desksPage.openAccountMenu();
+    await desksPage.signOutButton.click();
 
     await expect(page).toHaveURL("/login");
     await expect(loginPage.heading).toBeVisible();
+    await expect(loginPage.signedOutNotice).toBeVisible();
 
     await page.goto("/");
     await expect(page).toHaveURL("/login");
+    // The notice is shown once, right after logging out.
+    await expect(loginPage.signedOutNotice).toBeHidden();
   });
 });

@@ -1,26 +1,40 @@
 import { format } from "date-fns";
 import { Suspense } from "react";
-import { Await, type MetaFunction, useSearchParams } from "react-router";
-import { DeskButton } from "~/components/desk-button";
-import { DeskModal } from "~/components/desk-selection-modal";
+import {
+  Await,
+  type MetaFunction,
+  type ShouldRevalidateFunctionArgs,
+  useSearchParams,
+} from "react-router";
+import { DayStrip, DeskFilters } from "~/components/desk-filters";
+import { DeskSheet } from "~/components/desk-sheet";
+import { DeskTile, type DeskTileState } from "~/components/desk-tile";
 import { ErrorCard } from "~/components/error-card";
-import { FiltersForm } from "~/components/filters-form";
-import { Skeleton } from "~/components/ui/skeleton";
+import { DesksSkeleton, Legend } from "~/components/tab-pending";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
+import {
+  defaultDay,
+  formatDate,
+  normalizeDay,
+  officeNow,
+  parseDate,
+} from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
-import { cn } from "~/lib/utils";
+import { reserveDesk } from "~/lib/reservations.server";
+import { cn, deskLabel, deskPlacement, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
-  return [{ title: "View desks" }];
+  return [{ title: "Desks" }];
 };
 
-type DeskFilters = {
+type DeskQuery = {
   showFree: string | null;
   column: string | null;
   block: string | null;
-  selectedDayFilter: string | null;
+  /** The day the map shows, in `dd.MM.yyyy`. */
+  selectedDayFilter: string;
 };
 
 async function loadDesks({
@@ -28,7 +42,7 @@ async function loadDesks({
   column,
   block,
   selectedDayFilter,
-}: DeskFilters) {
+}: DeskQuery) {
   let desksRes = await db.query.desks.findMany({
     columns: {
       block: true,
@@ -72,10 +86,8 @@ async function loadDesks({
         acc[desk.block] = [];
       }
 
-      let reserved = !!desk.reservations.find((r) =>
-        selectedDayFilter?.length
-          ? r.date === selectedDayFilter
-          : r.date === format(new Date(), "dd.MM.yyyy"),
+      let reserved = !!desk.reservations.find(
+        (r) => r.date === selectedDayFilter,
       );
 
       if (
@@ -123,7 +135,16 @@ async function loadDesks({
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  let { userId, role } = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
+
+  // "Today" is the office's, from the server, so the first render and
+  // hydration agree even when the browser sits in another timezone. A missing
+  // or malformed `selected-day` means today, or the coming Monday on a weekend.
+  let now = officeNow();
+  let today = formatDate(now);
+  let selectedDay =
+    normalizeDay(url.searchParams.get("selected-day")) ??
+    formatDate(defaultDay(now));
 
   // Not awaited on purpose: the shell streams immediately and the desk grid
   // fills in once the query resolves.
@@ -131,10 +152,27 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     showFree: url.searchParams.get("show-free"),
     column: url.searchParams.get("column"),
     block: url.searchParams.get("block"),
-    selectedDayFilter: url.searchParams.get("selected-day"),
+    selectedDayFilter: selectedDay,
   });
 
-  return { desks, userId, role };
+  return { desks, userId, today, selectedDay };
+}
+
+// Booking happens in the desk sheet, so its fetcher posts here and the grid
+// revalidates with the new reservations while the sheet stays open.
+export async function action({ request }: Route.ActionArgs) {
+  let { userId } = await requireAuthCookie(request);
+
+  return reserveDesk(userId, await request.formData());
+}
+
+// Fetcher actions that fail skip revalidation by default. A 409 means someone
+// else just took the desk, so refresh the grid to show who.
+export function shouldRevalidate({
+  actionStatus,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  return actionStatus === 409 || defaultShouldRevalidate;
 }
 
 // Client navigations and revalidations (filter changes, reservation fetchers)
@@ -147,103 +185,203 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   return { ...data, desks: await data.desks };
 }
 
+type Desks = Awaited<ReturnType<typeof loadDesks>>;
+
 export default function Index({ loaderData }: Route.ComponentProps) {
+  let { selectedDay, today } = loaderData;
+  let dateLabel = format(parseDate(selectedDay), "EEE d MMM");
+
   return (
-    <section className="flex flex-col gap-16 lg:flex-row lg:gap-24">
-      <FiltersForm />
+    <section className="flex w-full max-w-3xl flex-col gap-5 font-display text-ink">
+      <header className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
+            Desks
+          </h1>
+          <p className="text-sm text-ink-muted">
+            {dateLabel}
+            <Suspense>
+              <Await resolve={loaderData.desks} errorElement={null}>
+                {(desks) => (
+                  <FreeCount desks={desks} selectedDay={selectedDay} />
+                )}
+              </Await>
+            </Suspense>
+          </p>
+        </div>
 
-      <div className="flex flex-1 flex-col gap-8">
-        <Suspense fallback={<DesksSkeleton />}>
-          <Await
-            resolve={loaderData.desks}
-            errorElement={<ErrorCard message="Could not load desks." />}
-          >
-            {(desks) =>
-              Object.entries(desks).map(([block, desksData]) => {
-                return (
-                  <div key={block} className="flex flex-col gap-2">
-                    {block === "7" && <Wall className="mb-2" />}
+        <DayStrip today={today} />
+        <DeskFilters />
+      </header>
 
-                    <span className="text-lg font-bold">Block {block}</span>
-                    <div
-                      className={cn(
-                        `grid grid-cols-3 grid-rows-2 gap-2`,
-                        // Maybe there is a smarter way for this?
-                        block === "4" && "grid-rows-1",
-                      )}
-                    >
-                      {desksData.map((desk) => (
-                        <DeskModal
-                          key={desk.id}
-                          TriggerElement={
-                            <DeskButton
-                              style={{
-                                gridColumnStart: desk.column,
-                                gridColumnEnd: desk.column,
-                                gridRowStart: desk.row,
-                                gridRowEnd: desk.row,
-                              }}
-                              className={
-                                desk.reserved
-                                  ? "border-b-2 border-b-red-400"
-                                  : "border-b-2 border-b-green-400"
-                              }
-                              disabled={desk.disabled}
-                              name={desk.user?.firstName}
-                            />
-                          }
-                          desk={desk}
-                          allowedToReserve={desk.user?.id === loaderData.userId}
-                          allowedToEdit={loaderData.role === "admin"}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            }
-          </Await>
-        </Suspense>
-      </div>
+      <Legend />
+
+      <Suspense fallback={<DesksSkeleton />}>
+        <Await
+          resolve={loaderData.desks}
+          errorElement={<ErrorCard message="Could not load desks." />}
+        >
+          {(desks) => (
+            <FloorPlan
+              desks={desks}
+              userId={loaderData.userId}
+              selectedDay={selectedDay}
+              today={today}
+            />
+          )}
+        </Await>
+      </Suspense>
     </section>
   );
 }
 
-// Mirrors the office layout rendered above: blocks 1-7 in a 3x2 grid, block 4
-// is a single row, and a wall sits above block 7.
-const skeletonBlocks = ["1", "2", "3", "4", "5", "6", "7"];
+// Counted from the reservations themselves, so the column and free-only
+// filters (which only grey desks out) do not change the number. The block
+// filter does, since it narrows which desks are loaded at all.
+function FreeCount({
+  desks,
+  selectedDay,
+}: {
+  desks: Desks;
+  selectedDay: string;
+}) {
+  let all = Object.values(desks).flat();
+  let free = all.filter(
+    (desk) => !desk.reservations.some((r) => r.date === selectedDay),
+  ).length;
 
-function DesksSkeleton() {
-  let [searchParams] = useSearchParams();
-  let blockFilter = searchParams.get("block");
-  let blocks =
-    blockFilter === null || blockFilter === "all"
-      ? skeletonBlocks
-      : skeletonBlocks.filter((block) => block === blockFilter);
+  return <span>{` · ${free} of ${all.length} free`}</span>;
+}
+
+let placements: Record<string, string> = {
+  "1": " by the window",
+  "2": " in the middle",
+  "3": " by the aisle",
+};
+
+// The floor as it is laid out today: blocks stacked in order, three columns
+// (window, middle, aisle), two rows per block except block 4, a wall before
+// block 7. Chairs sit on the outside of each block so the rows read at a glance.
+function FloorPlan({
+  desks,
+  userId,
+  selectedDay,
+  today,
+}: {
+  desks: Desks;
+  userId: string;
+  selectedDay: string;
+  today: string;
+}) {
+  let [searchParams, setSearchParams] = useSearchParams();
+  let all = Object.values(desks).flat();
+  // A link with `?desk=<id>` opens that desk's sheet.
+  let openDesk = searchParams.get("desk");
+
+  function closeDeskLink() {
+    if (!openDesk) return;
+    setSearchParams(
+      (params) => {
+        params.delete("desk");
+        return params;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+  }
+  let nothingToPick = all.length > 0 && all.every((desk) => desk.disabled);
+  let where = placements[searchParams.get("column") ?? ""] ?? "";
 
   return (
-    <>
-      {blocks.map((block) => {
-        let singleRow = block === "4";
+    <div className="relative max-w-[420px] pl-[26px] pr-[22px] sm:pl-8 sm:pr-7">
+      {nothingToPick && (
+        <p role="status" className="enter mb-3 text-[13px] text-ink-muted">
+          {`No free desks${where} on ${format(parseDate(selectedDay), "EEEE")}. Try another day or placement.`}
+        </p>
+      )}
 
-        return (
-          <div key={block} className="flex flex-col gap-2">
-            {block === "7" && <Wall className="mb-2" />}
+      <div
+        aria-hidden="true"
+        className="enter absolute bottom-1.5 left-1.5 top-7 w-2.5 rounded-[3px] border-[1.5px] border-mist-edge bg-mist"
+      />
+      <div
+        aria-hidden="true"
+        className="enter absolute bottom-1.5 right-2 top-7 border-l-2 border-dashed border-line"
+      />
 
-            <span className="text-lg font-bold">Block {block}</span>
-            <div
-              className={cn(
-                "grid grid-cols-3 grid-rows-2 gap-2",
-                singleRow && "grid-rows-1",
-              )}
-            >
-              {Array.from({ length: singleRow ? 3 : 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-[126px] w-[100px] rounded-lg" />
-              ))}
-            </div>
+      <div
+        aria-hidden="true"
+        className="enter grid grid-cols-3 gap-2.5 text-center text-[11px] font-bold text-ink-muted"
+      >
+        <span>window</span>
+        <span>middle</span>
+        <span>aisle</span>
+      </div>
+
+      {Object.entries(desks).map(([block, desksData], index) => (
+        <div
+          key={block}
+          className="enter flex flex-col [&+&]:pt-5"
+          style={enterAt(index + 1)}
+        >
+          {block === "7" && <Wall />}
+
+          <h2 className="mt-2 text-[13px] font-bold">Block {block}</h2>
+
+          <div
+            className={cn(
+              "grid grid-cols-3 gap-x-2.5 gap-y-[22px] pb-3 pt-5 sm:gap-y-[26px] sm:pb-3.5 sm:pt-6",
+              block === "4" ? "grid-rows-1" : "grid-rows-2",
+            )}
+          >
+            {desksData.map((desk) => {
+              let onSelectedDay = desk.reservations.find(
+                (r) => r.date === selectedDay,
+              );
+              // Yours when you sit there that day, or it is your desk and
+              // nobody else has it. A borrowed desk reads as taken even to
+              // its owner; the sheet still lets them book other days.
+              let state: DeskTileState = onSelectedDay
+                ? onSelectedDay.users.id === userId
+                  ? "mine"
+                  : "taken"
+                : desk.user?.id === userId
+                  ? "mine"
+                  : "free";
+              let sitter =
+                onSelectedDay && onSelectedDay.users.id !== desk.user?.id
+                  ? onSelectedDay.users.firstName
+                  : null;
+
+              return (
+                <DeskSheet
+                  key={desk.id}
+                  desk={desk}
+                  userId={userId}
+                  allowedToReserve={desk.user?.id === userId}
+                  selectedDay={selectedDay}
+                  today={today}
+                  // Silk wraps the tile in a div, and that wrapper is the
+                  // grid item, so the desk's place goes on it.
+                  style={{ gridColumn: desk.column, gridRow: desk.row }}
+                  autoOpen={openDesk === String(desk.id)}
+                  onClose={closeDeskLink}
+                >
+                  <DeskTile
+                    name={desk.user?.firstName}
+                    label={deskLabel(desk)}
+                    row={desk.row}
+                    // The window · middle · aisle header is only drawn.
+                    place={deskPlacement(desk.column)}
+                    state={state}
+                    sitter={sitter}
+                    dimmed={desk.disabled}
+                  />
+                </DeskSheet>
+              );
+            })}
           </div>
-        );
-      })}
-    </>
+        </div>
+      ))}
+    </div>
   );
 }

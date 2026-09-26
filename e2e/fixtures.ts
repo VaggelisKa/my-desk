@@ -1,10 +1,9 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { DeskEditPage } from "./pages/desk-edit-page";
+import { AdminPage } from "./pages/admin-page";
 import { DesksPage } from "./pages/desks-page";
 import { trackHydration } from "./pages/hydration";
 import { LoginPage } from "./pages/login-page";
 import { ReservationsPage } from "./pages/reservations-page";
-import { ReservePage } from "./pages/reserve-page";
 import { CronJobOrgStub } from "./support/cron";
 import { TestDatabase, type SeedUser } from "./support/db";
 import { NOW } from "./support/env";
@@ -19,9 +18,8 @@ type Fixtures = {
   cronJobOrg: CronJobOrgStub;
   loginPage: LoginPage;
   desksPage: DesksPage;
-  reservePage: ReservePage;
   reservationsPage: ReservationsPage;
-  deskEditPage: DeskEditPage;
+  adminPage: AdminPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -55,9 +53,8 @@ export const test = base.extend<Fixtures>({
 
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
   desksPage: async ({ page }, use) => use(new DesksPage(page)),
-  reservePage: async ({ page }, use) => use(new ReservePage(page)),
   reservationsPage: async ({ page }, use) => use(new ReservationsPage(page)),
-  deskEditPage: async ({ page }, use) => use(new DeskEditPage(page)),
+  adminPage: async ({ page }, use) => use(new AdminPage(page)),
 });
 
 export { expect };
@@ -74,24 +71,18 @@ declare global {
  * renders instead, so assertions do not race the auto-dismiss timer.
  */
 function recordToasts() {
-  let selector = "[role='region'][aria-label^='Notifications'] li";
   window.__e2eToasts = [];
+  let last = "";
 
-  new MutationObserver((mutations) => {
-    for (let mutation of mutations) {
-      for (let node of mutation.addedNodes) {
-        if (!(node instanceof Element)) continue;
-
-        let toasts = node.matches(selector)
-          ? [node]
-          : Array.from(node.querySelectorAll(selector));
-
-        for (let toast of toasts) {
-          window.__e2eToasts.push(toast.textContent ?? "");
-        }
-      }
+  // A new toast can replace the one on screen in place, so look at the
+  // toast's text after every change rather than only at added nodes.
+  new MutationObserver(() => {
+    let text = document.querySelector("[data-toast]")?.textContent ?? "";
+    if (text && text !== last) {
+      window.__e2eToasts.push(text);
     }
-  }).observe(document, { childList: true, subtree: true });
+    last = text;
+  }).observe(document, { childList: true, subtree: true, characterData: true });
 }
 
 function shownToasts(page: Page) {

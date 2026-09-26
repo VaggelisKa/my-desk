@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Share a desk — redesign directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Archivo:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   DOCUMENT CHROME
+   ============================================================ */
+:root {
+  --ink: #1b1d1f;
+  --ink-2: #55595e;
+  --ink-3: #8a8f95;
+  --line: #e4e6e8;
+  --paper: #ffffff;
+  --paper-2: #f7f8f8;
+  --mark: #2f56d9;
+  --ok: #2e8b57;
+  --bad: #d4553e;
+  --font: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --maxw: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.5;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--mark); }
+h1, h2, h3, h4 { margin: 0; line-height: 1.15; letter-spacing: -0.01em; }
+p { margin: 0; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+/* top nav */
+.topnav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.topnav .wrap { display: flex; align-items: center; gap: 24px; height: 52px; }
+.topnav .brand { font-weight: 600; }
+.topnav nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; }
+.topnav nav a {
+  color: var(--ink-2); text-decoration: none; font-size: 14px;
+  padding: 6px 10px; border-radius: 6px; white-space: nowrap;
+}
+.topnav nav a:hover { background: var(--paper-2); color: var(--ink); }
+.topnav nav a.opt { font-weight: 600; }
+.topnav nav a.opt-a { color: #6b4d1f; }
+
+/* hero */
+.hero { padding: 72px 0 40px; }
+.hero h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 600; letter-spacing: -0.03em; max-width: 18ch; }
+.hero .lede { margin-top: 20px; font-size: 19px; color: var(--ink-2); max-width: 60ch; }
+.hero .meta { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--ink-3); }
+
+/* sections */
+section.doc { padding: 56px 0; border-top: 1px solid var(--line); }
+section.doc > .wrap > h2 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+section.doc > .wrap > .sub { margin-top: 8px; color: var(--ink-2); max-width: 66ch; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-top: 28px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 28px; }
+
+/* audit list */
+.audit { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 32px; }
+.audit-item { display: grid; grid-template-columns: 22px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.audit-item .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px; background: var(--bad); }
+.audit-item .dot.mid { background: #e0a526; }
+.audit-item b { font-weight: 600; }
+.audit-item span { display: block; color: var(--ink-2); font-size: 15px; margin-top: 2px; }
+.audit-item code, .touch code, #shared li code { font-size: 13px; background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* option header */
+.opt-head { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: end; }
+.opt-head .kicker { font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+.opt-head h2 { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; }
+.opt-head .thesis { margin-top: 14px; font-size: 18px; color: var(--ink-2); max-width: 52ch; }
+.tokens { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 20px; font-size: 14px; }
+.tokens .row { display: flex; align-items: center; gap: 10px; }
+.tokens .sw { width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,.08); flex: none; }
+.tokens .k { color: var(--ink-3); }
+.tokens .full { grid-column: 1 / -1; }
+@media (max-width: 800px) { .opt-head { grid-template-columns: 1fr; } }
+
+.mock-row { display: grid; grid-template-columns: 1fr 360px; gap: 28px; margin-top: 36px; align-items: start; }
+@media (max-width: 960px) { .mock-row { grid-template-columns: 1fr; } }
+.mock-caption { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+.mock-caption b { color: var(--ink); font-weight: 600; }
+.forms-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; margin-top: 36px; }
+
+.pros { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 700px) { .pros { grid-template-columns: 1fr; } }
+.pros h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.pros ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+.pros li { margin: 4px 0; }
+
+/* frames */
+.frame {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px -16px rgba(0,0,0,.18);
+}
+.frame .bar { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #fafafa; border-bottom: 1px solid var(--line); }
+.frame .bar i { width: 10px; height: 10px; border-radius: 50%; background: #ddd; display: block; }
+.frame .bar .url { margin-left: 10px; font-size: 12px; color: var(--ink-3); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 2px 10px; flex: 1; }
+.phone {
+  width: 320px; margin: 0 auto;
+  border-radius: 36px; border: 8px solid #1b1d1f; background: #1b1d1f;
+  overflow: hidden; position: relative;
+  box-shadow: 0 20px 40px -20px rgba(0,0,0,.4);
+}
+.phone .screen { background: #fff; height: 600px; overflow: hidden; border-radius: 28px; position: relative; }
+.phone .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 90px; height: 22px; background: #1b1d1f; border-radius: 12px; z-index: 5; }
+.phone .home { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 110px; height: 4px; border-radius: 2px; background: rgba(0,0,0,.25); z-index: 5; }
+
+/* touches */
+.touch { border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.touch h4 { font-size: 16px; font-weight: 600; }
+.touch p { margin-top: 6px; color: var(--ink-2); font-size: 15px; }
+.touch ul { margin: 10px 0 0 18px; color: var(--ink-2); font-size: 15px; display: grid; gap: 6px; }
+.touch ul b { color: var(--ink); font-weight: 600; }
+.touch .demo { margin-top: 14px; padding: 14px; background: var(--paper-2); border-radius: 8px; }
+
+/* matrix */
+table.matrix { width: 100%; border-collapse: collapse; margin-top: 28px; font-size: 15px; }
+table.matrix th, table.matrix td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.matrix th { font-weight: 600; color: var(--ink-2); font-size: 14px; }
+table.matrix td:first-child { font-weight: 600; white-space: nowrap; }
+.score { display: inline-flex; gap: 3px; }
+.score i { width: 14px; height: 6px; border-radius: 2px; background: var(--line); display: block; }
+.score i.on { background: var(--ink); }
+
+/* shared layout */
+.plan ol { padding-left: 20px; color: var(--ink-2); }
+.plan li { margin: 8px 0; }
+.plan li b { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   OPTION A — "THE FLOOR" (isometric floor plan, revision 2)
+   ============================================================ */
+/* Slate & Moss: cool near-black, moss accent, mist window. */
+.a { --a-paper: #ffffff; --a-paper-2: #f4f5f2; --a-ink: #1f2a2e; --a-ink-2: #5f6b70; --a-line: #d8ddda; --a-edge: #1f2a2e;
+  --a-free-top: #ffffff; --a-taken-top: #34434a; --a-taken-edge: #1f2a2e; --a-taken-ink: #ffffff;
+  --a-mine-top: #4f7a5a; --a-mine-edge: #2f5039; --a-mine-ink: #ffffff; --a-accent: #4f7a5a; --a-accent-ink: #ffffff; --a-accent-soft: #e2ede5;
+  --a-glass: #cfe3ea; --a-glass-edge: #6f95a3; --a-off: #a3aeb2;
+  font-family: "Archivo", system-ui, sans-serif; color: var(--a-ink); }
+
+.a .app { display: grid; grid-template-columns: 208px 1fr; grid-template-rows: 56px 1fr; min-height: 600px; background: var(--a-paper); }
+/* Sidebar and header: the existing shadcn sidebar, drawn as-is (hsl(0 0% 98%) bg, zinc text, Lucide icons). Not part of the redesign. */
+.a .side { grid-row: 1 / 3; background: #fafafa; border-right: 1px solid #e4e4e7; padding: 10px 8px; font-size: 13px; color: #3f3f46; display: flex; flex-direction: column; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.a .side .brand { font-weight: 600; font-size: 15px; color: #18181b; padding: 8px; }
+.a .side .brand small { display: block; font-weight: 400; color: #71717a; font-size: 11px; margin-top: 2px; }
+.a .side .grp { font-size: 11px; font-weight: 500; color: #71717a; padding: 12px 8px 4px; }
+.a .side .nav { display: grid; gap: 2px; }
+.a .side .nav div, .a .side .foot-nav div { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; color: #3f3f46; }
+.a .side .nav div svg, .a .side .foot-nav div svg { width: 16px; height: 16px; flex: none; }
+.a .side .nav div.on { background: #f4f4f5; color: #18181b; font-weight: 500; }
+.a .side .foot-nav { margin-top: auto; }
+.a .topbar { grid-column: 2; height: 56px; border-bottom: 1px solid #e4e4e7; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 14px; color: #18181b; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.a .topbar svg { width: 16px; height: 16px; color: #3f3f46; }
+.a .topbar .sep { width: 1px; height: 16px; background: #e4e4e7; }
+.a .main { grid-column: 2; padding: 22px 26px; position: relative; }
+.a .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.a .top h3 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.a .top .date { color: var(--a-ink-2); font-size: 14px; }
+.a .days { display: inline-flex; border: 1px solid var(--a-line); background: var(--a-paper-2); padding: 3px; border-radius: 999px; gap: 2px; margin-left: auto; }
+.a .days button { border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; color: var(--a-ink-2); }
+.a .days button.on { background: var(--a-ink); color: #fff; }
+.a .chips { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.a .chip { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--a-line); background: #fff; color: var(--a-ink-2); }
+.a .chip.on { background: var(--a-accent-soft); border-color: var(--a-accent); color: var(--a-ink); }
+.a .chip .n { opacity: .6; font-weight: 500; margin-left: 4px; }
+
+/* plan: the existing layout, blocks stacked in order, 3 x 2 grids */
+.a .plan { position: relative; margin-top: 16px; padding: 4px 26px 4px 30px; display: grid; gap: 22px; max-width: 420px; }
+.a .plan .window { position: absolute; left: 6px; top: 26px; bottom: 6px; width: 10px; background: var(--a-glass); border: 1.5px solid var(--a-glass-edge); border-radius: 3px; }
+.a .plan .aisle { position: absolute; right: 8px; top: 26px; bottom: 6px; width: 0; border-left: 2px dashed var(--a-line); }
+.a .plan .colhead { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px; font-weight: 700; color: var(--a-ink-2); text-align: center; margin-bottom: -10px; }
+.a .block .lbl { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; }
+.a .block .lbl span { font-size: 11px; font-weight: 600; color: var(--a-ink-2); }
+.a .block .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; row-gap: 26px; padding: 14px 0; }
+.a .desk { position: relative; height: 50px; cursor: pointer; }
+.a .desk .top-face {
+  position: absolute; inset: 0; border-radius: 4px; background: var(--a-free-top); border: 1.5px solid var(--a-edge);
+  box-shadow: 0 6px 0 var(--a-edge);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0 6px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.a .desk .chair { position: absolute; left: 50%; width: 22px; height: 10px; margin-left: -11px; border-radius: 4px 4px 6px 6px; background: var(--a-paper-2); border: 1.5px solid var(--a-edge); box-sizing: border-box; }
+.a .desk.r1 .chair { top: -14px; }
+.a .desk.r2 .chair { top: 100%; margin-top: 10px; }
+.a .desk .nm { font-size: 12.5px; font-weight: 700; color: var(--a-ink-2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.1; }
+.a .desk .id { font-size: 9.5px; font-weight: 600; color: var(--a-ink-2); opacity: .7; letter-spacing: .04em; line-height: 1; }
+.a .desk .av { width: 24px; height: 24px; border-radius: 50%; background: #fff; color: var(--a-taken-top); font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.a .desk.taken .top-face { background: var(--a-taken-top); border-color: var(--a-taken-edge); box-shadow: 0 6px 0 var(--a-taken-edge); }
+.a .desk.taken .nm { color: var(--a-taken-ink); }
+.a .desk.taken .id { color: var(--a-taken-ink); opacity: .65; }
+.a .desk.mine .top-face { background: var(--a-mine-top); border-color: var(--a-mine-edge); box-shadow: 0 6px 0 var(--a-mine-edge); }
+.a .desk.mine .nm { color: var(--a-mine-ink); }
+.a .desk.mine .id { color: var(--a-mine-ink); opacity: .75; }
+.a .desk.off .top-face { background: transparent; border-style: dashed; border-color: var(--a-off); box-shadow: none; }
+.a .desk.off .chair { opacity: .35; }
+.a .desk.off .nm, .a .desk.off .id { color: var(--a-off); }
+.a .desk.none .top-face { border-style: dashed; border-color: var(--a-off); box-shadow: 0 6px 0 var(--a-line); }
+.a .desk.none .nm { color: var(--a-off); font-weight: 600; }
+.a .desk.none .chair { opacity: .35; }
+.a .desk:hover .top-face { transform: translateY(-2px); box-shadow: 0 8px 0 var(--a-edge); }
+.a .desk.taken:hover .top-face { box-shadow: 0 8px 0 var(--a-taken-edge); }
+.a .desk.mine:hover .top-face { box-shadow: 0 8px 0 var(--a-mine-edge); }
+.a .desk.sel .top-face { outline: 2px solid var(--a-accent); outline-offset: 3px; }
+.a .wall { height: 10px; border-radius: 3px; background: var(--a-paper-2); border: 1.5px solid var(--a-edge); box-shadow: 0 8px 0 var(--a-edge); margin: 6px 0 14px; position: relative; }
+.a .wall span { position: absolute; right: 0; top: -20px; font-size: 11px; font-weight: 700; color: var(--a-ink-2); }
+.a .legend { display: flex; gap: 14px; font-size: 12px; color: var(--a-ink-2); margin-top: 18px; }
+.a .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.a .legend i { width: 14px; height: 9px; border-radius: 2px; display: inline-block; border: 1px solid var(--a-edge); box-sizing: border-box; background: var(--a-free-top); }
+.a .legend i.t { background: var(--a-taken-top); border-color: var(--a-taken-edge); }
+.a .legend i.m { background: var(--a-mine-top); border-color: var(--a-mine-edge); }
+.a .legend i.o { border-style: dashed; border-color: var(--a-off); background: transparent; }
+.a .mainscroll { max-height: 470px; overflow: hidden; position: relative; }
+.a .mainscroll::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff); }
+
+/* A - sheet (detail) */
+.a .sheet { background: #fff; border-left: 1px solid var(--a-line); padding: 22px 20px; display: flex; flex-direction: column; gap: 16px; }
+.a .sheet h4 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.a .sheet .sub { color: var(--a-ink-2); font-size: 13px; margin-top: 2px; }
+.a .kv { display: grid; gap: 4px; }
+.a .kv .k { font-size: 12px; color: var(--a-ink-2); }
+.a .kv .v { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.a .kv .v .av { width: 22px; height: 22px; border-radius: 50%; background: var(--a-taken-top); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.a .wk { display: grid; gap: 6px; }
+.a .wk .r { display: grid; grid-template-columns: 44px repeat(5, 1fr); gap: 4px; align-items: center; font-size: 11px; color: var(--a-ink-2); }
+.a .wk .c { height: 26px; border-radius: 5px; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--a-free-top); border: 1px solid var(--a-edge); color: var(--a-ink); }
+.a .wk .c.t { background: var(--a-taken-top); border-color: var(--a-taken-edge); color: var(--a-taken-ink); }
+.a .wk .c.m { background: var(--a-mine-top); border-color: var(--a-mine-edge); color: var(--a-mine-ink); }
+.a .wk .c.p { background: var(--a-paper-2); border-color: var(--a-line); color: var(--a-off); }
+.a .btn { border: 1px solid transparent; font: inherit; font-weight: 600; font-size: 14px; padding: 10px 16px; border-radius: 10px; cursor: pointer; background: var(--a-accent); color: var(--a-accent-ink); width: 100%; transition: background .12s ease; }
+.a .btn:hover { background: var(--a-mine-edge); }
+.a .btn.sec { background: #fff; color: var(--a-ink); border-color: var(--a-line); }
+.a .btn.sec:hover { background: var(--a-paper-2); }
+
+/* A - forms */
+.a .form-card { background: var(--a-paper); padding: 26px; min-height: 460px; }
+.a .form-card h4 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.a .form-card .sub { color: var(--a-ink-2); margin-top: 6px; font-size: 14px; }
+.a .field { margin-top: 18px; }
+.a .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.a .input { height: 44px; border: 1px solid var(--a-line); background: #fff; border-radius: 8px; padding: 0 12px; display: flex; align-items: center; font-size: 15px; color: var(--a-ink); }
+.a .input .ph { color: var(--a-off); }
+.a .code { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.a .code div { height: 52px; border-radius: 8px; border: 1px solid var(--a-line); background: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 700; }
+.a .code div.cur { border-color: var(--a-accent); box-shadow: 0 0 0 3px var(--a-accent-soft); }
+.a .week-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--a-line); padding: 4px; border-radius: 10px; }
+.a .week-toggle div { text-align: center; padding: 8px; font-size: 13px; font-weight: 600; border-radius: 7px; color: var(--a-ink-2); }
+.a .week-toggle div.on { background: #fff; color: var(--a-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.a .daytiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.a .daytile { border: 1px solid var(--a-line); background: #fff; border-radius: 10px; padding: 10px 6px; text-align: center; cursor: pointer; }
+.a .daytile .d { font-size: 12px; font-weight: 700; }
+.a .daytile .n { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-top: 2px; }
+.a .daytile .s { font-size: 10px; color: var(--a-ink-2); margin-top: 2px; }
+.a .daytile.on { background: var(--a-accent); border-color: var(--a-accent); color: var(--a-accent-ink); }
+.a .daytile.on .s { color: rgba(255,255,255,.8); }
+.a .daytile.off { opacity: .45; cursor: not-allowed; }
+.a .daytile.past { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+.a .foot { margin-top: 22px; display: flex; gap: 10px; align-items: center; }
+.a .foot .hint { font-size: 12px; color: var(--a-ink-2); }
+.a .help { font-size: 13px; color: var(--a-ink-2); margin-top: 14px; }
+.a .help a { color: var(--a-ink); font-weight: 600; }
+
+/* A - phone */
+.a .ph-top { padding: 40px 16px 8px; display: flex; align-items: baseline; gap: 8px; background: #fff; }
+.a .ph-top h3 { font-size: 20px; font-weight: 700; }
+.a .ph-top .date { color: var(--a-ink-2); font-size: 12px; margin-left: auto; }
+.a .ph-days { display: flex; gap: 4px; padding: 6px 16px 10px; background: #fff; }
+.a .ph-days div { flex: 1; text-align: center; font-size: 12px; font-weight: 700; padding: 7px 0; border-radius: 8px; color: var(--a-ink-2); background: var(--a-paper-2); border: 1px solid var(--a-line); }
+.a .ph-days div.on { background: var(--a-ink); border-color: var(--a-ink); color: #fff; }
+.a .ph-stage { height: 330px; position: relative; background: #fff; overflow: hidden; padding: 0 16px; }
+.a .ph-stage .plan { margin-top: 6px; padding-left: 26px; padding-right: 22px; gap: 16px; }
+.a .ph-stage .desk { height: 44px; }
+.a .ph-stage .desk .nm { font-size: 11.5px; }
+.a .ph-stage .block .grid { row-gap: 22px; padding: 12px 0; }
+.a .ph-sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--a-line); border-radius: 18px 18px 0 0; padding: 10px 16px 24px; box-shadow: 0 -8px 30px rgba(0,0,0,.12); }
+.a .ph-sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--a-line); margin: 0 auto 12px; }
+.a .ph-sheet h4 { font-size: 18px; font-weight: 700; }
+.a .ph-sheet .row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; }
+.a .ph-sheet .row .k { color: var(--a-ink-2); }
+.a .ph-sheet .wk { margin-top: 12px; }
+.a .ph-sheet .btn { margin-top: 14px; }
+
+
+/* ---------- other pages, same system ---------- */
+.a .page { padding: 22px 26px; min-height: 420px; background: var(--a-paper); }
+.a .page h3 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.a .page .sub { color: var(--a-ink-2); font-size: 14px; margin-top: 4px; }
+.a .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+.a .stat { border: 1px solid var(--a-line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.a .stat .k { font-size: 12px; color: var(--a-ink-2); font-weight: 600; }
+.a .stat .v { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-top: 4px; line-height: 1; }
+.a .stat .d { font-size: 12px; margin-top: 8px; color: var(--a-ink-2); }
+.a .stat .d b { color: var(--a-accent); font-weight: 700; }
+.a .stat.accent { background: var(--a-accent-soft); border-color: var(--a-accent-soft); }
+.a .chart-card { margin-top: 18px; border: 1px solid var(--a-line); border-radius: 10px; padding: 14px 16px; }
+.a .chart-card .h { display: flex; align-items: baseline; gap: 10px; }
+.a .chart-card .h b { font-size: 14px; font-weight: 700; }
+.a .chart-card .h span { font-size: 12px; color: var(--a-ink-2); }
+.a .chart-card .range { margin-left: auto; display: inline-flex; gap: 2px; background: var(--a-paper-2); border: 1px solid var(--a-line); border-radius: 999px; padding: 2px; }
+.a .chart-card .range span { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; color: var(--a-ink-2); }
+.a .chart-card .range span.on { background: var(--a-ink); color: #fff; }
+.a .chart-card svg { width: 100%; height: 190px; margin-top: 10px; display: block; }
+.a .chart-card .lg { display: flex; gap: 16px; font-size: 12px; color: var(--a-ink-2); margin-top: 6px; }
+.a .chart-card .lg i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.a .auto { margin-top: 18px; display: grid; gap: 16px; max-width: 460px; }
+.a .status { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--a-accent-soft); font-size: 14px; }
+.a .status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--a-accent); box-shadow: 0 0 0 3px #fff; flex: none; }
+.a .status b { font-weight: 700; }
+.a .status .nx { margin-left: auto; font-size: 12px; color: var(--a-ink-2); white-space: nowrap; }
+.a .status.paused { background: var(--a-paper-2); }
+.a .status.paused .dot { background: var(--a-off); }
+.a .dayrow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.a .dayrow .dt { border: 1.5px solid var(--a-line); border-radius: 8px; padding: 10px 4px; text-align: center; font-size: 13px; font-weight: 700; color: var(--a-ink-2); background: #fff; cursor: pointer; }
+.a .dayrow .dt.on { border-color: var(--a-accent); background: var(--a-accent); color: var(--a-accent-ink); }
+.a .rule { font-size: 14px; color: var(--a-ink-2); }
+.a .rule b { color: var(--a-ink); font-weight: 700; }
+.a .rule .mini { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--a-line); border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--a-ink); background: #fff; margin: 0 2px; }
+.a .rule .mini i { width: 8px; height: 8px; border-radius: 2px; background: var(--a-mine-top); display: inline-block; }
+.a .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.a .btn.danger { background: #fff; color: #9a3b2e; border-color: #d9a39b; }
+.a .btn.danger:hover { background: #fbf1ef; }
+.a .reslist { margin-top: 18px; display: grid; gap: 6px; max-width: 560px; }
+.a .reslist .wkh { font-size: 12px; font-weight: 700; color: var(--a-ink-2); padding: 10px 0 4px; display: flex; gap: 8px; align-items: baseline; }
+.a .reslist .wkh span { font-weight: 500; }
+.a .res { display: grid; grid-template-columns: 74px 1fr auto auto; gap: 14px; align-items: center; padding: 10px 12px; border: 1px solid var(--a-line); border-radius: 10px; background: #fff; }
+.a .res .date b { display: block; font-size: 14px; font-weight: 700; }
+.a .res .date span { font-size: 12px; color: var(--a-ink-2); }
+.a .res .desk-tag { display: flex; align-items: center; gap: 10px; }
+.a .res .tile { width: 44px; height: 30px; border-radius: 4px; border: 1.5px solid var(--a-edge); box-shadow: 0 3px 0 var(--a-edge); display: grid; place-items: center; font-size: 10px; font-weight: 700; background: var(--a-free-top); }
+.a .res .tile.m { background: var(--a-mine-top); border-color: var(--a-mine-edge); box-shadow: 0 3px 0 var(--a-mine-edge); color: #fff; }
+.a .res .where b { font-size: 13px; font-weight: 700; display: block; }
+.a .res .where span { font-size: 12px; color: var(--a-ink-2); }
+.a .res .who { font-size: 12px; color: var(--a-ink-2); display: flex; align-items: center; gap: 6px; }
+.a .res .who .av { width: 22px; height: 22px; border-radius: 50%; background: var(--a-taken-top); color: #fff; font-size: 9px; font-weight: 700; display: grid; place-items: center; }
+.a .res .rm { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--a-line); background: #fff; display: grid; place-items: center; color: var(--a-ink-2); }
+.a .res .rm svg { width: 14px; height: 14px; }
+.a .res.today { border-color: var(--a-accent); background: var(--a-accent-soft); }
+.a .empty { margin-top: 18px; padding: 22px; border: 1.5px dashed var(--a-line); border-radius: 10px; text-align: center; color: var(--a-ink-2); font-size: 14px; max-width: 560px; }
+.a .empty b { color: var(--a-ink); display: block; margin-bottom: 4px; }
+.a .pages-row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 36px; }
+@media (max-width: 960px) { .a .pages-row { grid-template-columns: 1fr; } }
+
+/* utility */
+.hidden { display: none !important; }
+
+/* ============================================================
+   CHROME OPTIONS (sidebar + header)
+   ============================================================ */
+.c { --c-ink:#1f2a2e; --c-ink-2:#5f6b70; --c-line:#dfe3e4; --c-paper:#fff; --c-paper-2:#f4f5f2; --c-moss:#4f7a5a; --c-moss-edge:#2f5039; --c-moss-soft:#e2ede5; --c-taken:#34434a; --c-mist:#cfe3ea; }
+.c .frame { font-family: Archivo, system-ui, sans-serif; color: var(--c-ink); }
+.c-app { position: relative; height: 380px; overflow: hidden; background: var(--c-paper); display: grid; }
+.c-page { padding: 18px 22px; min-width: 0; }
+.c-page .ttl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px; }
+.c-page h3 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.c-page .date { font-size: 12px; color: var(--c-ink-2); white-space: nowrap; }
+.c-page .days { margin-left: auto; display: flex; border: 1px solid var(--c-line); border-radius: 999px; padding: 2px; gap: 2px; }
+.c-page .days span { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; color: var(--c-ink-2); }
+.c-page .days span.on { background: var(--c-ink); color: #fff; }
+.c-page .chips { display: flex; gap: 6px; margin-top: 12px; }
+.c-page .chips span { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--c-line); color: var(--c-ink-2); }
+.c-page .chips span.on { background: var(--c-moss-soft); border-color: var(--c-moss); color: var(--c-ink); }
+.c-mini { margin-top: 18px; display: grid; gap: 8px; max-width: 300px; padding-left: 14px; position: relative; }
+.c-mini::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 7px; border-radius: 3px; background: var(--c-mist); border: 1px solid #6f95a3; }
+.c-mini .lbl { font-size: 11px; font-weight: 700; margin-top: 4px; }
+.c-mini .g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.c-mini .d { height: 30px; border: 1.5px solid var(--c-ink); border-radius: 4px; box-shadow: 0 4px 0 var(--c-ink); background: #fff; font-size: 10px; font-weight: 700; color: var(--c-ink-2); display: grid; place-items: center; }
+.c-mini .d.t { background: var(--c-taken); color: #fff; }
+.c-mini .d.m { background: var(--c-moss); border-color: var(--c-moss-edge); box-shadow: 0 4px 0 var(--c-moss-edge); color: #fff; }
+.c-av { width: 26px; height: 26px; border-radius: 50%; background: var(--c-taken); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.c-mark { width: 18px; height: 18px; border-radius: 5px; background: var(--c-moss); box-shadow: 0 3px 0 var(--c-moss-edge); flex: none; display: inline-block; }
+.c svg { width: 18px; height: 18px; }
+
+/* 1. masthead */
+.c-masthead { grid-template-rows: 52px 1fr; }
+.c-top { display: flex; align-items: center; gap: 22px; padding: 0 22px; border-bottom: 1px solid var(--c-line); }
+.c-brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+.c-tabs { display: flex; gap: 2px; align-self: stretch; }
+.c-tabs a { display: flex; align-items: center; padding: 0 10px; font-size: 13px; font-weight: 600; color: var(--c-ink-2); position: relative; }
+.c-tabs a.on { color: var(--c-ink); }
+.c-tabs a.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: var(--c-moss); border-radius: 2px 2px 0 0; }
+.c-top .c-av { margin-left: auto; }
+.c-menu { position: absolute; right: 14px; top: 46px; width: 190px; background: #fff; border: 1px solid var(--c-line); border-radius: 10px; box-shadow: 0 12px 32px -12px rgba(0,0,0,.25); padding: 6px; font-size: 12.5px; z-index: 3; }
+.c-menu .who { padding: 8px 10px 10px; border-bottom: 1px solid var(--c-line); margin-bottom: 4px; }
+.c-menu .who b { display: block; font-size: 13px; }
+.c-menu .who span { color: var(--c-ink-2); font-size: 11.5px; }
+.c-menu div:not(.who) { padding: 7px 10px; border-radius: 6px; color: var(--c-ink); }
+.c-menu div.dim { color: var(--c-ink-2); }
+.c-menu div.out { border-top: 1px solid var(--c-line); margin-top: 4px; padding-top: 9px; border-radius: 0; }
+
+/* 2. rail */
+.c-railapp { grid-template-columns: 72px 1fr; }
+.c-rail { border-right: 1px solid var(--c-line); background: var(--c-paper-2); display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 4px; }
+.c-rail .c-mark { margin-bottom: 14px; }
+.c-rail a { width: 60px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0 7px; border-radius: 10px; font-size: 10px; font-weight: 600; color: var(--c-ink-2); }
+.c-rail a.on { background: #fff; color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-line); }
+.c-rail a.on svg { color: var(--c-moss); }
+.c-rail .c-av { margin-top: auto; }
+
+/* 3. dock */
+.c-dockapp { grid-template-rows: 1fr; }
+.c-dockapp .c-page { padding-top: 22px; }
+.c-dock { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 5px; background: rgba(31,42,46,.94); border-radius: 999px; box-shadow: 0 14px 30px -10px rgba(0,0,0,.45); backdrop-filter: blur(8px); }
+.c-dock a { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.72); }
+.c-dock a.on { background: rgba(255,255,255,.14); color: #fff; }
+.c-dock .c-av { margin-left: 4px; background: var(--c-moss); }
+.c-dockapp .c-brand { position: absolute; left: 22px; top: 18px; }
+.c-dockapp .c-page .ttl { margin-top: 30px; }
+
+/* 4. ledger sidebar */
+.c-ledgerapp { grid-template-columns: 196px 1fr; }
+.c-ledger { background: var(--c-paper-2); border-right: 1px solid var(--c-line); padding: 18px 12px 14px; display: flex; flex-direction: column; }
+.c-ledger .c-brand { padding: 0 8px 18px; }
+.c-ledger a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+.c-ledger a.on { background: #fff; color: var(--c-ink); box-shadow: inset 0 0 0 1px var(--c-line); }
+.c-ledger a .cnt { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--c-ink-2); }
+.c-ledger .sub { display: grid; gap: 2px; margin: 2px 0 6px 22px; }
+.c-ledger .sub a { font-size: 12px; font-weight: 500; padding: 4px 8px; }
+.c-ledger .sub a.on { background: transparent; box-shadow: none; color: var(--c-ink); font-weight: 700; }
+.c-ledger .me { margin-top: auto; display: flex; align-items: center; gap: 9px; padding: 8px 6px 0; border-top: 1px solid var(--c-line); font-size: 12px; }
+.c-ledger .me b { display: block; font-size: 12.5px; }
+.c-ledger .me div span { color: var(--c-ink-2); font-size: 11px; }
+
+/* phone: bottom tabs */
+.c .phone .screen { font-family: Archivo, system-ui, sans-serif; color: var(--c-ink); }
+.c-ph-top { padding: 42px 16px 6px; }
+.c-ph-top h3 { font-size: 20px; font-weight: 700; }
+.c-ph-top .date { font-size: 12px; color: var(--c-ink-2); }
+.c-ph-days { display: flex; gap: 4px; padding: 8px 16px 0; }
+.c-ph-days span { flex: 1; text-align: center; font-size: 12px; font-weight: 700; padding: 8px 0; border-radius: 8px; color: var(--c-ink-2); background: var(--c-paper-2); }
+.c-ph-days span.on { background: var(--c-ink); color: #fff; }
+.c-ph-body { padding: 14px 16px; }
+.c-ph-body .c-mini { max-width: none; }
+.c-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; padding: 8px 8px 18px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--c-line); background: rgba(255,255,255,.92); backdrop-filter: blur(10px); }
+.c-tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: var(--c-ink-2); }
+.c-tabbar a svg { width: 22px; height: 22px; }
+.c-tabbar a.on { color: var(--c-ink); }
+.c-tabbar a.on svg { color: var(--c-moss); }
+.c-tabbar .c-av { width: 22px; height: 22px; font-size: 9px; }
+
+.c .opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 24px; margin-top: 32px; }
+@media (max-width: 960px) { .c .opt-grid { grid-template-columns: 1fr; } }
+.c .opt-grid h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+.c .opt-grid .kicker { font-size: 13px; color: var(--ink-3); margin-bottom: 14px; }
+.c .verdict { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
+.c .verdict b { color: var(--ink); }
+.c .ia { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 800px) { .c .ia { grid-template-columns: 1fr; } }
+.c .ia ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+.c .ia li { margin: 4px 0; }
+.c .ia h4 { font-size: 15px; font-weight: 600; }
+
+/* masthead in depth */
+.c .deep { margin-top: 56px; padding-top: 40px; border-top: 1px solid var(--line); }
+.c .deep h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.c .deep .sub { margin-top: 8px; color: var(--ink-2); max-width: 66ch; }
+.c .deep .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 28px; align-items: start; }
+.c .deep .phone { max-width: 320px; }
+.c .spec { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 32px; margin-top: 32px; }
+@media (max-width: 800px) { .c .spec { grid-template-columns: 1fr; } }
+.c .spec h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.c .spec ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+.c .spec li { margin: 5px 0; }
+.c .spec li b { color: var(--ink); font-weight: 600; }
+.c-ph-top .back { display: block; font-size: 12px; font-weight: 600; color: var(--c-ink-2); margin-bottom: 4px; }
+.c-seg { margin: 10px 16px 0; display: flex; border: 1px solid var(--c-line); border-radius: 999px; padding: 2px; }
+.c-seg span { flex: 1; text-align: center; font-size: 12px; font-weight: 700; padding: 6px 0; border-radius: 999px; color: var(--c-ink-2); }
+.c-seg span.on { background: var(--c-ink); color: #fff; }
+.c-list { padding: 8px 16px 0; }
+.c-list .row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--c-line); font-size: 13px; }
+.c-list .row .tile { width: 40px; height: 26px; border-radius: 4px; border: 1.5px solid var(--c-ink); box-shadow: 0 3px 0 var(--c-ink); background: #fff; display: grid; place-items: center; font-size: 9px; font-weight: 700; flex: none; }
+.c-list .row .tile.m { background: var(--c-moss); border-color: var(--c-moss-edge); box-shadow: 0 3px 0 var(--c-moss-edge); color: #fff; }
+.c-list .row .tile.t { background: var(--c-taken); color: #fff; }
+.c-list .row b { display: block; font-weight: 700; }
+.c-list .row span { color: var(--c-ink-2); font-size: 12px; }
+.c-list .row .x { margin-left: auto; color: var(--c-ink-2); font-size: 12px; font-weight: 600; }
+.c-list .row .chev { margin-left: auto; color: var(--c-ink-2); }
+.c-list .row.out b { color: #b3402c; }
+.c-ph-btn { position: absolute; left: 16px; right: 16px; bottom: 86px; height: 44px; border-radius: 10px; background: var(--c-moss); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+.c-me { padding: 8px 16px 4px; display: flex; align-items: center; gap: 12px; }
+.c-me .c-av { width: 44px; height: 44px; font-size: 14px; }
+.c-me b { display: block; font-size: 16px; font-weight: 700; }
+.c-me span { color: var(--c-ink-2); font-size: 12px; }
+.c-form { padding: 8px 16px; display: grid; gap: 12px; }
+.c-form label { font-size: 12px; color: var(--c-ink-2); display: grid; gap: 4px; }
+.c-form .in { height: 40px; border: 1px solid var(--c-line); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; font-size: 14px; color: var(--c-ink); font-weight: 600; }
+.c-page .back { font-size: 12px; font-weight: 600; color: var(--c-ink-2); margin-bottom: 6px; display: block; }
+.c-desk-form { margin-top: 16px; max-width: 320px; display: grid; gap: 12px; }
+.c-desk-form label { font-size: 12px; color: var(--c-ink-2); display: grid; gap: 4px; }
+.c-desk-form .in { height: 36px; border: 1px solid var(--c-line); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; font-weight: 600; }
+.c-desk-form .btns { display: flex; gap: 8px; margin-top: 4px; }
+.c-desk-form .btn { height: 36px; padding: 0 16px; border-radius: 10px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--c-moss); color: #fff; }
+.c-desk-form .btn.q { background: #fff; color: var(--c-ink); border: 1px solid var(--c-line); }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="wrap">
+    <span class="brand">Share a desk — redesign directions</span>
+    <nav>
+      <a href="#audit">Audit</a>
+      <a href="#shared">Shared plan</a>
+      <a class="opt opt-a" href="#option-a">The Floor</a>
+      <a href="#pages">Other pages</a>
+      <a href="#palettes">Palette</a>
+      <a href="#chrome">Chrome</a>
+      <a href="#touches">Touches</a>
+      <a href="#decide">Decide</a>
+    </nav>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>The Floor, in Slate &amp; Moss.</h1>
+    <p class="lede">Everything inside the main column gets rebuilt: the desk view, the desk detail, the reserve flow, and login. The desk layout itself stays exactly as it is today. This revision locks the direction and the palette, and adds a section on the chrome: four distinct ways to replace the sidebar and the breadcrumb header, which earlier revisions had left as they are. The option mockups above that section still draw the current sidebar so the two decisions stay separate.</p>
+    <div class="meta">
+      <span>Scope: desk view, desk detail, reserve, login and register, logout, the app chrome, plus peeks at metrics, automatic reservations and my reservations</span>
+      <span>Stack stays: React Router 7, Tailwind, shadcn primitives</span>
+      <span>Palette: Slate &amp; Moss</span>
+      <span>Revision 11 · 25 Sep 2026</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================ AUDIT -->
+<section class="doc" id="audit">
+  <div class="wrap">
+    <h2>What feels rushed today, and why</h2>
+    <p class="sub">Pulled from the current routes and components. Red is something every direction fixes; amber is a smaller polish item.</p>
+    <div class="audit">
+      <div class="audit-item"><i class="dot"></i><div><b>Filters push the map below the fold on mobile.</b><span>The filter form is a vertical column with <code>gap-16</code> before the desks. On a phone you scroll past four controls before you see a single desk.</span></div></div>
+      <div class="audit-item"><i class="dot"></i><div><b>Choosing a day means opening a date picker.</b><span>People only ever book this week or next, Monday to Friday. A calendar popover is the wrong control for ten possible values.</span></div></div>
+      <div class="audit-item"><i class="dot"></i><div><b>Status is a 2px coloured bottom border.</b><span>Free vs taken is the single most important fact on the page, and it's carried by a thin green or red line under a grey box.</span></div></div>
+      <div class="audit-item"><i class="dot"></i><div><b>The desk icon is a 64px black clip-art SVG.</b><span>It dominates every tile, repeats 40 times, and is the main reason the page reads as "made in a hurry".</span></div></div>
+      <div class="audit-item"><i class="dot"></i><div><b>Filtered-out desks go red at 20% opacity.</b><span>"Not matching your filter" and "taken" look the same. Filtering should quiet desks, not paint them as unavailable.</span></div></div>
+      <div class="audit-item"><i class="dot"></i><div><b>Login is a bare heading and one input.</b><span>No context on what a user ID looks like, and the register link says "Click here". Register's button says "Login".</span></div></div>
+      <div class="audit-item"><i class="dot"></i><div><b>Reserve uses a select for week and checkboxes for days.</b><span>Two controls that don't show the actual dates. You can't see what you're booking until the toast appears.</span></div></div>
+      <div class="audit-item"><i class="dot mid"></i><div><b>Blocks and the wall have no spatial relationship.</b><span>Column 1 is "window" and 3 is "aisle", but nothing on screen says so. The wall is a lone grey bar between block 6 and 7.</span></div></div>
+      <div class="audit-item"><i class="dot mid"></i><div><b>Availability squares in the modal are unlabeled.</b><span>Two rows of five green/red squares with M T W Th F under them, no week label, and no dates.</span></div></div>
+      <div class="audit-item"><i class="dot mid"></i><div><b>Logout is a bare form submit in the sidebar.</b><span>Fine functionally, but it has no confirmation and no signed-out state; the user just lands on the login page.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ SHARED -->
+<section class="doc" id="shared">
+  <div class="wrap">
+    <h2>What every direction shares</h2>
+    <p class="sub">The structural fixes inside the main column. The sidebar, the header and the breadcrumbs are decided separately, under <a href="#chrome">Chrome</a>.</p>
+    <div class="grid-2 plan">
+      <div>
+        <ol>
+          <li><b>Day strip replaces the date picker.</b> Mon–Fri as a segmented control at the top of the page, with a small "Next week →" text link to flip to the following week. Today is preselected; past days are shown but not offered, since their bookings are cleaned up. On phones the strip becomes five full-width cells. The URL param stays so links still work.</li>
+          <li><b>Filters become chips under the day strip.</b> "Free only", "Window", "Middle", "Aisle", and a "Block" chip that opens the native select. Filtering dims desks instead of colouring them red. On phones the row scrolls sideways rather than wrapping.</li>
+          <li><b>Three desk states, always readable without colour.</b> Free, taken (with who), yours. Each has a distinct fill, a label, and an icon or avatar. Dimmed is a fourth, purely for filtering.</li>
+          <li><b>Desk detail is a bottom sheet on mobile and a side sheet on desktop, both built with Silk.</b> One component, two placements; the Radix dialog and the vaul drawer go away. The panel shows the two-week availability with real dates and one primary action. The booking rules stay as they are: someone else's desk can only be borrowed for today, and only your own desk can be booked ahead.</li>
+        </ol>
+      </div>
+      <div>
+        <ol start="5">
+          <li><b>Reserve is a week calendar, not checkboxes.</b> For your own desk only: five day tiles per week showing the date and status, tap to select, see a summary line, then confirm. For any other desk the sheet offers exactly one thing, "Reserve for today".</li>
+          <li><b>Login is a six-character code field.</b> Autofocus, uppercase display, inline error that names the problem. Register is the same layout with two more fields and a button that says "Create account".</li>
+          <li><b>Logout confirms, then lands on a signed-out login screen.</b> A short "You're signed out" line on the login page instead of a silent redirect.</li>
+          <li><b>One motion moment per screen.</b> The sheet sliding up, a desk lifting on hover, a tile toggling. Nothing animates on page load. Reduced motion respected.</li>
+          <li><b>Sheets and modals come from Silk (<code>@silk-hq/components</code>).</b> Every overlay in the app is a Silk sheet: the desk detail, confirmations, and the reserve form on phones. Details under Touches.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ OPTION A -->
+<section class="doc a" id="option-a">
+  <div class="wrap">
+    <div class="opt-head">
+      <div>
+        <p class="kicker" style="color:#6e655b">The direction</p>
+        <h2 style="font-family:Archivo">The Floor</h2>
+        <p class="thesis">The layout you have today, drawn properly. Blocks stay stacked in order, each a 3 by 2 grid, block 4 a single row, the wall before block 7. Each desk is a tile with an outline and a solid lower edge, so it reads as a slab on the page rather than a grey button. No perspective, no rotation, so it renders identically everywhere. Every desk carries its owner's first name, with the desk number small underneath, because the name is what people actually look for. A free desk is white with the name muted, a taken one is dark with the name in white, yours is the one moss tile, and an unclaimed desk is a dashed outline. Buttons and cards are flat; the raised edge is reserved for desks, so a raised thing always means a desk. Chairs sit on the outside of each block, which makes row 1 and row 2 tell apart at a glance. A window strip runs down the left and a dashed aisle line down the right.</p>
+      </div>
+      <div class="tokens">
+        <div class="row"><i class="sw" style="background:#ffffff"></i><span class="k">Paper</span> #FFFFFF</div>
+        <div class="row"><i class="sw" style="background:#1f2a2e"></i><span class="k">Ink</span> #1F2A2E</div>
+        <div class="row"><i class="sw" style="background:#5f6b70"></i><span class="k">Muted ink</span> #5F6B70</div>
+        <div class="row"><i class="sw" style="background:#34434a"></i><span class="k">Taken tile</span> #34434A</div>
+        <div class="row"><i class="sw" style="background:#4f7a5a"></i><span class="k">Moss (yours / actions)</span> #4F7A5A</div>
+        <div class="row"><i class="sw" style="background:#2f5039"></i><span class="k">Moss edge</span> #2F5039</div>
+        <div class="row"><i class="sw" style="background:#cfe3ea"></i><span class="k">Window mist</span> #CFE3EA</div>
+        <div class="row"><i class="sw" style="background:#f4f5f2"></i><span class="k">Panel</span> #F4F5F2</div>
+        <div class="row full"><span class="k">Type</span>&nbsp;Archivo for the main column; the sidebar keeps its current system font</div>
+        <div class="row full"><span class="k">Shape</span>&nbsp;Desk tiles have a 1.5px outline and a 6px solid lower edge in the same ink. Depth from the edge, not perspective.</div>
+        <div class="row full"><span class="k">Controls</span>&nbsp;Buttons, day tiles and cards are flat with a 10px radius, moss fill for the primary action, white with a hairline for the rest. No edge on anything that is not a desk.</div>
+        <div class="row full"><span class="k">Surfaces</span>&nbsp;Forms and pages sit directly on the paper. No panels or cards wrapping whole screens; boxes are reserved for things you tap, like inputs, tiles and buttons.</div>
+      </div>
+    </div>
+
+    <div class="mock-row">
+      <div>
+        <div class="frame">
+          <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app</span></div>
+          <div class="app">
+            <div class="side">
+              <div class="brand">Share a desk<small>A workspace management app</small></div>
+              <div class="grp">Desks</div>
+              <div class="nav"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Homepage</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</div></div>
+              <div class="grp">Reservations</div>
+              <div class="nav"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>My reservations</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/></svg>Add reservation</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 10v4h4"/><path d="m11 14 1.535-1.605a5 5 0 0 1 8 1.5"/><path d="M16 2v4"/><path d="m21 18-1.535 1.605a5 5 0 0 1-8-1.5"/><path d="M21 22v-4h-4"/><path d="M21 8.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4.3"/><path d="M3 10h4"/><path d="M8 2v4"/></svg>Automatic reservations</div></div>
+              <div class="grp">Profile</div>
+              <div class="nav"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 15H7a4 4 0 0 0-4 4v2"/><path d="M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><circle cx="10" cy="7" r="4"/></svg>Edit profile</div></div>
+              <div class="grp">External links</div>
+              <div class="nav"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>View source code</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>Report a bug</div></div>
+              <div class="foot-nav"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>Logout</div></div>
+            </div>
+            <div class="topbar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg><span class="sep"></span><span>Desks</span></div>
+            <div class="main">
+              <div class="top">
+                <h3>Desks</h3>
+                <span class="date">Wed 23 Sep · 26 of 40 free</span>
+                <div class="days" data-days>
+                  <button>Mon</button><button>Tue</button><button class="on">Wed</button><button>Thu</button><button>Fri</button>
+                </div>
+              </div>
+              <div class="chips">
+                <span class="chip on">Free only</span><span class="chip">Window <span class="n">14</span></span><span class="chip">Middle</span><span class="chip">Aisle</span><span class="chip">Block ▾</span>
+              </div>
+              <div class="mainscroll">
+                <div class="plan" id="a-floor">
+                  <div class="window"></div>
+                  <div class="aisle"></div>
+                </div>
+              </div>
+              <div class="legend">
+                <span><i></i>Free</span>
+                <span><i class="t"></i>Taken</span>
+                <span><i class="m"></i>Yours</span>
+                <span><i class="o"></i>Filtered out or unclaimed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Desktop desk view.</b> The sidebar and header are the current ones, unchanged, including the Lucide icons. Only the main column is new. Same block order and grid as today; hover lifts a tile two pixels and deepens its edge. The chair side tells you which row you are looking at. The one icon that goes is the 64px desk clip-art inside each button, replaced by the tile itself. If you want to keep it, it can sit at 20px inside the tile without changing anything else.</p>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="sheet">
+            <div>
+              <h4>Desk 3.2.1</h4>
+              <p class="sub">Block 3 · row 2 · by the window</p>
+            </div>
+            <div class="kv"><span class="k">Assigned to</span><span class="v"><span class="av">SK</span>Sara Kristensen</span></div>
+            <div class="kv"><span class="k">Today</span><span class="v"><span class="av" style="background:var(--a-mine-top)">MJ</span>Michael Jensen is borrowing it</span></div>
+            <div class="kv">
+              <span class="k">Next two weeks</span>
+              <div class="wk">
+                <div class="r"><span>This wk</span><span class="c t">21</span><span class="c t">22</span><span class="c t">23</span><span class="c">24</span><span class="c">25</span></div>
+                <div class="r"><span>Next wk</span><span class="c">28</span><span class="c">29</span><span class="c t">30</span><span class="c">1</span><span class="c">2</span></div>
+              </div>
+            </div>
+            <button class="btn">Reserve for today</button>
+            <p class="help" style="margin-top:0;text-align:center">Someone else's desk can only be borrowed for today.</p>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Desk panel, someone else's desk.</b> One action, "Reserve for today", exactly as the rules work now. The two-week grid is still shown so you can see when the owner is in. On your own desk the button reads "Book days" and opens the reserve calendar instead.</p>
+      </div>
+    </div>
+
+    <div class="forms-row">
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="ph-top"><h3>Desks</h3><span class="date">Wed 23 Sep</span></div>
+            <div class="ph-days"><div>Mon</div><div>Tue</div><div class="on">Wed</div><div>Thu</div><div>Fri</div></div>
+            <div class="ph-stage"><div class="plan" id="a-floor-ph"><div class="window"></div><div class="aisle"></div></div></div>
+            <div class="ph-sheet">
+              <div class="grab"></div>
+              <h4>Desk 3.2.1</h4>
+              <div class="row"><span class="k">Assigned to</span><span>Sara Kristensen</span></div>
+              <div class="row"><span class="k">Today</span><span>Michael is borrowing it</span></div>
+              <div class="wk">
+                <div class="r"><span>This wk</span><span class="c t">21</span><span class="c t">22</span><span class="c t">23</span><span class="c">24</span><span class="c">25</span></div>
+              </div>
+              <button class="btn">Reserve for today</button>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+        <p class="mock-caption" style="text-align:center"><b>Mobile.</b> Identical markup, nothing scales or pans. Three tiles per row fit a 390px screen with room for the chairs. Tapping a desk pulls up the sheet.</p>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="form-card">
+            <h4>Book your desk</h4>
+            <p class="sub">Desk 2.1.2. Pick the days you'll be in; today closes at 11:00.</p>
+            <div class="field">
+              <div class="week-toggle"><div class="on">This week · 21–25 Sep</div><div>Next week · 28 Sep–2 Oct</div></div>
+            </div>
+            <div class="field">
+              <div class="daytiles" data-tiles>
+                <div class="daytile past"><div class="d">Mon</div><div class="n">21</div><div class="s">past</div></div>
+                <div class="daytile past"><div class="d">Tue</div><div class="n">22</div><div class="s">past</div></div>
+                <div class="daytile off"><div class="d">Wed</div><div class="n">23</div><div class="s">closed</div></div>
+                <div class="daytile on"><div class="d">Thu</div><div class="n">24</div><div class="s">free</div></div>
+                <div class="daytile"><div class="d">Fri</div><div class="n">25</div><div class="s">free</div></div>
+              </div>
+            </div>
+            <div class="foot">
+              <button class="btn">Reserve Thursday</button>
+            </div>
+            <p class="help" style="margin-top:10px">You'll get a confirmation here and in My reservations.</p>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Reserve, your own desk.</b> This is the only place you can book ahead. Tiles show the date and status; the button text updates with the selection ("Reserve Thu and Fri"). Reached from the sidebar's Add reservation or from "Book days" on your own desk.</p>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="form-card">
+            <h4>Sign in</h4>
+            <p class="sub">Enter your six-character user ID, for example g01234.</p>
+            <div class="field">
+              <label>User ID</label>
+              <div class="code"><div>G</div><div>0</div><div>1</div><div class="cur"></div><div></div><div></div></div>
+            </div>
+            <div class="foot"><button class="btn">Sign in</button></div>
+            <p class="help">First time here? <a href="#">Create an account</a> with your ID and name.</p>
+            <div style="margin-top:34px;display:flex;gap:8px;align-items:flex-start;color:var(--a-mine-edge);font-size:13px;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"/></svg>You're signed out. Sign in again when you're back.</div>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Sign in.</b> Six boxes make the ID length obvious and stop the "invalid employee number" guesswork. No panel around the form: the page itself is the surface, as on a native sign-in screen. The moss line is the post-logout state.</p>
+      </div>
+    </div>
+
+    <div class="pros">
+      <div><h4>Why pick it</h4><ul><li>Zero layout risk: the loader, the block grouping and the grid placement code stay as they are. Only the desk button and the block wrapper change.</li><li>The slab edge gives you the physical feel without any CSS 3D, so it looks the same in Safari, Chrome and in this document.</li><li>States are carried by fill and edge colour together, so they survive greyscale, and each palette is a token swap.</li></ul></div>
+      <div><h4>What it costs</h4><ul><li>First names only on tiles; surnames and who is borrowing from whom live in the panel. Long names truncate on narrow phones.</li><li>The chair rows add vertical space, so the page is about 30% taller than today.</li><li>Less charming than a true map, but that was the trade for keeping the layout.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ OTHER PAGES -->
+<section class="doc a" id="pages">
+  <div class="wrap">
+    <h2 style="font-family:Archivo">The other pages, in the same system</h2>
+    <p class="sub" style="font-family:var(--font)">Sneak peeks, not final specs. The point is to show that the tile, the edge, the moss accent and the day strip carry over, so the app reads as one thing. Sidebar and header unchanged throughout.</p>
+
+    <div class="pages-row">
+      <div>
+        <div class="frame">
+          <div class="page">
+            <h3>Bookings</h3>
+            <p class="sub">How the office is being used. Numbers come from the daily metrics job, so treat participation as an estimate.</p>
+            <div class="stats">
+              <div class="stat"><div class="k">This month</div><div class="v">214</div><div class="d"><b>+12%</b> vs August</div></div>
+              <div class="stat"><div class="k">Per day</div><div class="v">11</div><div class="d"><b>+1</b> vs August</div></div>
+              <div class="stat accent"><div class="k">Office participation</div><div class="v">46%</div><div class="d">of 40 desks, on average</div></div>
+            </div>
+            <div class="chart-card">
+              <div class="h"><b>Bookings per day</b><span>September</span><span class="range"><span class="on">30 days</span><span>90 days</span><span>Year</span></span></div>
+              <svg viewBox="0 0 560 190" font-family="Archivo, system-ui, sans-serif"><line x1="28" x2="552" y1="164.0" y2="164.0" stroke="#d8ddda" stroke-dasharray="3 3"/><text x="22" y="168.0" font-size="10" text-anchor="end" fill="#5f6b70">0</text><line x1="28" x2="552" y1="126.0" y2="126.0" stroke="#d8ddda" stroke-dasharray="3 3"/><text x="22" y="130.0" font-size="10" text-anchor="end" fill="#5f6b70">5</text><line x1="28" x2="552" y1="88.0" y2="88.0" stroke="#d8ddda" stroke-dasharray="3 3"/><text x="22" y="92.0" font-size="10" text-anchor="end" fill="#5f6b70">10</text><line x1="28" x2="552" y1="50.0" y2="50.0" stroke="#d8ddda" stroke-dasharray="3 3"/><text x="22" y="54.0" font-size="10" text-anchor="end" fill="#5f6b70">15</text><line x1="28" x2="552" y1="12.0" y2="12.0" stroke="#d8ddda" stroke-dasharray="3 3"/><text x="22" y="16.0" font-size="10" text-anchor="end" fill="#5f6b70">20</text><text x="28.0" y="182" font-size="10" text-anchor="middle" fill="#5f6b70">1 Sep</text><text x="132.8" y="182" font-size="10" text-anchor="middle" fill="#5f6b70">5 Sep</text><text x="237.6" y="182" font-size="10" text-anchor="middle" fill="#5f6b70">9 Sep</text><text x="342.4" y="182" font-size="10" text-anchor="middle" fill="#5f6b70">13 Sep</text><text x="447.2" y="182" font-size="10" text-anchor="middle" fill="#5f6b70">17 Sep</text><text x="552.0" y="182" font-size="10" text-anchor="middle" fill="#5f6b70">21 Sep</text><path d="M28.0,156.4 L54.2,148.8 L80.4,148.8 L106.6,141.2 L132.8,148.8 L159.0,156.4 L185.2,141.2 L211.4,133.6 L237.6,148.8 L263.8,141.2 L290.0,141.2 L316.2,148.8 L342.4,133.6 L368.6,141.2 L394.8,141.2 L421.0,126.0 L447.2,133.6 L473.4,148.8 L499.6,126.0 L525.8,133.6 L552.0,141.2" fill="none" stroke="#4f7a5a" stroke-width="2"/><path d="M28.0,103.2 L54.2,80.4 L80.4,88.0 L106.6,65.2 L132.8,72.8 L159.0,95.6 L185.2,57.6 L211.4,50.0 L237.6,72.8 L263.8,42.4 L290.0,65.2 L316.2,80.4 L342.4,34.8 L368.6,50.0 L394.8,57.6 L421.0,27.2 L447.2,42.4 L473.4,72.8 L499.6,19.6 L525.8,34.8 L552.0,50.0" fill="none" stroke="#1f2a2e" stroke-width="2.5"/><circle cx="28.0" cy="103.2" r="2.5" fill="#1f2a2e"/><circle cx="54.2" cy="80.4" r="2.5" fill="#1f2a2e"/><circle cx="80.4" cy="88.0" r="2.5" fill="#1f2a2e"/><circle cx="106.6" cy="65.2" r="2.5" fill="#1f2a2e"/><circle cx="132.8" cy="72.8" r="2.5" fill="#1f2a2e"/><circle cx="159.0" cy="95.6" r="2.5" fill="#1f2a2e"/><circle cx="185.2" cy="57.6" r="2.5" fill="#1f2a2e"/><circle cx="211.4" cy="50.0" r="2.5" fill="#1f2a2e"/><circle cx="237.6" cy="72.8" r="2.5" fill="#1f2a2e"/><circle cx="263.8" cy="42.4" r="2.5" fill="#1f2a2e"/><circle cx="290.0" cy="65.2" r="2.5" fill="#1f2a2e"/><circle cx="316.2" cy="80.4" r="2.5" fill="#1f2a2e"/><circle cx="342.4" cy="34.8" r="2.5" fill="#1f2a2e"/><circle cx="368.6" cy="50.0" r="2.5" fill="#1f2a2e"/><circle cx="394.8" cy="57.6" r="2.5" fill="#1f2a2e"/><circle cx="421.0" cy="27.2" r="2.5" fill="#1f2a2e"/><circle cx="447.2" cy="42.4" r="2.5" fill="#1f2a2e"/><circle cx="473.4" cy="72.8" r="2.5" fill="#1f2a2e"/><circle cx="499.6" cy="19.6" r="2.5" fill="#1f2a2e"/><circle cx="525.8" cy="34.8" r="2.5" fill="#1f2a2e"/><circle cx="552.0" cy="50.0" r="2.5" fill="#1f2a2e"/></svg>
+              <div class="lg"><span><i style="background:#1f2a2e"></i>All bookings</span><span><i style="background:#4f7a5a"></i>Guest bookings</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Metrics.</b> Three flat stat cards, one tinted moss because participation is the number people quote. The chart keeps recharts; only the two series colours change to ink and moss, and the y-axis starts at zero.</p>
+      </div>
+
+      <div>
+        <div class="frame">
+          <div class="page">
+            <h3>Automatic reservations</h3>
+            <p class="sub">Book your own desk every week without thinking about it.</p>
+            <div class="auto">
+              <div class="status"><span class="dot"></span><span><b>Active.</b> Runs every Sunday at 10:00.</span><span class="nx">Next run Sun 28 Sep</span></div>
+              <p class="rule">Every week, book <span class="mini"><i></i>2.1.2</span> for me on</p>
+              <div class="dayrow"><div class="dt on">Mon</div><div class="dt on">Tue</div><div class="dt">Wed</div><div class="dt on">Thu</div><div class="dt">Fri</div></div>
+              <p class="rule">Changes take effect from the next run. Weeks already booked stay as they are.</p>
+              <div class="actions"><button class="btn sec">Pause</button><button class="btn danger">Stop and remove</button></div>
+            </div>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Automatic reservations.</b> One sentence that says what happens, the days as the same tiles used in Reserve, a status line with the next run date, and the three actions the page already has. The setup state is the same screen with "Set up weekly booking" as the only button.</p>
+      </div>
+    </div>
+
+    <div class="pages-row">
+      <div>
+        <div class="frame">
+          <div class="page">
+            <h3>My reservations</h3>
+            <p class="sub">Upcoming days you have a desk. Past days drop off automatically.</p>
+            <div class="reslist">
+              <div class="wkh">This week <span>· 21–25 Sep</span></div>
+              <div class="res today"><div class="date"><b>Wed 23</b><span>today</span></div><div class="desk-tag"><span class="tile">3.2.1</span><div class="where"><b>Sara's desk</b><span>Block 3 · window · borrowed for today</span></div></div><div class="who"><span class="av">SK</span></div><button class="rm" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button></div>
+              <div class="res"><div class="date"><b>Thu 24</b><span>tomorrow</span></div><div class="desk-tag"><span class="tile m">2.1.2</span><div class="where"><b>Your desk</b><span>Block 2 · window</span></div></div><div class="who"></div><button class="rm" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button></div>
+              <div class="wkh">Next week <span>· 28 Sep–2 Oct</span></div>
+              <div class="res"><div class="date"><b>Mon 28</b><span>Monday</span></div><div class="desk-tag"><span class="tile m">2.1.2</span><div class="where"><b>Your desk</b><span>automatic</span></div></div><div class="who"></div><button class="rm" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button></div>
+              <div class="res"><div class="date"><b>Tue 29</b><span>Tuesday</span></div><div class="desk-tag"><span class="tile m">2.1.2</span><div class="where"><b>Your desk</b><span>automatic</span></div></div><div class="who"></div><button class="rm" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button></div>
+            </div>
+          </div>
+        </div>
+        <p class="mock-caption"><b>My reservations.</b> The table becomes a list grouped by week, with the desk shown as a small tile so it matches the map. Today is tinted. A borrowed desk can only ever appear on today's row; everything further out is your own desk. "Automatic" marks rows the weekly job created. Removing is the same single action as today, without a red icon button on every row.</p>
+      </div>
+      <div>
+        <div class="frame">
+          <div class="page">
+            <h3>My reservations</h3>
+            <p class="sub">Upcoming days you have a desk. Past days drop off automatically.</p>
+            <div class="empty"><b>Nothing booked yet</b>Pick a day on the desk map, or set up a weekly booking for your own desk.</div>
+            <div class="actions" style="max-width:560px;margin-top:12px"><button class="btn">Open the desk map</button><button class="btn sec">Set up weekly booking</button></div>
+          </div>
+        </div>
+        <p class="mock-caption"><b>Empty state.</b> Says what to do next instead of a blank page. Same pattern applies to the error card.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================ CHROME -->
+<section class="doc c" id="chrome">
+  <div class="wrap">
+    <h2>The chrome: four ways to replace the sidebar and header</h2>
+    <p class="sub">This supersedes every earlier "the sidebar and header stay" note. The shadcn sidebar with its five labelled groups and the breadcrumb bar above the page are the last pieces that read as a template. Below are four distinct directions. Each one drops the breadcrumb header entirely: the page title already sits at the top of the content, and secondary pages get a small "← Desks" link there instead. Each also assumes the trimmed map of the app on the right, though all four work with the nine entries as they are today.</p>
+
+    <div class="ia">
+      <div>
+        <h4>Nine entries become three places and a menu</h4>
+        <ul>
+          <li><b>Desks.</b> The floor plan. Unchanged.</li>
+          <li><b>Bookings.</b> "My reservations" renamed. "Add reservation" becomes the primary button on this page (it is an action, not a place, and "Book days" already lives in the desk sheet). "Automatic reservations" becomes a second segment on the same page: <i>Upcoming · Recurring</i>.</li>
+          <li><b>Metrics.</b> Unchanged.</li>
+          <li><b>You.</b> Avatar menu on desktop, fourth tab on phones: edit profile, source code, report a bug, and sign out. The two external links stop competing with real destinations.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>What goes in every option</h4>
+        <ul>
+          <li>The breadcrumb bar with its sidebar toggle, separator and "Desks / Edit desk" trail. Nothing above the page title.</li>
+          <li>Group labels ("Desks", "Reservations", "Profile", "External links"). Three destinations do not need headings.</li>
+          <li>The tagline "A workspace management app" under the brand. The wordmark carries a small moss mark instead, the same slab shape as a desk tile.</li>
+          <li>The system font in the chrome. Archivo everywhere, so the shell and the page are one thing.</li>
+          <li>The shadcn sidebar and, with it, the last Radix dialog. Any phone drawer that remains is a Silk sheet.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="opt-grid">
+
+      <div>
+        <h3>1 · Masthead</h3>
+        <p class="kicker">Top bar on desktop, bottom tabs on phones. No sidebar anywhere.</p>
+        <div class="frame">
+          <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app</span></div>
+          <div class="c-app c-masthead">
+            <div class="c-top">
+              <span class="c-brand"><i class="c-mark"></i>Share a desk</span>
+              <nav class="c-tabs"><a class="on">Desks</a><a>Bookings</a><a>Metrics</a></nav>
+              <span class="c-av">VK</span>
+            </div>
+            <div class="c-menu">
+              <div class="who"><b>Vaggelis K.</b><span>Desk 2.1.2 · admin</span></div>
+              <div>Edit profile</div>
+              <div class="dim">Source code ↗</div>
+              <div class="dim">Report a bug ↗</div>
+              <div class="out">Sign out</div>
+            </div>
+            <div class="c-page">
+              <div class="ttl"><h3>Desks</h3><span class="date">Wed 23 Sep · 26 of 40 free</span><div class="days"><span>Mon</span><span>Tue</span><span class="on">Wed</span><span>Thu</span><span>Fri</span></div></div>
+              <div class="chips"><span class="on">Free only</span><span>Window</span><span>Middle</span><span>Aisle</span><span>Block ▾</span></div>
+              <div class="c-mini">
+                <div class="lbl">Block 1</div>
+                <div class="g"><div class="d">Sara</div><div class="d t">Jonas</div><div class="d t">Lena</div></div>
+                <div class="g"><div class="d">Mia</div><div class="d m">Vaggelis</div><div class="d">Ida</div></div>
+                <div class="lbl">Block 2</div>
+                <div class="g"><div class="d t">Emil</div><div class="d">Anna</div><div class="d t">Tomas</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="verdict"><b>Why it works.</b> Three tabs and an avatar are the whole shell, 52px tall, and the floor plan gets the full width. The avatar menu (drawn open) is where the four "you" items live. On phones the tabs move to a bottom bar (see the phone below), which is the most native pattern there is. <b>Watch for.</b> With only three tabs it can look like a marketing site; the moss underline and the wordmark's mark keep it feeling like a tool.</p>
+      </div>
+
+      <div>
+        <h3>2 · Rail</h3>
+        <p class="kicker">A 72px icon rail on desktop, bottom tabs on phones. The floor plan sits almost edge to edge.</p>
+        <div class="frame">
+          <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app</span></div>
+          <div class="c-app c-railapp">
+            <div class="c-rail">
+              <i class="c-mark"></i>
+              <a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a>
+              <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a>
+              <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a>
+              <span class="c-av">VK</span>
+            </div>
+            <div class="c-page">
+              <div class="ttl"><h3>Desks</h3><span class="date">Wed 23 Sep · 26 of 40 free</span><div class="days"><span>Mon</span><span>Tue</span><span class="on">Wed</span><span>Thu</span><span>Fri</span></div></div>
+              <div class="chips"><span class="on">Free only</span><span>Window</span><span>Middle</span><span>Aisle</span><span>Block ▾</span></div>
+              <div class="c-mini">
+                <div class="lbl">Block 1</div>
+                <div class="g"><div class="d">Sara</div><div class="d t">Jonas</div><div class="d t">Lena</div></div>
+                <div class="g"><div class="d">Mia</div><div class="d m">Vaggelis</div><div class="d">Ida</div></div>
+                <div class="lbl">Block 2</div>
+                <div class="g"><div class="d t">Emil</div><div class="d">Anna</div><div class="d t">Tomas</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="verdict"><b>Why it works.</b> Same three destinations as the masthead, but vertical, so the page keeps a quiet left edge and the top of the screen belongs to the page title. Labels sit under the icons, so it never needs tooltips. The avatar at the foot opens the same menu as option 1. <b>Watch for.</b> A rail is only worth it if the icons are instantly readable; the desk, calendar and chart glyphs are, the rest of the current set is not.</p>
+      </div>
+
+      <div>
+        <h3>3 · Dock</h3>
+        <p class="kicker">Nothing on the sides or top. A floating pill at the bottom on every screen size.</p>
+        <div class="frame">
+          <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app</span></div>
+          <div class="c-app c-dockapp">
+            <span class="c-brand"><i class="c-mark"></i>Share a desk</span>
+            <div class="c-page">
+              <div class="ttl"><h3>Desks</h3><span class="date">Wed 23 Sep · 26 of 40 free</span><div class="days"><span>Mon</span><span>Tue</span><span class="on">Wed</span><span>Thu</span><span>Fri</span></div></div>
+              <div class="chips"><span class="on">Free only</span><span>Window</span><span>Middle</span><span>Aisle</span><span>Block ▾</span></div>
+              <div class="c-mini">
+                <div class="lbl">Block 1</div>
+                <div class="g"><div class="d">Sara</div><div class="d t">Jonas</div><div class="d t">Lena</div></div>
+                <div class="g"><div class="d">Mia</div><div class="d m">Vaggelis</div><div class="d">Ida</div></div>
+                <div class="lbl">Block 2</div>
+                <div class="g"><div class="d t">Emil</div><div class="d">Anna</div><div class="d t">Tomas</div></div>
+              </div>
+            </div>
+            <div class="c-dock"><a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><span class="c-av">VK</span></div>
+          </div>
+        </div>
+        <p class="verdict"><b>Why it works.</b> The page is the whole window, and one control does the same job on a phone, a tablet and a desktop, so there is no breakpoint logic at all. Dark on light, it is unmistakably the app's one piece of chrome. <b>Watch for.</b> It floats over content, so every page needs bottom padding and the floor plan's last block has to clear it. It is also the most fashionable of the four, which means it will date the fastest. And on iPhone, Safari's address bar sits at the bottom too, so the pill floats directly over it and bobs as that bar grows and shrinks; only a home-screen install avoids that. If the look appeals, the version that survives is a hybrid: the masthead on desktop and, on phones, the tab bar drawn dark and inset like the dock but pinned flush to the bottom edge.</p>
+      </div>
+
+      <div>
+        <h3>4 · Ledger</h3>
+        <p class="kicker">Still a sidebar, redrawn from scratch. For when the vertical list is genuinely preferred.</p>
+        <div class="frame">
+          <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app</span></div>
+          <div class="c-app c-ledgerapp">
+            <div class="c-ledger">
+              <span class="c-brand"><i class="c-mark"></i>Share a desk</span>
+              <a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks<span class="cnt">26 free</span></a>
+              <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a>
+              <div class="sub"><a>Upcoming</a><a>Recurring</a></div>
+              <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a>
+              <div class="me"><span class="c-av">VK</span><div><b>Vaggelis K.</b><span>Desk 2.1.2 · Sign out</span></div></div>
+            </div>
+            <div class="c-page">
+              <div class="ttl"><h3>Desks</h3><span class="date">Wed 23 Sep · 26 of 40 free</span><div class="days"><span>Mon</span><span>Tue</span><span class="on">Wed</span><span>Thu</span><span>Fri</span></div></div>
+              <div class="chips"><span class="on">Free only</span><span>Window</span><span>Middle</span><span>Aisle</span><span>Block ▾</span></div>
+              <div class="c-mini">
+                <div class="lbl">Block 1</div>
+                <div class="g"><div class="d">Sara</div><div class="d t">Jonas</div><div class="d t">Lena</div></div>
+                <div class="g"><div class="d">Mia</div><div class="d m">Vaggelis</div><div class="d">Ida</div></div>
+                <div class="lbl">Block 2</div>
+                <div class="g"><div class="d t">Emil</div><div class="d">Anna</div><div class="d t">Tomas</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="verdict"><b>Why it works.</b> Keeps the mental model people already have, but with no group labels, no tagline, no header bar, Archivo type, and the person at the foot instead of a bare "Logout" row. Bookings shows its two segments inline, so the sidebar doubles as the page's sub-navigation. On phones it becomes a Silk side sheet opened from a button next to the page title. <b>Watch for.</b> It is the least change, and it still spends 196px on three links.</p>
+      </div>
+
+    </div>
+
+    <div class="mock-row" style="grid-template-columns: 360px 1fr; align-items: center">
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="c-ph-top"><h3>Desks</h3><span class="date">Wed 23 Sep · 26 of 40 free</span></div>
+            <div class="c-ph-days"><span>Mon</span><span>Tue</span><span class="on">Wed</span><span>Thu</span><span>Fri</span></div>
+            <div class="c-ph-body">
+              <div class="c-mini">
+                <div class="lbl">Block 1</div>
+                <div class="g"><div class="d">Sara</div><div class="d t">Jonas</div><div class="d t">Lena</div></div>
+                <div class="g"><div class="d">Mia</div><div class="d m">Vaggelis</div><div class="d">Ida</div></div>
+                <div class="lbl">Block 2</div>
+                <div class="g"><div class="d t">Emil</div><div class="d">Anna</div><div class="d t">Tomas</div></div>
+                <div class="g"><div class="d">Oskar</div><div class="d t">Christian</div><div class="d">Michael</div></div>
+              </div>
+            </div>
+            <div class="c-tabbar">
+              <a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a>
+              <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a>
+              <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a>
+              <a><span class="c-av">VK</span>You</a>
+            </div>
+          </div>
+          <div class="home"></div>
+        </div>
+      </div>
+      <div>
+        <p class="mock-caption"><b>Phones, options 1 and 2.</b> A bottom tab bar with the three places and "You". No hamburger, no drawer, no header: the page title is the first thing on screen and the day strip sits right under it. The bar is translucent over the scrolling floor plan and respects the home indicator. The desk sheet slides up over it, and the depth effect already in place pushes the whole screen, bar included, back. Option 3 uses its dock here instead; option 4 keeps a drawer.</p>
+        <p class="mock-caption"><b>Recommendation: option 1, Masthead</b> (<a href="#masthead">detailed below</a>). It removes the most (a sidebar, a header, five group labels, a tagline) for the least risk, and its phone form is the one people already know from every native app. Option 2 is the fallback if the top bar reads too much like a website after a day of use; the two share the phone treatment and the avatar menu, so switching between them later is a one-component change. Option 3 is worth a prototype only if you want the app to feel deliberately unusual. Option 4 is the safe choice if the vertical list must stay.</p>
+        <p class="mock-caption"><b>Build.</b> One <code>AppShell</code> component replaces <code>AppSidebar</code>, <code>AppBreadcrumbs</code> and the shadcn sidebar files. Routes do not change; <code>/reserve</code> and <code>/automatic-reservations</code> keep working, they just stop being top-level entries. The <code>sidebar_state</code> cookie goes. This becomes step 5 in the build order, before the reserve calendar, so the remaining pages are built into the final shell.</p>
+      </div>
+    </div>
+
+    <div class="deep" id="masthead">
+      <h3>Masthead, in depth</h3>
+      <p class="sub">What option 1 is like to use on every screen, and the details that decide whether the phone version feels like an app or like a website with a bar stuck to the bottom.</p>
+
+      <div class="spec">
+        <div>
+          <h4>Desktop and tablet (768px and up)</h4>
+          <ul>
+            <li><b>One bar, 52px, sticky.</b> Translucent paper with a hairline underneath, so the day strip and floor plan scroll under it. Its content is aligned to the same max width as the page, so the wordmark sits on the page title's left edge.</li>
+            <li><b>Wordmark.</b> The moss mark (a tiny desk slab, 18px, with its 3px edge) and "Share a desk" in Archivo 700. It links to Desks. No tagline.</li>
+            <li><b>Three tabs.</b> Desks, Bookings, Metrics. 13px, semibold, muted ink at rest, ink when active with a 2px moss underline flush with the bar's bottom edge. Hover darkens the text, focus shows the moss ring. They are plain links with <code>aria-current="page"</code>, so keyboard and screen-reader behaviour comes for free.</li>
+            <li><b>Avatar menu.</b> 26px initials on the right. Opens a small popover: a header with the name, desk and role, then Edit profile, Source code, Report a bug, and Sign out below a divider. Sign out opens the existing confirmation. Built with the native Popover API and anchored under the avatar; no dropdown library.</li>
+            <li><b>Secondary pages.</b> Reserve, Edit desk, Edit profile have no tab of their own. The parent tab stays underlined (Reserve and Edit desk under Desks, Edit profile under nothing) and the page shows a small "← Desks" link above its title. That replaces the breadcrumb trail.</li>
+            <li><b>Tablets.</b> Nothing special; the bar is short enough that an iPad in portrait gets the desktop treatment. The switch to the tab bar is at the existing 768px breakpoint, in CSS, so both shells are in the DOM and there is no hydration flash.</li>
+            <li><b>Admins.</b> No extra entry. "Edit desk info" stays in the desk sheet, where the desk is.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Phones (under 768px)</h4>
+          <ul>
+            <li><b>The bar.</b> Four items: Desks, Bookings, Metrics, You. 22px icon over a 10px label, 49px tall plus the home-indicator inset, translucent paper with blur and a hairline on top. Active: ink label, moss icon. Nothing else on screen belongs to the shell; the page title is the first thing you see.</li>
+            <li><b>Scrolling.</b> The page already scrolls inside the sheet stack outlet on phones; the bar is pinned to the bottom of that outlet, above the scrolling content, and pages get bottom padding equal to the bar so the last block of desks clears it. Tapping the active tab again scrolls its page to the top.</li>
+            <li><b>Sheets.</b> The desk sheet rises over the bar. The depth effect pushes the whole screen back, bar included, because the bar lives inside the outlet's scaled layer. While a sheet is up the bar is inert, as the rest of the page is.</li>
+            <li><b>Keyboard.</b> When an input has focus (Edit desk, Edit profile, the code field on login) the bar hides, so it never rides up on top of the keyboard. It returns when focus leaves.</li>
+            <li><b>Safari's own bar.</b> Safari on iPhone puts its address bar at the bottom too. A flush, full-width tab bar is the same shape, so the two stack into one toolbar, which is how every web app that does this looks. Add a web manifest with <code>display: standalone</code> so people who put the app on their home screen get the bar on the home indicator alone.</li>
+            <li><b>Secondary pages</b> keep the bar with the parent tab lit and show the "← Desks" (or "← Bookings") link above the title, so there is never a screen with no way back. Reserve opens as a bottom sheet from the desk anyway; the page form is for direct links.</li>
+            <li><b>Signed out.</b> Login and register have no bar, as now.</li>
+            <li><b>Landscape.</b> The bar stays at the bottom with labels; four items fit easily.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phones">
+        <div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="c-ph-top"><h3>Bookings</h3><span class="date">Desk 2.1.2 · yours</span></div>
+              <div class="c-seg"><span class="on">Upcoming</span><span>Recurring</span></div>
+              <div class="c-list">
+                <div class="row"><span class="tile m">2.1.2</span><div><b>Wed 23 Sep</b><span>Today</span></div><span class="x">Release</span></div>
+                <div class="row"><span class="tile m">2.1.2</span><div><b>Thu 24 Sep</b><span>Tomorrow</span></div><span class="x">Remove</span></div>
+                <div class="row"><span class="tile t">3.2.1</span><div><b>Fri 25 Sep</b><span>Borrowing Sara's desk</span></div><span class="x">Remove</span></div>
+                <div class="row"><span class="tile m">2.1.2</span><div><b>Mon 28 Sep</b><span>Next week</span></div><span class="x">Remove</span></div>
+              </div>
+              <div class="c-ph-btn">Book days</div>
+              <div class="c-tabbar"><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><a class=""><span class="c-av">VK</span>You</a></div>
+            </div>
+            <div class="home"></div>
+          </div>
+          <p class="mock-caption"><b>Bookings.</b> "My reservations" and "Automatic reservations" become two segments of one tab. Rows carry a small desk tile so a borrowed desk is obvious. "Book days" is the page's one primary action, pinned above the bar; it opens the reserve calendar for your own desk. "Add reservation" stops being a destination.</p>
+        </div>
+        <div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="c-ph-top"><h3>You</h3></div>
+              <div class="c-me"><span class="c-av">VK</span><div><b>Vaggelis Karavasileiadis</b><span>emp042 · Desk 2.1.2 · admin</span></div></div>
+              <div class="c-list">
+                <div class="row"><div><b>Edit profile</b><span>Name and desk</span></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="m9 18 6-6-6-6"/></svg></div>
+                <div class="row"><div><b>Source code</b><span>github.com/VaggelisKa/my-desk</span></div><span class="x">↗</span></div>
+                <div class="row"><div><b>Report a bug</b><span>Opens a GitHub issue</span></div><span class="x">↗</span></div>
+                <div class="row out"><div><b>Sign out</b></div></div>
+              </div>
+              <div class="c-tabbar"><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><a class="on"><span class="c-av">VK</span>You</a></div>
+            </div>
+            <div class="home"></div>
+          </div>
+          <p class="mock-caption"><b>You.</b> The fourth tab is what the avatar menu is on desktop: who you are, then the four items that used to be two sidebar groups. Sign out opens the confirmation sheet. On desktop this is a popover, not a page, so the route only exists on phones and redirects to Desks on wide screens.</p>
+        </div>
+        <div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="c-ph-top"><span class="back">← Desks</span><h3>Edit desk 3.2.1</h3><span class="date">Block 3 · row 2 · by the window</span></div>
+              <div class="c-form">
+                <label>Assigned to<span class="in">Sara Kristensen</span></label>
+                <label>Block<span class="in">3</span></label>
+                <label>Row<span class="in">2</span></label>
+                <label>Column<span class="in">1</span></label>
+              </div>
+              <div class="c-ph-btn">Save</div>
+              <div class="c-tabbar"><a class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 17v3M17 17v3M3 12h18"/></svg>Desks</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Bookings</a><a class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg>Metrics</a><a class=""><span class="c-av">VK</span>You</a></div>
+            </div>
+            <div class="home"></div>
+          </div>
+          <p class="mock-caption"><b>A secondary page.</b> Edit desk lives under Desks, so that tab stays lit and a "← Desks" link sits above the title. This is the whole replacement for the breadcrumb bar. When a field is focused the tab bar hides so the keyboard has the bottom of the screen.</p>
+        </div>
+      </div>
+
+      <div class="mock-row" style="margin-top:32px">
+        <div>
+          <div class="frame">
+            <div class="bar"><i></i><i></i><i></i><span class="url">share-a-desk.app/desks/17/edit</span></div>
+            <div class="c-app c-masthead">
+              <div class="c-top">
+                <span class="c-brand"><i class="c-mark"></i>Share a desk</span>
+                <nav class="c-tabs"><a class="on">Desks</a><a>Bookings</a><a>Metrics</a></nav>
+                <span class="c-av">VK</span>
+              </div>
+              <div class="c-page">
+                <span class="back">← Desks</span>
+                <div class="ttl"><h3>Edit desk 3.2.1</h3><span class="date">Block 3 · row 2 · by the window</span></div>
+                <div class="c-desk-form">
+                  <label>Assigned to<span class="in">Sara Kristensen</span></label>
+                  <label>Block<span class="in">3</span></label>
+                  <div class="btns"><span class="btn">Save</span><span class="btn q">Unassign desk</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="mock-caption"><b>The same page on desktop.</b> Desks stays underlined, the back link replaces the breadcrumb, and the form sits on the paper as every form in this system does. Nothing in the masthead changes between pages except the underline.</p>
+        </div>
+        <div>
+          <p class="mock-caption"><b>Build notes.</b> One <code>AppShell</code> renders the masthead and the tab bar; CSS decides which shows. The tab bar is a <code>nav</code> with four <code>NavLink</code>s, so the active state and prefetching work as they do now. Hiding it under the keyboard is a <code>focusin</code>/<code>focusout</code> listener on the outlet checking for text inputs, plus a class. The avatar popover uses the Popover API with <code>anchor</code> positioning where available and a fixed fallback. The "You" route renders the phone page and redirects to Desks at 768px and up. The shadcn sidebar, its cookie, the breadcrumb component and <code>@radix-ui/react-dialog</code> are removed. Estimated at two days including the Bookings merge.</p>
+          <p class="mock-caption"><b>What to test on a real phone before committing.</b> That the bar sits on the home indicator and not under it in Safari, both with the browser bar and from the home screen. That the depth effect looks right with the bar in the scaled layer. That the keyboard never covers a focused field on Edit desk. Those three are where tab bars go wrong on the web.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ TOUCHES -->
+<section class="doc" id="touches">
+  <div class="wrap">
+    <h2>Touches that work with any direction</h2>
+    <p class="sub">Small things that separate "redesigned" from "rebuilt properly". Each is a half-day or less.</p>
+    <div class="grid-3">
+      <div class="touch"><h4>Reserve for today, one tap</h4><p>On someone else's free desk the sheet's only button is "Reserve for today", and it submits without leaving the page. The desk flips to "yours" in place. Booking ahead stays limited to your own desk.</p></div>
+      <div class="touch"><h4>Your desk always has a home</h4><p>The desk view pins a small "Your desk" card above the map: its status today, and a one-tap "Release today" if you're not coming in. That's the most common action for assigned users.</p></div>
+      <div class="touch"><h4>Live free count in the header</h4><p>"26 of 40 free" updates as you change the day. It's the number people check before deciding whether to come in.</p></div>
+      <div class="touch"><h4>Initials avatars with stable colours</h4><p>Hash the user ID to one of eight muted hues. The same person is always the same colour across the map, the sheet, and My reservations.</p></div>
+      <div class="touch"><h4>Optimistic desk state</h4><p>Reserving flips the desk immediately and rolls back with a toast if the server says no. Today the page waits for a full round trip and a redirect.</p></div>
+      <div class="touch"><h4>Sheet remembers your last desk</h4><p>Re-opening the desk view scrolls to and highlights the desk you last interacted with, so the "book, check, book again" loop is short.</p></div>
+      <div class="touch"><h4>Dark mode for real</h4><p>The tokens already exist in globals.css but nothing toggles them. Add a system-preference default and a switch in the sidebar footer next to logout.</p></div>
+      <div class="touch"><h4>Logout that closes the loop</h4><p>A confirm popover on the sidebar item, then the login page shows "You're signed out" for one visit. No silent redirect.</p></div>
+      <div class="touch"><h4>Empty and error states with a next step</h4><p>"No free desks on Thursday. Try Friday or the aisle." Error card gets a retry and a "report a bug" link that pre-fills the route.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ PALETTE -->
+<section class="doc" id="palettes">
+  <div class="wrap">
+    <h2>Palette: Slate &amp; Moss</h2>
+    <p class="sub">One cool near-black ink, never pure black. White desk tops, a slate tile for taken desks, moss for the desk that is yours and for primary actions, a mist-blue window strip. Every pairing below clears WCAG AA for normal text.</p>
+    <table class="matrix">
+      <thead><tr><th>Pairing</th><th>Colours</th><th>Contrast</th><th>Used for</th></tr></thead>
+      <tbody>
+        <tr><td>Ink on paper</td><td>#1F2A2E on #FFFFFF</td><td>15.6:1</td><td>Headings, desk names, body</td></tr>
+        <tr><td>Muted ink on paper</td><td>#5F6B70 on #FFFFFF</td><td>5.6:1</td><td>Labels, dates, secondary text</td></tr>
+        <tr><td>Initials on taken tile</td><td>#FFFFFF on #34434A</td><td>9.8:1</td><td>Who has the desk</td></tr>
+        <tr><td>White on moss</td><td>#FFFFFF on #4F7A5A</td><td>4.6:1</td><td>Primary buttons, selected day, "yours" tile</td></tr>
+        <tr><td>Ink on moss tint</td><td>#1F2A2E on #E2EDE5</td><td>13.4:1</td><td>Active chip, pinned strip, signed-out notice</td></tr>
+        <tr><td>Window strip</td><td>#CFE3EA with #6F95A3 edge</td><td>decorative</td><td>Marks the window side of the room</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:36px">
+      <div class="touch"><h4>Considered and set aside</h4><p>Ink &amp; Clay (warm ink, clay accent) was the closest runner-up but clay on white fails AA at small sizes, so it could only ever be a fill. Graphite &amp; Cobalt read too much like a generic tool. Both are one token swap away if you change your mind; the tile, panel and forms don't care which accent they get.</p></div>
+      <div class="touch"><h4>Sheets and modals: Silk</h4><p>Silk (<code>@silk-hq/components</code>, currently 0.10.x, React 17 to 19, no other dependencies) replaces vaul and the Radix dialog for every overlay. It is unstyled, so the tokens above apply as they do everywhere else, and it handles the parts vaul never did well: trackpad and mouse swipes, the on-screen keyboard, iOS back-swipe, and stacking. How each surface maps:</p>
+        <ul>
+          <li><b>Desk detail.</b> One <code>Sheet.Root</code>, with <code>contentPlacement</code> switched by the existing 768px media query: <code>bottom</code> on phones, <code>right</code> on desktop. On phones two detents: a peek showing the name, today's status and the button, and a full detent revealing the two-week grid. Swipe to dismiss on both.</li>
+          <li><b>Reserve form on phones.</b> Opens as a full-height bottom sheet from "Book days" on your own desk, so the map stays underneath. On desktop it remains the page it is today.</li>
+          <li><b>Confirmations.</b> "Remove reservation", "Stop and remove" and the admin "Unassign desk" become a small centred sheet with <code>sheetRole="alertdialog"</code> and <code>swipe={false}</code>, so they cannot be dismissed by accident.</li>
+          <li><b>Long content.</b> The sheet body uses Silk's <code>Scroll</code> so the grid scrolls inside the sheet and the handle stays put.</li>
+          <li><b>Sidebar.</b> Replaced under <a href="#chrome">Chrome</a>. Options 1 to 3 have no drawer at all; option 4's phone drawer is a Silk side sheet. Either way the shadcn sidebar and <code>@radix-ui/react-dialog</code> go along with <code>vaul</code>.</li>
+        </ul>
+        <p><b>Licence.</b> Silk requires a <code>license</code> prop on every root, and the docs state that commercial use needs a commercial licence. An internal company tool most likely counts, so confirm the terms and cost on silkhq.com before this step starts; I could not read the pricing page.</p></div>
+      <div class="touch"><h4>Suggested build order</h4><p>1. Tokens in globals.css, mirroring the values above. 2. Day strip and filter chips, replacing the filter form. 3. The desk tile with its four states, replacing the desk button. 4. Install Silk, then the desk sheet with both placements, replacing the dialog and drawer. 5. The chosen chrome from the <a href="#chrome">Chrome</a> section, replacing the sidebar and header, so the remaining pages are built into the final shell. 6. Reserve calendar, plus its phone sheet. 7. Confirmations moved to Silk. 8. Sign in, register, logout states. 9. Touches.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:40px 0 60px;color:var(--ink-3);font-size:13px"><div class="wrap">Mockups are HTML and CSS only. The desk data on the boards is randomised placeholder data; names are examples.</div></footer>
+
+<script>
+// ---------- shared placeholder data ----------
+const people = ["Sara K.","Michael J.","Christian L.","Vaggelis K.","Anna M.","Jonas P.","Lena S.","Tomas R.","Mia H.","Oskar N.","Ida B.","Emil W."];
+const initials = n => n.split(" ").map(s => s[0]).join("").replace(".", "");
+function seeded(seed){ let s = seed; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+// block layout: block -> rows (block 4 has 1 row), 3 columns each
+const blocks = [1,2,3,4,5,6,7];
+function deskState(rnd, b, r, c){
+  if (b === 3 && r === 2 && c === 1) return { st: "taken", who: "Michael J.", sel: true }; // Sara's desk, borrowed by Michael today
+  if (b === 2 && r === 1 && c === 2) return { st: "mine", who: "Vaggelis K." };
+  if (b === 6 && r === 2 && c === 3) return { st: "none" };                               // unassigned desk
+  const owner = people[Math.floor(rnd() * people.length)];
+  const x = rnd();
+  if (x < 0.55) return { st: "free", who: owner };                                          // owner is away, desk can be borrowed
+  return { st: "taken", who: owner };
+}
+const first = n => n.split(" ")[0];
+
+// ---------- Option A: the existing layout, drawn as extruded tiles ----------
+function buildFloor(el){
+  const rnd = seeded(7);
+  const head = document.createElement("div"); head.className = "colhead"; head.innerHTML = "<span>window</span><span>middle</span><span>aisle</span>"; el.appendChild(head);
+  blocks.forEach(b => {
+    if (b === 7) { const w = document.createElement("div"); w.className = "wall"; w.innerHTML = "<span>Wall</span>"; el.appendChild(w); }
+    const blk = document.createElement("div"); blk.className = "block";
+    const rows = b === 4 ? 1 : 2;
+    blk.innerHTML = `<div class="lbl">Block ${b}<span>${rows * 3} desks</span></div><div class="grid"></div>`;
+    const grid = blk.querySelector(".grid");
+    for (let r = 1; r <= rows; r++) for (let c = 1; c <= 3; c++) {
+      const st = deskState(rnd, b, r, c);
+      const d = document.createElement("div");
+      d.className = "desk r" + r + " " + st.st + (st.sel ? " sel" : "") + ((c === 2 && st.st === "free" && b === 5) ? " off" : "");
+      d.innerHTML = `<div class="top-face"><span class="nm">${st.who ? first(st.who) : "Unclaimed"}</span><span class="id">${b}.${r}.${c}</span></div><div class="chair"></div>`;
+      d.addEventListener("click", () => { el.querySelectorAll(".desk.sel").forEach(e => e.classList.remove("sel")); d.classList.add("sel"); });
+      grid.appendChild(d);
+    }
+    el.appendChild(blk);
+  });
+}
+buildFloor(document.getElementById("a-floor"));
+buildFloor(document.getElementById("a-floor-ph"));
+
+
+// ---------- small interactions ----------
+document.querySelectorAll("[data-days]").forEach(strip => {
+  strip.querySelectorAll("button, div").forEach(d => d.addEventListener("click", () => {
+    strip.querySelectorAll(".on").forEach(e => e.classList.remove("on")); d.classList.add("on");
+  }));
+});
+document.querySelectorAll("[data-tiles] .daytile").forEach(t => t.addEventListener("click", () => {
+  if (t.classList.contains("off") || t.classList.contains("past") || t.classList.contains("t")) return;
+  t.classList.toggle("on");
+}));
+</script>
+</body>
+</html>

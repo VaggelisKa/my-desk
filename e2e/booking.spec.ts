@@ -1,32 +1,21 @@
+import { addDays } from "date-fns";
+import { formatDate, parseDate } from "../app/lib/dates";
 import { authFile, expect, expectToast, test } from "./fixtures";
 import { bookingDay, desks, users } from "./support/db";
 
 test.use({ storageState: authFile("alice") });
 
-test("an employee books their desk for several days across both weeks", async ({
+test("an employee books their desk for several days across both weeks from the sheet", async ({
   page,
   db,
   desksPage,
-  reservePage,
   reservationsPage,
 }) => {
   await desksPage.goto();
-  await desksPage.sidebarLink("Add reservation").click();
-  await expect(page).toHaveURL("/reserve");
-
-  // Current week
-  await reservePage.reserve(["monday", "wednesday"]);
-
-  await expect(page).toHaveURL("/");
-  await expectToast(page, "Reservation added!");
-
-  // Next week
-  await reservePage.goto();
-  await reservePage.selectWeek("Next");
-  await reservePage.reserve(["tuesday", "thursday", "friday"]);
-
-  await expect(page).toHaveURL("/");
-  await expectToast(page, "Reservation added!");
+  let dialog = await desksPage.openDesk("Alice");
+  await expect(dialog.title).toHaveText("Desk 1.1.1");
+  await expect(dialog.bookButton).toHaveText("Pick days to book");
+  await expect(dialog.bookButton).toBeDisabled();
 
   let booked = [
     bookingDay("monday"),
@@ -36,27 +25,46 @@ test("an employee books their desk for several days across both weeks", async ({
     bookingDay("friday", 1),
   ];
 
+  await dialog.book(booked.map(({ label }) => label));
+
+  await expectToast(page, "Reservation added!");
+  // The sheet stays open and the booked days turn into "yours".
+  await expect(dialog.root).toBeVisible();
+  for (let { label } of booked) {
+    await expect(dialog.dayStatus(label)).toHaveAccessibleName(
+      `${label}, reserved by you`,
+    );
+  }
+  await expect(dialog.bookableDays()).toHaveCount(10 - booked.length);
+
   await reservationsPage.goto();
   await expect(reservationsPage.rows).toHaveCount(booked.length);
-  for (let { day, date } of booked) {
-    await expect(reservationsPage.row(date)).toContainText(day, {
-      ignoreCase: true,
-    });
+  for (let { date, label } of booked) {
+    // "Mon 17" from "Mon 17 Mar".
     await expect(reservationsPage.row(date)).toContainText(
-      "Block 1, Row 1, Column 1",
+      label.split(" ").slice(0, 2).join(" "),
     );
+    await expect(reservationsPage.row(date)).toContainText("Your desk");
+    await expect(reservationsPage.row(date)).toContainText("1.1.1");
   }
 
   // The dates the server stored match the days picked in the UI.
   let stored = await db.reservationsForDesk(desks.alice.id);
-  expect(stored.map(({ date, userId }) => ({ date, userId }))).toEqual(
-    booked.map(({ date }) => ({ date, userId: users.alice.id })),
+  expect(
+    stored.map(({ date, day, week, userId }) => ({ date, day, week, userId })),
+  ).toEqual(
+    booked.map(({ date, day, week }) => ({
+      date,
+      day,
+      week,
+      userId: users.alice.id,
+    })),
   );
 });
 
 test("days that are already booked cannot be picked again", async ({
   db,
-  reservePage,
+  desksPage,
 }) => {
   await db.addReservation({
     user: "alice",
@@ -64,59 +72,102 @@ test("days that are already booked cannot be picked again", async ({
     day: "tuesday",
   });
   await db.addReservation({
-    user: "alice",
+    user: "bob",
     deskId: desks.alice.id,
     day: "monday",
     weekOffset: 1,
   });
 
-  await reservePage.goto();
-  await expect(reservePage.day("tuesday")).toBeDisabled();
-  await expect(reservePage.day("tuesday")).toHaveAccessibleName(/reserved/i);
-  await expect(reservePage.day("monday")).toBeEnabled();
+  await desksPage.goto();
+  let dialog = await desksPage.openDesk(users.alice.firstName);
 
-  await reservePage.selectWeek("Next");
-  await expect(reservePage.day("monday")).toBeDisabled();
-  await expect(reservePage.day("tuesday")).toBeEnabled();
+  await expect(dialog.day(bookingDay("tuesday").label)).toHaveCount(0);
+  await expect(
+    dialog.dayStatus(bookingDay("tuesday").label),
+  ).toHaveAccessibleName(/reserved by you/);
+  await expect(dialog.day(bookingDay("monday", 1).label)).toHaveCount(0);
+  await expect(
+    dialog.dayStatus(bookingDay("monday", 1).label),
+  ).toHaveAccessibleName(/taken by Bob/);
+  await expect(dialog.day(bookingDay("monday").label)).toBeEnabled();
+  await expect(dialog.day(bookingDay("tuesday", 1).label)).toBeEnabled();
 });
 
-test("submitting without picking a day shows an error", async ({
-  page,
-  db,
-  reservePage,
-}) => {
-  await reservePage.goto();
+test("submitting without picking a day is rejected", async ({ page, db }) => {
+  let response = await page.request.post("/?index", {
+    form: { deskId: String(desks.alice.id) },
+  });
 
-  let response = page.waitForResponse(
-    (res) =>
-      res.request().method() === "POST" && res.url().includes("/reserve"),
-  );
-  await reservePage.reserveButton.click();
-
-  expect((await response).status()).toBe(400);
-  await expectToast(page, "Reservation information is missing");
-  await expect(page).toHaveURL("/reserve");
+  expect(response.status()).toBe(400);
   await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
 });
 
-test.describe("someone else's desk", () => {
-  test("cannot be planned ahead from the reserve page", async ({
-    page,
-    reservePage,
-  }) => {
-    await reservePage.goto(desks.bob.id);
+test("days the sheet does not offer are refused by the server", async ({
+  page,
+  db,
+}) => {
+  let monday = parseDate(bookingDay("monday").date);
 
-    await expect(page).toHaveURL("/");
-    await expectToast(page, "Not allowed!");
+  for (let date of [addDays(monday, -3), addDays(monday, 16)]) {
+    let response = await page.request.post("/?index", {
+      form: { deskId: String(desks.alice.id), date: formatDate(date) },
+    });
+
+    expect(response.status()).toBe(400);
+  }
+  await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
+});
+
+test("the old reserve page is gone", async ({ page }) => {
+  let response = await page.goto("/reserve");
+
+  expect(response?.status()).toBe(404);
+});
+
+test.describe("someone else's desk", () => {
+  test("offers no days to pick in the sheet", async ({ desksPage }) => {
+    await desksPage.goto();
+    let dialog = await desksPage.openDesk(users.bob.firstName);
+
+    await expect(dialog.dayStatus(bookingDay("friday").label)).toBeVisible();
+    await expect(dialog.bookableDays()).toHaveCount(0);
+    await expect(dialog.reserveForTodayButton).toBeVisible();
   });
 
   test("cannot be booked ahead with a direct request", async ({ page, db }) => {
-    let { week } = bookingDay("friday");
-    let response = await page.request.post("/reserve", {
-      form: { deskId: String(desks.bob.id), week: String(week), friday: "on" },
+    let response = await page.request.post("/?index", {
+      form: {
+        deskId: String(desks.bob.id),
+        date: bookingDay("friday").date,
+      },
     });
 
     expect(response.status()).toBe(403);
     await expect(db.reservationsForDesk(desks.bob.id)).resolves.toEqual([]);
   });
+});
+
+test("a desk sits at its place in the block even when the block has gaps", async ({
+  page,
+  db,
+  desksPage,
+}) => {
+  // Alone in block 2, at the aisle end of its second row.
+  await db.moveDesk(desks.unclaimed.id, { row: 2, column: 3 });
+  await desksPage.goto();
+
+  let tile = page.getByRole("button", { name: "Unclaimed" });
+  let block = tile.locator(
+    "xpath=ancestor::div[contains(@class,'grid-rows-2')]",
+  );
+  let [tileBox, blockBox] = await Promise.all([
+    tile.boundingBox(),
+    block.boundingBox(),
+  ]);
+
+  // Right-hand third of the block, and its lower half.
+  expect(tileBox!.x).toBeGreaterThan(
+    blockBox!.x + (blockBox!.width * 2) / 3 - 10,
+  );
+  expect(tileBox!.y).toBeGreaterThan(blockBox!.y + blockBox!.height / 2 - 10);
 });
