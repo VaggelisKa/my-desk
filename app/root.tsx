@@ -4,7 +4,7 @@ import archivo600 from "@fontsource/archivo/600.css?url";
 import archivo700 from "@fontsource/archivo/700.css?url";
 import { Island, SheetStack } from "@silk-hq/components";
 import silkStyles from "@silk-hq/components/unlayered-styles.css?url";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import {
   data,
   Links,
@@ -13,6 +13,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  useNavigationType,
   useRouteError,
   useRouteLoaderData,
   type ShouldRevalidateFunctionArgs,
@@ -91,20 +92,63 @@ export function shouldRevalidate({
   return defaultShouldRevalidate;
 }
 
+// Where each history entry's outlet was scrolled to, by location key.
+let outletScroll = new Map<string, number>();
+
+/**
+ * On phones the page scrolls inside the outlet (see `.app-outlet`), which the
+ * window-based <ScrollRestoration> cannot see. So do its job there: a new page
+ * starts at the top, and Back or Forward returns to where that page was left.
+ * On desktop the outlet does not scroll and this is a no-op.
+ */
+function useOutletScrollRestoration(outlet: RefObject<HTMLDivElement | null>) {
+  let location = useLocation();
+  let navigationType = useNavigationType();
+  let previous = useRef(location);
+  let currentKey = useRef(location.key);
+
+  // Recorded as you scroll: once the next page has rendered, the old one's
+  // position is gone (or clamped to the new page's height).
+  useEffect(() => {
+    let element = outlet.current;
+    if (!element) return;
+
+    let onScroll = () =>
+      outletScroll.set(currentKey.current, element.scrollTop);
+    element.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => element.removeEventListener("scroll", onScroll);
+  }, [outlet]);
+
+  // Before paint, so the page never shows at the old position first.
+  useLayoutEffect(() => {
+    let from = previous.current;
+    previous.current = location;
+    currentKey.current = location.key;
+
+    let element = outlet.current;
+    if (!element || from.key === location.key) return;
+
+    let saved = outletScroll.get(location.key);
+
+    if (navigationType === "POP" && saved !== undefined) {
+      element.scrollTo(0, saved);
+    } else if (from.pathname !== location.pathname) {
+      // Only a new page starts at the top: filters and the day strip change
+      // the search params and keep your place.
+      element.scrollTo(0, 0);
+    }
+  }, [location, navigationType, outlet]);
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   let data = useRouteLoaderData<typeof loader>("root");
   let error = useRouteError();
   let { toast } = useToast();
-  let { pathname } = useLocation();
   let outlet = useRef<HTMLDivElement>(null);
   let user = data?.user?.id ? data.user : undefined;
 
-  // On phones the page scrolls inside the outlet (see `.app-outlet`), which
-  // the window-based <ScrollRestoration> cannot see; start each page at the
-  // top. On desktop the outlet does not scroll and this is a no-op.
-  useEffect(() => {
-    outlet.current?.scrollTo(0, 0);
-  }, [pathname]);
+  useOutletScrollRestoration(outlet);
 
   useEffect(() => {
     if (!data?.toast) {
