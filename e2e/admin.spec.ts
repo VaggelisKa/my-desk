@@ -106,6 +106,24 @@ test.describe("as an admin", () => {
     ]);
   });
 
+  test("goes straight to picking a person from a desk's Reassign button", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await adminPage.goto();
+
+    let sheet = await adminPage.open(adminPage.reassign("1.1.2"));
+    await expect(sheet.root.getByText("Give this desk to")).toBeVisible();
+    await sheet.pick("gary", /^Gary Guest/i);
+    await sheet.button("Move desk to Gary").click();
+
+    await expectToast(page, "Moved desk 1.1.2 to Gary");
+    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
+      userId: users.guest.id,
+    });
+  });
+
   test("unassigns a desk after asking", async ({
     page,
     db,
@@ -155,7 +173,9 @@ test.describe("as an admin", () => {
 
     await adminPage.goto("bookings");
     let tuesday = adminPage.day(bookingDay("tuesday").label);
-    await expect(tuesday.getByRole("listitem")).toHaveCount(2);
+    await expect(tuesday.getByRole("button", { name: /^Cancel / })).toHaveCount(
+      2,
+    );
 
     await tuesday.getByRole("button", { name: "Clear day" }).click();
     await tuesday.getByRole("button", { name: "Clear 2 bookings" }).click();

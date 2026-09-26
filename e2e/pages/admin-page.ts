@@ -19,27 +19,40 @@ export class AdminPage {
       .getByRole("link", { name, exact: true });
   }
 
-  /** A row in the Desks list, by desk number, e.g. "1.1.2". */
+  // The tests run at desktop size, where the lists are tables. Each row has
+  // a Manage button that stretches over the whole row.
+
+  /** A desk's row, by desk number, e.g. "1.1.2". */
   deskRow(label: string) {
     return this.page
       .getByRole("main")
+      .getByRole("button", { name: `Manage desk ${label}`, exact: true });
+  }
+
+  /** The row's shortcut that opens the sheet at the person picker. */
+  reassign(label: string) {
+    return this.page
+      .getByRole("main")
       .getByRole("button", {
-        name: new RegExp(`desk ${label.replace(/\./g, "\\.")}\\b`),
+        name: new RegExp(
+          `^(Re)?assign desk ${label.replace(/\./g, "\\.")}$`,
+          "i",
+        ),
       });
   }
 
-  /** A row in the People list, by full name. */
+  /** A person's row, by full name. */
   personRow(name: string) {
     return this.page
       .getByRole("main")
-      .getByRole("button", { name: new RegExp(`^${name}`, "i") });
+      .getByRole("button", { name: `${name}, manage`, exact: true });
   }
 
-  /** A day's group in the Bookings list, e.g. "Tue 17 Mar". */
+  /** A day's bookings, e.g. "Tue 17 Mar". */
   day(label: string) {
     return this.page
       .getByRole("main")
-      .getByRole("region", { name: new RegExp(label) });
+      .locator(`[data-admin-day*="${label}"]:visible`);
   }
 
   async open(row: Locator) {

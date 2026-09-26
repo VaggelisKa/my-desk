@@ -143,6 +143,23 @@ let rowClass = cn(
 let groupHeading =
   "flex flex-wrap items-baseline justify-between gap-2 px-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-muted";
 
+// Desktop (768px and up) shows tables, phones keep the lists. Both are in the
+// page and CSS picks one, so there is no flash while the page hydrates.
+let tableWrap =
+  "hidden overflow-hidden rounded-xl border border-line bg-paper md:block";
+let th =
+  "px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted";
+let td = "px-4 py-2.5 align-middle";
+// The row's own button stretches over the whole row, so any cell opens it.
+let tableRow =
+  "relative border-t border-line hover:bg-paper-muted focus-within:bg-paper-muted";
+let stretched =
+  "after:absolute after:inset-0 after:content-[''] focus-visible:outline-none";
+let rowButton = cn(
+  "inline-flex h-8 items-center rounded-lg px-2.5 text-[13px] font-semibold text-ink-muted hover:text-ink",
+  focusRing,
+);
+
 function NothingFound({ children }: { children: ReactNode }) {
   return (
     <p className="rounded-xl border border-dashed border-line bg-paper px-5 py-8 text-sm text-ink-muted">
@@ -186,7 +203,7 @@ export function DeskList({ data }: { data: AdminData }) {
         <section
           key={block}
           aria-labelledby={`block-${block}`}
-          className="flex flex-col gap-2.5"
+          className="flex flex-col gap-2.5 md:hidden"
         >
           <h2 id={`block-${block}`} className={groupHeading}>
             Block {block}
@@ -229,11 +246,84 @@ export function DeskList({ data }: { data: AdminData }) {
           </ul>
         </section>
       ))}
+
+      {shown.length > 0 && (
+        <div className={tableWrap}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className={th}>Desk</th>
+                <th className={th}>Owner</th>
+                <th className={th}>Place</th>
+                <th className={cn(th, "text-right")}>Booked</th>
+                <th className={th}>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((desk) => (
+                <tr key={desk.id} className={tableRow}>
+                  <td className={td}>
+                    <DeskChip
+                      label={deskLabel(desk)}
+                      tone={desk.owner ? "taken" : "free"}
+                    />
+                  </td>
+                  <td className={td}>
+                    {desk.owner ? (
+                      <>
+                        <span className="font-semibold capitalize">
+                          {fullName(desk.owner)}
+                        </span>
+                        <span className="ml-2 text-ink-muted">
+                          {desk.owner.id}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-ink-muted">Unclaimed</span>
+                    )}
+                  </td>
+                  <td className={cn(td, "text-ink-muted")}>
+                    {deskPlace(desk, { short: true })}
+                  </td>
+                  <td className={cn(td, "text-right")}>
+                    <BookedCount
+                      count={index.bookingsOfDesk(desk.id).length}
+                      short
+                    />
+                  </td>
+                  <td className={cn(td, "w-px whitespace-nowrap pr-2")}>
+                    <DeskAdminSheet
+                      desk={desk}
+                      data={data}
+                      index={index}
+                      quick={{
+                        label: desk.owner ? "Reassign" : "Assign",
+                        ariaLabel: `${desk.owner ? "Reassign" : "Assign"} desk ${deskLabel(desk)}`,
+                        step: { name: "pick" },
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Manage desk ${deskLabel(desk)}`}
+                        className={cn(rowButton, stretched)}
+                      >
+                        Manage
+                      </button>
+                    </DeskAdminSheet>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
-function BookedCount({ count }: { count: number }) {
+function BookedCount({ count, short }: { count: number; short?: boolean }) {
   return (
     <span
       className={cn(
@@ -241,7 +331,7 @@ function BookedCount({ count }: { count: number }) {
         count ? "font-semibold text-ink" : "text-dim",
       )}
     >
-      {count ? `${count} booked` : "None booked"}
+      {short ? count || "–" : count ? `${count} booked` : "None booked"}
     </span>
   );
 }
@@ -250,11 +340,13 @@ function DeskAdminSheet({
   desk,
   data,
   index,
+  quick,
   children,
 }: {
   desk: AdminDesk;
   data: AdminData;
   index: Index;
+  quick?: QuickOpen;
   children: ReactNode;
 }) {
   let bookings = index.bookingsOfDesk(desk.id);
@@ -262,6 +354,7 @@ function DeskAdminSheet({
   return (
     <AdminSheet
       trigger={children}
+      quick={quick}
       title={`Desk ${deskLabel(desk)}`}
       description={deskPlace(desk)}
     >
@@ -571,7 +664,7 @@ export function PeopleList({ data }: { data: AdminData }) {
       {shown.length === 0 ? (
         <NothingFound>Nobody matches “{query.trim()}”.</NothingFound>
       ) : (
-        <ul className={listClass}>
+        <ul className={cn(listClass, "md:hidden")}>
           {shown.map((person) => {
             let desk =
               person.deskId !== null ? index.desks.get(person.deskId) : null;
@@ -603,6 +696,73 @@ export function PeopleList({ data }: { data: AdminData }) {
             );
           })}
         </ul>
+      )}
+
+      {shown.length > 0 && (
+        <div className={tableWrap}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className={th}>Name</th>
+                <th className={th}>ID</th>
+                <th className={th}>Desk</th>
+                <th className={th}>Weekly</th>
+                <th className={cn(th, "text-right")}>Booked</th>
+                <th className={th}>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((person) => {
+                let desk =
+                  person.deskId !== null
+                    ? index.desks.get(person.deskId)
+                    : null;
+                return (
+                  <tr key={person.id} className={tableRow}>
+                    <td className={td}>
+                      <span className="flex items-center gap-2">
+                        <span className="font-semibold capitalize">
+                          {fullName(person)}
+                        </span>
+                        {person.role === "admin" && <Badge>Admin</Badge>}
+                      </span>
+                    </td>
+                    <td className={cn(td, "text-ink-muted")}>{person.id}</td>
+                    <td className={td}>
+                      {desk ? (
+                        deskLabel(desk)
+                      ) : (
+                        <span className="text-ink-muted">No desk</span>
+                      )}
+                    </td>
+                    <td className={cn(td, "text-ink-muted")}>
+                      {person.hasRecurring ? "On" : "–"}
+                    </td>
+                    <td className={cn(td, "text-right")}>
+                      <BookedCount
+                        count={index.bookingsOfPerson(person.id).length}
+                        short
+                      />
+                    </td>
+                    <td className={cn(td, "w-px whitespace-nowrap pr-2")}>
+                      <PersonSheet person={person} data={data} index={index}>
+                        <button
+                          type="button"
+                          aria-label={`${fullName(person)}, manage`}
+                          className={cn(rowButton, stretched)}
+                        >
+                          Manage
+                        </button>
+                      </PersonSheet>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -931,7 +1091,8 @@ export function BookingsByDay({ data }: { data: AdminData }) {
           <section
             key={date}
             aria-label={label}
-            className="flex flex-col gap-2.5"
+            data-admin-day={label}
+            className="flex flex-col gap-2.5 md:hidden"
           >
             <div className={groupHeading}>
               <h2>
@@ -961,7 +1122,117 @@ export function BookingsByDay({ data }: { data: AdminData }) {
           </section>
         );
       })}
+
+      {days.length > 0 && (
+        <div className={tableWrap}>
+          <table className="w-full text-sm">
+            <thead className="sr-only">
+              <tr>
+                <th>Desk</th>
+                <th>Person</th>
+                <th>Kind</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            {days.map((date, i) => {
+              let dayBookings = shown.filter((b) => b.date === date);
+              let all = data.bookings.filter((b) => b.date === date).length;
+              let label = dayHeading(parseDate(date), index.today);
+
+              return (
+                <tbody key={date} data-admin-day={label}>
+                  <tr
+                    className={cn(
+                      "bg-paper-muted",
+                      i > 0 && "border-t border-line",
+                    )}
+                  >
+                    <th
+                      colSpan={4}
+                      scope="colgroup"
+                      className="px-4 py-2 text-left"
+                    >
+                      <div className={cn(groupHeading, "px-0")}>
+                        <span>
+                          {label}
+                          <span className="ml-2 font-medium normal-case tracking-normal text-dim">
+                            {plural(all, "booking")}
+                          </span>
+                        </span>
+                        <ConfirmAction
+                          variant="link"
+                          label="Clear day"
+                          question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
+                          confirmLabel={`Clear ${plural(all, "booking")}`}
+                          fields={{ intent: "clear-day", date }}
+                        />
+                      </div>
+                    </th>
+                  </tr>
+                  {dayBookings.map((booking) => (
+                    <BookingTableRow
+                      key={`${booking.deskId}-${booking.date}`}
+                      booking={booking}
+                      index={index}
+                    />
+                  ))}
+                </tbody>
+              );
+            })}
+          </table>
+        </div>
+      )}
     </div>
+  );
+}
+
+function BookingTableRow({
+  booking,
+  index,
+}: {
+  booking: AdminBooking;
+  index: Index;
+}) {
+  let fetcher = useFetcher();
+  let person = index.people.get(booking.userId);
+  let desk = index.desks.get(booking.deskId);
+  let name = person ? fullName(person) : booking.userId;
+  let label = desk ? deskLabel(desk) : String(booking.deskId);
+  let borrowed = desk?.owner?.id !== booking.userId;
+  let when = format(parseDate(booking.date), "EEE d MMM");
+
+  // Hidden straight away; if cancelling fails the loader brings it back.
+  if (fetcher.state !== "idle") {
+    return null;
+  }
+
+  return (
+    <tr className="border-t border-line hover:bg-paper-muted">
+      <td className={cn(td, "w-px")}>
+        <DeskChip label={label} tone={borrowed ? "taken" : "mine"} />
+      </td>
+      <td className={td}>
+        <span className="font-semibold capitalize">{name}</span>
+        <span className="ml-2 text-ink-muted">{booking.userId}</span>
+      </td>
+      <td className={cn(td, "text-ink-muted")}>
+        {borrowed ? "Borrowed" : "Own desk"}
+      </td>
+      <td className={cn(td, "w-px pr-2")}>
+        <fetcher.Form method="post" action="/admin">
+          <input type="hidden" name="intent" value="cancel" />
+          <input type="hidden" name="deskId" value={booking.deskId} />
+          <input type="hidden" name="date" value={booking.date} />
+          <button
+            type="submit"
+            aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
+            className={cn(rowButton, "hover:text-danger")}
+          >
+            Cancel
+          </button>
+        </fetcher.Form>
+      </td>
+    </tr>
   );
 }
 
@@ -1201,6 +1472,9 @@ function ConfirmAction({
   );
 }
 
+/** A second button that opens the sheet straight at a later step. */
+type QuickOpen = { label: string; ariaLabel: string; step: Step };
+
 type Step =
   | { name: "view" }
   | { name: "pick" }
@@ -1214,12 +1488,14 @@ type Step =
  */
 function AdminSheet({
   trigger,
+  quick,
   title,
   titleClassName,
   description,
   children,
 }: {
   trigger: ReactNode;
+  quick?: QuickOpen;
   title: string;
   titleClassName?: string;
   description: string;
@@ -1232,10 +1508,13 @@ function AdminSheet({
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
 
-  function handlePresentedChange(value: boolean) {
+  function handlePresentedChange(
+    value: boolean,
+    start: Step = { name: "view" },
+  ) {
     if (value) {
       setIsSmallDevice(isNarrow);
-      setStep({ name: "view" });
+      setStep(start);
       setOpened((n) => n + 1);
     }
     setPresented(value);
@@ -1249,8 +1528,24 @@ function AdminSheet({
       forComponent={isSmallDevice ? "closest" : undefined}
       sheetRole="dialog"
       presented={presented}
-      onPresentedChange={handlePresentedChange}
+      onPresentedChange={(value) => handlePresentedChange(value)}
+      className={quick ? "flex items-center justify-end gap-1" : undefined}
     >
+      {quick && (
+        <button
+          type="button"
+          aria-label={quick.ariaLabel}
+          aria-haspopup="dialog"
+          onClick={() => handlePresentedChange(true, quick.step)}
+          // Above the row's stretched button, so it is not swallowed by it.
+          className={cn(
+            rowButton,
+            "relative z-10 text-moss-edge hover:text-moss",
+          )}
+        >
+          {quick.label}
+        </button>
+      )}
       <Sheet.Trigger asChild>{trigger}</Sheet.Trigger>
 
       <Sheet.Portal>
