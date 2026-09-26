@@ -2,13 +2,14 @@ import { format, nextDay, startOfDay } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import { useEffect, useState } from "react";
 import { Form, redirect, useNavigation } from "react-router";
-import { dataWithSuccess } from "remix-toast";
+import { dataWithError, dataWithSuccess } from "remix-toast";
 import { DeskChip, deskLabel, type OwnDesk } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
 import { requireAuthCookie } from "~/cookies.server";
 import {
   addCron,
   addCronSchema,
+  CronError,
   daysFromJob,
   deleteCron,
   disableCron,
@@ -23,10 +24,11 @@ import type { Route } from "./+types/_bookings.automatic-reservations";
 
 export let meta: Route.MetaFunction = () => [{ title: "Recurring bookings" }];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let user = await requireAuthCookie(request);
-  let desk = await db.query.desks.findFirst({
-    where: eq(desks.userId, user.userId),
+// The signed-in user's desk and weekly job, from the database. The job id is
+// never taken from the form: it would let anyone pause or remove anyone's job.
+async function findOwnDesk(userId: string) {
+  return db.query.desks.findFirst({
+    where: eq(desks.userId, userId),
     columns: { id: true, block: true, row: true, column: true },
     with: {
       user: {
@@ -36,6 +38,16 @@ export async function loader({ request }: Route.LoaderArgs) {
       },
     },
   });
+}
+
+let schedulerDown = {
+  message: "Could not reach the scheduler",
+  description: "Nothing was changed. Try again in a moment.",
+};
+
+export async function loader({ request }: Route.LoaderArgs) {
+  let user = await requireAuthCookie(request);
+  let desk = await findOwnDesk(user.userId);
 
   // Only your own desk can be booked ahead, so without one there is nothing
   // to repeat.
@@ -46,19 +58,28 @@ export async function loader({ request }: Route.LoaderArgs) {
   let { user: owner, ...ownDesk } = desk;
   let cronId = owner?.autoReservationsCronId ?? null;
   let schedule: { enabled: boolean; days: Weekday[] } | null = null;
+  // Set up, but its state could not be read: neither active nor paused.
+  let unavailable = false;
 
   if (cronId) {
-    let res = await getCronDetails({ cronId });
-    schedule = {
-      enabled: res.jobDetails?.enabled === true,
-      days: daysFromJob(res.jobDetails),
-    };
+    try {
+      let { jobDetails } = await getCronDetails({ cronId });
+      schedule = {
+        enabled: jobDetails.enabled === true,
+        days: daysFromJob(jobDetails),
+      };
+    } catch (error) {
+      if (!(error instanceof CronError)) throw error;
+      console.error(error);
+      unavailable = true;
+    }
   }
 
   return {
     desk: ownDesk,
     cronId,
     schedule,
+    unavailable,
     nextRun: formatDate(nextSunday(new Date())),
   };
 }
@@ -73,64 +94,97 @@ export async function action({ request }: Route.ActionArgs) {
   let user = await requireAuthCookie(request);
   let formData = await request.formData();
   let intent = formData.get("intent");
+  let desk = await findOwnDesk(user.userId);
+  let cronId = desk?.user?.autoReservationsCronId ?? null;
 
-  if (intent === "ADD") {
-    let days = formData.getAll("day");
-    let deskId = String(formData.get("deskId"));
+  if (!desk) {
+    return dataWithError(
+      null,
+      { message: "Only your own desk can be booked every week" },
+      { status: 403 },
+    );
+  }
 
-    let parsedInput = addCronSchema.safeParse({
-      days,
-      deskId,
-      userId: user.userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    });
+  try {
+    if (intent === "ADD") {
+      // One weekly job per person: a double submit must not leave a second
+      // job running that nothing points at any more.
+      if (cronId) {
+        return dataWithError(
+          null,
+          { message: "Weekly booking is already set up" },
+          { status: 409 },
+        );
+      }
 
-    if (!parsedInput.success) {
-      throw new Error(
-        "Invalid form input, please try again! If the issue persists contact an admin.",
+      let parsedInput = addCronSchema.safeParse({
+        days: formData.getAll("day"),
+        deskId: String(desk.id),
+        userId: user.userId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      });
+
+      if (!parsedInput.success || parsedInput.data.days.length === 0) {
+        return dataWithError(
+          null,
+          { message: "Pick the days to book" },
+          { status: 400 },
+        );
+      }
+
+      let { jobId } = await addCron(parsedInput.data);
+      await db
+        .update(users)
+        .set({ autoReservationsCronId: String(jobId) })
+        .where(eq(users.id, user.userId));
+
+      return dataWithSuccess(null, {
+        message: "Weekly booking set up",
+      });
+    }
+
+    if (!cronId) {
+      return dataWithError(
+        null,
+        { message: "There is no weekly booking to change" },
+        { status: 404 },
       );
     }
 
-    let res = await addCron(parsedInput.data);
-    await db
-      .update(users)
-      .set({ autoReservationsCronId: String(res.jobId) })
-      .where(eq(users.id, user.userId));
+    if (intent === "DELETE") {
+      await deleteCron({ cronId });
+      await db
+        .update(users)
+        .set({ autoReservationsCronId: null })
+        .where(
+          and(
+            eq(users.id, user.userId),
+            eq(users.autoReservationsCronId, cronId),
+          ),
+        );
 
-    return dataWithSuccess(null, {
-      message: "Weekly booking set up",
-    });
-  } else if (intent === "DELETE") {
-    let cronId = String(formData.get("cronId"));
-    await deleteCron({ cronId });
-    await db
-      .update(users)
-      .set({ autoReservationsCronId: null })
-      .where(
-        and(
-          eq(users.id, user.userId),
-          eq(users.autoReservationsCronId, cronId),
-        ),
-      );
+      return dataWithSuccess(null, {
+        message: "Weekly booking stopped",
+      });
+    } else if (intent === "DISABLE") {
+      await disableCron({ cronId });
 
-    return dataWithSuccess(null, {
-      message: "Weekly booking stopped",
-    });
-  } else if (intent === "DISABLE") {
-    let cronId = String(formData.get("cronId"));
-    await disableCron({ cronId });
+      return dataWithSuccess(null, {
+        message: "Weekly booking paused",
+      });
+    } else if (intent === "ENABLE") {
+      await enableCron({ cronId });
 
-    return dataWithSuccess(null, {
-      message: "Weekly booking paused",
-    });
-  } else if (intent === "ENABLE") {
-    let cronId = String(formData.get("cronId"));
-    await enableCron({ cronId });
+      return dataWithSuccess(null, {
+        message: "Weekly booking resumed",
+      });
+    }
+  } catch (error) {
+    if (!(error instanceof CronError)) throw error;
+    console.error(error);
 
-    return dataWithSuccess(null, {
-      message: "Weekly booking resumed",
-    });
+    return dataWithError(null, schedulerDown, { status: 502 });
   }
 
   return null;
@@ -145,7 +199,7 @@ let dayNames: Record<Weekday, string> = {
 };
 
 export default function AutomaticReservationsPage({
-  loaderData: { desk, cronId, schedule, nextRun },
+  loaderData: { desk, cronId, schedule, unavailable, nextRun },
 }: Route.ComponentProps) {
   let navigation = useNavigation();
   // A submission stays pending through the reload that follows it, so the
@@ -187,7 +241,14 @@ export default function AutomaticReservationsPage({
         </p>
       </div>
 
-      {schedule && cronId ? (
+      {unavailable ? (
+        <p
+          role="status"
+          className="rounded-lg bg-paper-muted px-4 py-3 text-sm"
+        >
+          {`${schedulerDown.message}, so its status is unknown. Try again in a moment.`}
+        </p>
+      ) : schedule && cronId ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-lg bg-paper-muted px-4 py-3 text-sm">
             <span className="flex items-center gap-2.5">
@@ -250,7 +311,6 @@ export default function AutomaticReservationsPage({
                 name="intent"
                 value={enabled ? "DISABLE" : "ENABLE"}
               />
-              <input type="hidden" name="cronId" value={cronId} />
               <Button
                 variant="quiet"
                 size="tall"
@@ -263,7 +323,6 @@ export default function AutomaticReservationsPage({
 
             <Form method="POST">
               <input type="hidden" name="intent" value="DELETE" />
-              <input type="hidden" name="cronId" value={cronId} />
               <Button
                 variant="quiet"
                 size="tall"
@@ -281,7 +340,6 @@ export default function AutomaticReservationsPage({
       ) : (
         <Form method="POST" className="flex flex-col gap-7">
           <input type="hidden" name="intent" value="ADD" />
-          <input type="hidden" name="deskId" value={desk.id} />
 
           <fieldset className="flex flex-col gap-3.5">
             <legend className="contents">

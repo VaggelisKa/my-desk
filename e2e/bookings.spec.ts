@@ -114,6 +114,48 @@ test.describe("an employee with a desk", () => {
       expect.arrayContaining(["PUT", "PATCH", "DELETE"]),
     );
   });
+
+  test("cannot pause, resume or remove someone else's weekly booking", async ({
+    page,
+    db,
+    cronJobOrg,
+  }) => {
+    await db.setCronId("bob", "777");
+
+    for (let intent of ["DISABLE", "ENABLE", "DELETE"]) {
+      let response = await page.request.post("/automatic-reservations", {
+        form: { intent, cronId: "777" },
+      });
+      // Alice has no weekly booking of her own to change.
+      expect(response.status()).toBe(404);
+    }
+
+    expect(await cronJobOrg.calls()).toEqual([]);
+    await expect(db.user("emp002")).resolves.toMatchObject({
+      autoReservationsCronId: "777",
+    });
+  });
+
+  test("sets up only one weekly booking, for her own desk", async ({
+    page,
+    db,
+    cronJobOrg,
+  }) => {
+    let setUp = () =>
+      page.request.post("/automatic-reservations", {
+        form: { intent: "ADD", day: "monday", deskId: String(desks.bob.id) },
+      });
+
+    expect((await setUp()).status()).toBe(200);
+    expect((await setUp()).status()).toBe(409);
+
+    let calls = await cronJobOrg.calls();
+    expect(calls.filter((c) => c.method === "PUT")).toHaveLength(1);
+    let jobId = (await db.user("emp001"))?.autoReservationsCronId;
+    expect(jobId).toEqual(expect.any(String));
+    await page.goto("/automatic-reservations");
+    await expect(page.getByRole("img", { name: "Mon, booked" })).toBeVisible();
+  });
 });
 
 test.describe("a guest without a desk", () => {

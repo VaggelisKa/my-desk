@@ -8,6 +8,28 @@ const headers = {
   Authorization: `Bearer ${process.env.CRON_TOKEN!}`,
 } satisfies HeadersInit;
 
+/** cron-job.org said no, or could not be reached. */
+export class CronError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CronError";
+  }
+}
+
+// cron-job.org answers errors with a status, not an exception, so check it:
+// a paused, removed or created job must never be reported when it was not.
+async function cronRequest(path: string, init: RequestInit) {
+  let response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+
+  if (!response.ok) {
+    throw new CronError(
+      `cron-job.org ${init.method} ${path.replace(/\d+/, ":id")} failed with ${response.status}`,
+    );
+  }
+
+  return response;
+}
+
 export const addCronSchema = z.object({
   days: z.array(
     z.enum(["monday", "tuesday", "wednesday", "thursday", "friday"]),
@@ -33,9 +55,8 @@ export async function addCron({
   callbackUrl.searchParams.set("cronPassword", process.env.CRON_PASSWORD ?? "");
   days.forEach((day) => callbackUrl.searchParams.append("day", day));
 
-  let response = await fetch(`${BASE_URL}/jobs`, {
+  let response = await cronRequest("/jobs", {
     method: "PUT",
-    headers,
     body: JSON.stringify({
       job: {
         url: callbackUrl.toString(),
@@ -58,30 +79,34 @@ export async function addCron({
   });
 
   let json = await response.json();
-  return json;
+
+  // Without a job id there is nothing to pause or remove later.
+  if (typeof json?.jobId !== "number") {
+    throw new CronError("cron-job.org created no job id");
+  }
+
+  return json as { jobId: number };
 }
 
 export async function deleteCron({ cronId }: { cronId: string }) {
-  await fetch(`${BASE_URL}/jobs/${cronId}`, {
-    method: "DELETE",
-    headers,
-  });
+  await cronRequest(`/jobs/${cronId}`, { method: "DELETE" });
 }
 
 export async function getCronDetails({ cronId }: { cronId: string }) {
-  let response = await fetch(`${BASE_URL}/jobs/${cronId}`, {
-    method: "GET",
-    headers,
-  });
-
+  let response = await cronRequest(`/jobs/${cronId}`, { method: "GET" });
   let json = await response.json();
-  return json;
+
+  // An answer without the job is not a paused job with no days.
+  if (typeof json?.jobDetails !== "object" || json.jobDetails === null) {
+    throw new CronError("cron-job.org returned no job details");
+  }
+
+  return json as { jobDetails: { enabled?: boolean; url?: unknown } };
 }
 
 export async function disableCron({ cronId }: { cronId: string }) {
-  await fetch(`${BASE_URL}/jobs/${cronId}`, {
+  await cronRequest(`/jobs/${cronId}`, {
     method: "PATCH",
-    headers,
     body: JSON.stringify({
       job: { enabled: false },
     }),
@@ -89,9 +114,8 @@ export async function disableCron({ cronId }: { cronId: string }) {
 }
 
 export async function enableCron({ cronId }: { cronId: string }) {
-  await fetch(`${BASE_URL}/jobs/${cronId}`, {
+  await cronRequest(`/jobs/${cronId}`, {
     method: "PATCH",
-    headers,
     body: JSON.stringify({
       job: { enabled: true },
     }),

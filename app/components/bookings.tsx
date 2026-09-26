@@ -297,6 +297,10 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-sm font-semibold leading-tight">
             {title}
+            {/* The chip is hidden from screen readers, so say the number once. */}
+            {title !== `Desk ${label}` && (
+              <span className="sr-only">{`, desk ${label}`}</span>
+            )}
           </span>
           <span className="truncate text-xs leading-tight text-ink-muted">
             <span className="sm:hidden">{detail(true)}</span>
@@ -316,7 +320,7 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
         <input type="hidden" name="desk-id" value={booking.deskId} />
         <button
           type="submit"
-          aria-label={`Remove ${format(date, "EEE d MMM")}`}
+          aria-label={`Remove ${format(date, "EEE d MMM")}, desk ${label}`}
           className={cn(
             "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
             focusRing,
