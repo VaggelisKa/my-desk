@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { DeskEditPage } from "./pages/desk-edit-page";
+import { AdminPage } from "./pages/admin-page";
 import { DesksPage } from "./pages/desks-page";
 import { trackHydration } from "./pages/hydration";
 import { LoginPage } from "./pages/login-page";
@@ -19,7 +19,7 @@ type Fixtures = {
   loginPage: LoginPage;
   desksPage: DesksPage;
   reservationsPage: ReservationsPage;
-  deskEditPage: DeskEditPage;
+  adminPage: AdminPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -54,7 +54,7 @@ export const test = base.extend<Fixtures>({
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
   desksPage: async ({ page }, use) => use(new DesksPage(page)),
   reservationsPage: async ({ page }, use) => use(new ReservationsPage(page)),
-  deskEditPage: async ({ page }, use) => use(new DeskEditPage(page)),
+  adminPage: async ({ page }, use) => use(new AdminPage(page)),
 });
 
 export { expect };

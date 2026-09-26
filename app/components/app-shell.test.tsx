@@ -6,7 +6,6 @@ import {
   AppMenu,
   Dock,
   Masthead,
-  PageHeading,
   type ShellUser,
 } from "./app-shell";
 
@@ -22,7 +21,6 @@ function renderShell(pathname: string, shellUser: ShellUser = user) {
   return renderWithRouter(
     <>
       <Masthead user={shellUser} />
-      <PageHeading />
       <Dock user={shellUser} />
       <AppMenu user={shellUser} />
     </>,
@@ -33,7 +31,8 @@ function renderShell(pathname: string, shellUser: ShellUser = user) {
 describe("activeTab", () => {
   it.each([
     ["/", "desks"],
-    ["/desks/12/edit", "desks"],
+    ["/admin", "admin"],
+    ["/admin/people", "admin"],
     ["/reservations", "bookings"],
     ["/automatic-reservations", "bookings"],
     ["/metrics", "metrics"],
@@ -44,7 +43,7 @@ describe("activeTab", () => {
 });
 
 describe("AppShell", () => {
-  it("links the three places in both the masthead and the dock", () => {
+  it("links the four places in both the masthead and the dock", () => {
     renderShell("/");
 
     for (let nav of screen.getAllByRole("navigation", { name: "Main" })) {
@@ -58,6 +57,20 @@ describe("AppShell", () => {
       expect(
         within(nav).getByRole("link", { name: "Metrics" }),
       ).toHaveAttribute("href", "/metrics");
+      expect(within(nav).getByRole("link", { name: "Admin" })).toHaveAttribute(
+        "href",
+        "/admin",
+      );
+    }
+  });
+
+  it("shows the Admin tab to admins only", () => {
+    renderShell("/", { ...user, role: "user" });
+
+    for (let nav of screen.getAllByRole("navigation", { name: "Main" })) {
+      expect(
+        within(nav).queryByRole("link", { name: "Admin" }),
+      ).not.toBeInTheDocument();
     }
   });
 
@@ -69,18 +82,6 @@ describe("AppShell", () => {
     for (let link of current) {
       expect(link).toHaveTextContent("Bookings");
     }
-  });
-
-  it("leaves the Bookings pages to draw their own heading", () => {
-    renderShell("/automatic-reservations");
-
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
-  });
-
-  it("gives the desks page no extra heading, it draws its own", () => {
-    renderShell("/");
-
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
   it("opens the same menu from the avatar and from You", () => {

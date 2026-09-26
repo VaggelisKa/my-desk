@@ -75,30 +75,45 @@ let SEGMENTS = [
 ];
 
 /**
- * Upcoming · Recurring. The header lives in the Bookings layout, so it stays
- * mounted across the switch and the pill slides rather than jumps. It moves
- * as soon as you tap, not when the other page has loaded, like the dock.
+ * A sliding switch between sibling pages, like Upcoming · Recurring. Each tab
+ * keeps it in its layout, so it stays mounted across the switch and the pill
+ * slides rather than jumps. It moves as soon as you tap, not when the other
+ * page has loaded, like the dock.
  */
-function SegmentSwitch() {
+export function SegmentSwitch({
+  label = "Bookings",
+  segments = SEGMENTS,
+}: {
+  label?: string;
+  segments?: { to: string; label: string }[];
+}) {
   let location = useLocation();
   let navigation = useNavigation();
   let pathname = navigation.location?.pathname ?? location.pathname;
   let active = Math.max(
     0,
-    SEGMENTS.findIndex((segment) => segment.to === pathname),
+    segments.findIndex((segment) => segment.to === pathname),
   );
 
   return (
     <nav
-      aria-label="Bookings"
-      className="relative grid w-[232px] grid-cols-2 self-start rounded-full bg-paper-muted p-1 ring-1 ring-inset ring-line"
+      aria-label={label}
+      className="relative grid self-start rounded-full bg-paper-muted p-1 ring-1 ring-inset ring-line"
+      style={{
+        width: `${segments.length * 112 + 8}px`,
+        maxWidth: "100%",
+        gridTemplateColumns: `repeat(${segments.length}, minmax(0, 1fr))`,
+      }}
     >
       <span
         aria-hidden="true"
-        className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-paper shadow-[0_1px_3px_rgb(31_42_46/0.14)] ring-1 ring-line transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none"
-        style={{ transform: `translateX(${active * 100}%)` }}
+        className="absolute inset-y-1 left-1 rounded-full bg-paper shadow-[0_1px_3px_rgb(31_42_46/0.14)] ring-1 ring-line transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none"
+        style={{
+          width: `calc(${100 / segments.length}% - ${8 / segments.length}px)`,
+          transform: `translateX(${active * 100}%)`,
+        }}
       />
-      {SEGMENTS.map(({ to, label }, index) => (
+      {segments.map(({ to, label }, index) => (
         <NavLink
           key={to}
           to={to}
@@ -106,7 +121,7 @@ function SegmentSwitch() {
           prefetch="intent"
           preventScrollReset
           className={cn(
-            "relative inline-flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-semibold transition-colors duration-300",
+            "relative inline-flex h-9 items-center justify-center rounded-full px-3 text-[13px] font-semibold transition-colors duration-300",
             focusRing,
             index === active ? "text-ink" : "text-ink-muted hover:text-ink",
           )}

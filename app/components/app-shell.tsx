@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   ChartLine,
+  ShieldCheck,
   createLucideIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -34,7 +35,7 @@ let Desk = createLucideIcon("desk", [
   ["path", { d: "M20 14v7", key: "right-leg" }],
 ]);
 
-type Tab = "desks" | "bookings" | "metrics";
+type Tab = "desks" | "bookings" | "metrics" | "admin";
 
 let TABS: {
   id: Tab;
@@ -58,7 +59,19 @@ let TABS: {
     icon: ChartLine,
     prefetch: "intent",
   },
+  {
+    id: "admin",
+    label: "Admin",
+    to: "/admin",
+    icon: ShieldCheck,
+    prefetch: "intent",
+  },
 ];
+
+/** Admin is only there for admins; the route checks the role as well. */
+function tabsFor(user: ShellUser) {
+  return TABS.filter((tab) => tab.id !== "admin" || user.role === "admin");
+}
 
 let MENU_ID = "app-menu";
 
@@ -71,6 +84,9 @@ export let PAGE_COLUMN = "mx-auto w-full max-w-3xl";
 
 /** Secondary pages have no tab of their own; their parent tab stays lit. */
 export function activeTab(pathname: string): Tab | undefined {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return "admin";
+  }
   if (pathname.startsWith("/metrics")) {
     return "metrics";
   }
@@ -80,7 +96,7 @@ export function activeTab(pathname: string): Tab | undefined {
   ) {
     return "bookings";
   }
-  if (pathname === "/" || pathname.startsWith("/desks/")) {
+  if (pathname === "/") {
     return "desks";
   }
   return undefined;
@@ -162,7 +178,7 @@ export function Masthead({ user }: { user: ShellUser }) {
               }}
             />
           )}
-          {TABS.map((tab) => {
+          {tabsFor(user).map((tab) => {
             let isActive = tab.id === active;
             return (
               <Link
@@ -230,7 +246,7 @@ export function Dock({ user }: { user: ShellUser }) {
           />
         )}
 
-        {TABS.map((tab) => {
+        {tabsFor(user).map((tab) => {
           let isActive = tab.id === active;
           let Icon = tab.icon;
           return (
@@ -422,49 +438,4 @@ function useTextFieldFocused() {
   }, []);
 
   return focused;
-}
-
-let PAGE_HEADINGS: {
-  match: (pathname: string) => boolean;
-  title: string;
-  back?: { to: string; label: string };
-}[] = [
-  {
-    match: (p) => p.startsWith("/desks/"),
-    title: "Edit desk",
-    back: { to: "/", label: "Desks" },
-  },
-];
-
-/**
- * The breadcrumb bar used to be the only title on the pages that have not
- * been redesigned yet. This gives them a title (and a "← Desks" link on
- * secondary pages) until each one draws its own.
- */
-export function PageHeading() {
-  let { pathname } = useLocation();
-  let heading = PAGE_HEADINGS.find((h) => h.match(pathname));
-
-  if (!heading) {
-    return null;
-  }
-
-  return (
-    <div className="mb-6 flex flex-col gap-1.5 font-display text-ink">
-      {heading.back && (
-        <Link
-          to={heading.back.to}
-          prefetch="intent"
-          aria-label={`Back to ${heading.back.label}`}
-          className="self-start rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss"
-        >
-          <span aria-hidden>← </span>
-          {heading.back.label}
-        </Link>
-      )}
-      <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
-        {heading.title}
-      </h1>
-    </div>
-  );
 }

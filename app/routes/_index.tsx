@@ -135,7 +135,7 @@ async function loadDesks({
 }
 
 export async function loader({ request, url }: Route.LoaderArgs) {
-  let { userId, role } = await requireAuthCookie(request);
+  let { userId } = await requireAuthCookie(request);
 
   // "Today" is the office's, from the server, so the first render and
   // hydration agree even when the browser sits in another timezone. A missing
@@ -155,7 +155,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     selectedDayFilter: selectedDay,
   });
 
-  return { desks, userId, role, today, selectedDay };
+  return { desks, userId, today, selectedDay };
 }
 
 // Booking happens in the desk sheet, so its fetcher posts here and the grid
@@ -225,7 +225,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
             <FloorPlan
               desks={desks}
               userId={loaderData.userId}
-              role={loaderData.role}
               selectedDay={selectedDay}
               today={today}
             />
@@ -266,13 +265,11 @@ let placements: Record<string, string> = {
 function FloorPlan({
   desks,
   userId,
-  role,
   selectedDay,
   today,
 }: {
   desks: Desks;
   userId: string;
-  role?: "admin" | "user" | null;
   selectedDay: string;
   today: string;
 }) {
@@ -357,7 +354,6 @@ function FloorPlan({
                   desk={desk}
                   userId={userId}
                   allowedToReserve={desk.user?.id === userId}
-                  allowedToEdit={role === "admin"}
                   selectedDay={selectedDay}
                   today={today}
                   // Silk wraps the tile in a div, and that wrapper is the
