@@ -10,7 +10,7 @@ import { DayStrip, DeskFilters } from "~/components/desk-filters";
 import { DeskSheet } from "~/components/desk-sheet";
 import { DeskTile, type DeskTileState } from "~/components/desk-tile";
 import { ErrorCard } from "~/components/error-card";
-import { Skeleton } from "~/components/ui/skeleton";
+import { DesksSkeleton, Legend } from "~/components/tab-pending";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
 import {
@@ -22,7 +22,7 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reserveDesk } from "~/lib/reservations.server";
-import { cn } from "~/lib/utils";
+import { cn, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
@@ -294,31 +294,35 @@ function FloorPlan({
   return (
     <div className="relative max-w-[420px] pl-[26px] pr-[22px] sm:pl-8 sm:pr-7">
       {nothingToPick && (
-        <p role="status" className="mb-3 text-[13px] text-ink-muted">
+        <p role="status" className="enter mb-3 text-[13px] text-ink-muted">
           {`No free desks${where} on ${format(parseDate(selectedDay), "EEEE")}. Try another day or placement.`}
         </p>
       )}
 
       <div
         aria-hidden="true"
-        className="absolute bottom-1.5 left-1.5 top-7 w-2.5 rounded-[3px] border-[1.5px] border-mist-edge bg-mist"
+        className="enter absolute bottom-1.5 left-1.5 top-7 w-2.5 rounded-[3px] border-[1.5px] border-mist-edge bg-mist"
       />
       <div
         aria-hidden="true"
-        className="absolute bottom-1.5 right-2 top-7 border-l-2 border-dashed border-line"
+        className="enter absolute bottom-1.5 right-2 top-7 border-l-2 border-dashed border-line"
       />
 
       <div
         aria-hidden="true"
-        className="grid grid-cols-3 gap-2.5 text-center text-[11px] font-bold text-ink-muted"
+        className="enter grid grid-cols-3 gap-2.5 text-center text-[11px] font-bold text-ink-muted"
       >
         <span>window</span>
         <span>middle</span>
         <span>aisle</span>
       </div>
 
-      {Object.entries(desks).map(([block, desksData]) => (
-        <div key={block} className="flex flex-col [&+&]:pt-5">
+      {Object.entries(desks).map(([block, desksData], index) => (
+        <div
+          key={block}
+          className="enter flex flex-col [&+&]:pt-5"
+          style={enterAt(index + 1)}
+        >
           {block === "7" && <Wall />}
 
           <div className="mt-2 text-[13px] font-bold">Block {block}</div>
@@ -376,70 +380,6 @@ function FloorPlan({
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-function Legend() {
-  let swatch = "inline-block h-[9px] w-[14px] rounded-[2px] border";
-
-  return (
-    <div className="flex flex-wrap gap-4 text-xs text-ink-muted">
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-ink bg-paper")} /> Free
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-ink bg-taken")} /> Taken
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-moss-edge bg-moss")} /> Yours
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-line bg-paper")} /> Unclaimed
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-dashed border-dim bg-transparent")} />{" "}
-        Filtered out
-      </span>
-    </div>
-  );
-}
-
-// Mirrors the office layout rendered above: blocks 1-7 in a 3x2 grid, block 4
-// is a single row, and a wall sits above block 7.
-const skeletonBlocks = ["1", "2", "3", "4", "5", "6", "7"];
-
-function DesksSkeleton() {
-  let [searchParams] = useSearchParams();
-  let blockFilter = searchParams.get("block");
-  let blocks =
-    blockFilter === null || blockFilter === "all"
-      ? skeletonBlocks
-      : skeletonBlocks.filter((block) => block === blockFilter);
-
-  return (
-    <div className="max-w-[420px] pl-[26px] pr-[22px] sm:pl-8 sm:pr-7">
-      {blocks.map((block) => {
-        let singleRow = block === "4";
-
-        return (
-          <div key={block} className="flex flex-col [&+&]:pt-5">
-            {block === "7" && <Wall />}
-
-            <div className="mt-2 text-[13px] font-bold">Block {block}</div>
-            <div
-              className={cn(
-                "grid grid-cols-3 gap-x-2.5 gap-y-[22px] pb-3 pt-5 sm:gap-y-[26px] sm:pb-3.5 sm:pt-6",
-                singleRow ? "grid-rows-1" : "grid-rows-2",
-              )}
-            >
-              {Array.from({ length: singleRow ? 3 : 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full rounded sm:h-[50px]" />
-              ))}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

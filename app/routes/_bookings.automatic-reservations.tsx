@@ -232,7 +232,7 @@ export default function AutomaticReservationsPage({
   }
 
   return (
-    <div className="flex flex-col gap-7 rounded-xl border border-line bg-paper px-5 py-6 sm:px-8 sm:py-8">
+    <div className="enter flex flex-col gap-7 rounded-xl border border-line bg-paper px-5 py-6 sm:px-8 sm:py-8">
       <div className="flex flex-col gap-1.5">
         <h2 className="text-[15px] font-bold">Weekly booking</h2>
         <p className="max-w-[52ch] text-pretty text-sm leading-relaxed text-ink-muted">

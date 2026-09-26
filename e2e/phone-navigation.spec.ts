@@ -27,6 +27,40 @@ test("Back returns to where the page was scrolled; a new page starts at the top"
   await expect.poll(scrollTop).toBe(250);
 });
 
+test("a tapped tab shows up straight away and fills in once its data arrives", async ({
+  page,
+}) => {
+  await gotoHydrated(page, "/");
+  let outlet = page.locator(".app-outlet");
+  let scrollTop = () => outlet.evaluate((el) => el.scrollTop);
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  await outlet.evaluate((el) => el.scrollTo(0, 250));
+  await expect.poll(scrollTop).toBe(250);
+
+  // Hold Bookings' data back until the skeleton has been checked.
+  let release!: () => void;
+  let held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/reservations.data*", async (route) => {
+    await held;
+    await route.continue();
+  });
+
+  await page.getByRole("link", { name: "Bookings" }).last().click();
+  await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unclaimed" })).toHaveCount(0);
+  await expect(page).toHaveURL("/");
+  await expect.poll(scrollTop).toBe(0);
+
+  release();
+  await expect(page).toHaveURL("/reservations");
+  await expect(page.getByText("Nothing booked yet")).toBeVisible();
+
+  // The skeleton's scroll to the top did not overwrite where Desks was left.
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await expect.poll(scrollTop).toBe(250);
+});
+
 test("the dock tucks into icons while scrolling down and opens again on the way up", async ({
   page,
 }) => {
