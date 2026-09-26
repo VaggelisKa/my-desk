@@ -1,4 +1,10 @@
-import { CalendarDays, ChartLine, LayoutGrid, ShieldCheck } from "lucide-react";
+import {
+  CalendarDays,
+  ChartLine,
+  ShieldCheck,
+  createLucideIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useLocation, useNavigation } from "react-router";
 import { cn } from "~/lib/utils";
@@ -17,16 +23,28 @@ export type ShellUser = {
   desk?: { id: number; block: number; row: number; column: number } | null;
 };
 
+// Lucide has no desk, so this one is drawn in its style: a screen on a desk.
+let Desk = createLucideIcon("desk", [
+  [
+    "rect",
+    { width: "12", height: "8", x: "6", y: "2", rx: "1.5", key: "screen" },
+  ],
+  ["path", { d: "M12 10v4", key: "stand" }],
+  ["path", { d: "M2 14h20", key: "top" }],
+  ["path", { d: "M4 14v7", key: "left-leg" }],
+  ["path", { d: "M20 14v7", key: "right-leg" }],
+]);
+
 type Tab = "desks" | "bookings" | "metrics" | "admin";
 
 let TABS: {
   id: Tab;
   label: string;
   to: string;
-  icon: typeof LayoutGrid;
+  icon: LucideIcon;
   prefetch: "none" | "intent" | "render";
 }[] = [
-  { id: "desks", label: "Desks", to: "/", icon: LayoutGrid, prefetch: "none" },
+  { id: "desks", label: "Desks", to: "/", icon: Desk, prefetch: "none" },
   {
     id: "bookings",
     label: "Bookings",
