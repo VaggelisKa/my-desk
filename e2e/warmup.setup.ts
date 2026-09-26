@@ -1,6 +1,6 @@
 import { expect, test as setup } from "./fixtures";
 import { waitForHydration } from "./pages/hydration";
-import { desks, users } from "./support/db";
+import { users } from "./support/db";
 
 // The dev server bundles dependencies lazily: the first visit to a page that
 // imports a new package triggers a re-optimization and a full page reload,
@@ -12,7 +12,9 @@ setup("warm up the dev server", async ({ page, loginPage }) => {
   let pages = [
     "/",
     "/reservations",
-    `/desks/${desks.alice.id}/edit`,
+    "/admin",
+    "/admin/people",
+    "/admin/bookings",
     `/users/edit/${users.admin.id}`,
     "/automatic-reservations",
     "/metrics",

@@ -2,7 +2,7 @@ import { Sheet } from "@silk-hq/components";
 import { addDays, format, isBefore, isSameDay } from "date-fns";
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
 import {
@@ -35,7 +35,6 @@ type DeskSheetProps = {
   /** The desk tile; it becomes the trigger. */
   children: React.ReactNode;
   allowedToReserve?: boolean;
-  allowedToEdit?: boolean;
   /** The signed-in user, to show their own bookings in moss. */
   userId?: string;
   /** The day shown on the map, in `dd.MM.yyyy`; marked in the two-week grid. */
@@ -94,7 +93,6 @@ export function DeskSheet({
   desk,
   children,
   allowedToReserve,
-  allowedToEdit,
   userId,
   selectedDay,
   today: todayValue,
@@ -400,15 +398,6 @@ export function DeskSheet({
                       </>
                     )}
               </fetcher.Form>
-
-              {allowedToEdit && (
-                <Link
-                  to={`/desks/${desk.id}/edit`}
-                  className="-mt-2 inline-flex min-h-11 items-center justify-center rounded-[10px] text-[14px] font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
-                >
-                  Edit desk info
-                </Link>
-              )}
             </div>
           </Sheet.Content>
         </Sheet.View>
