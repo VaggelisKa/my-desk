@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { Await } from "react-router";
 import { ErrorCard } from "~/components/error-card";
-import { Metrics, MetricsSkeleton } from "~/components/metrics";
+import { Metrics } from "~/components/metrics";
+import { MetricsSkeleton } from "~/components/metrics-skeleton";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics } from "~/lib/db/schema";

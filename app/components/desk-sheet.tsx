@@ -152,6 +152,7 @@ export function DeskSheet({
     ),
   );
   let pickedDays = picked.filter((value) => bookable.has(value));
+  let pickedSet = new Set(pickedDays);
 
   function togglePick(value: string) {
     setPicked((current) =>
@@ -162,20 +163,7 @@ export function DeskSheet({
   }
 
   let todaysReservation = reservationOn(todayDate);
-  let borrower =
-    todaysReservation && todaysReservation.users.id !== desk.user?.id
-      ? todaysReservation.users
-      : null;
   let showReserveForToday = !isWeekend && !todaysReservation;
-  let sitter = todaysReservation?.users ?? null;
-  let sitterIsMe = sitter?.id === userId;
-  let today = isWeekend
-    ? "Weekend"
-    : !sitter
-      ? "Free"
-      : borrower
-        ? "is borrowing it"
-        : "is in";
 
   function handlePresentedChange(value: boolean) {
     if (value) {
@@ -274,40 +262,12 @@ export function DeskSheet({
                 </Sheet.Description>
               </div>
 
-              <div className="grid gap-1">
-                <span className="text-xs text-ink-muted">Assigned to</span>
-                <p className="flex items-center gap-2 text-[15px] font-semibold capitalize">
-                  {desk.user ? (
-                    <>
-                      <Avatar user={desk.user} />
-                      {`${desk.user.firstName} ${desk.user.lastName || ""}`}
-                    </>
-                  ) : (
-                    "None"
-                  )}
-                </p>
-                {!desk.user && (
-                  <p className="text-[13px] text-ink-muted">
-                    Ask an admin (Christian, Sara, Michael or Vaggelis) to make
-                    it yours.
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-1">
-                <span className="text-xs text-ink-muted">Today</span>
-                {sitter ? (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[15px]">
-                    <Avatar user={sitter} tone={sitterIsMe ? "moss" : "ink"} />
-                    <p className="font-semibold capitalize">
-                      {`${sitter.firstName} ${sitter.lastName}`}
-                    </p>
-                    <span className="text-ink-muted">{today}</span>
-                  </div>
-                ) : (
-                  <p className="text-[15px] font-semibold">{today}</p>
-                )}
-              </div>
+              <DeskDetails
+                desk={desk}
+                todaysReservation={todaysReservation}
+                isWeekend={isWeekend}
+                userId={userId}
+              />
 
               <fetcher.Form
                 method="POST"
@@ -336,72 +296,29 @@ export function DeskSheet({
                     ))}
                   </div>
 
-                  {grid.map(({ label, days }) => (
-                    <div
-                      key={label}
-                      className="grid grid-cols-[80px_repeat(5,1fr)] items-center gap-1.5 text-[11px] text-ink-muted"
-                    >
-                      <span>{label}</span>
-                      {days.map((d) =>
-                        d.bookable ? (
-                          <DayToggle
-                            key={d.day}
-                            date={d.date}
-                            value={d.value}
-                            checked={pickedDays.includes(d.value)}
-                            onChange={() => togglePick(d.value)}
-                          />
-                        ) : (
-                          <DayCell
-                            key={d.day}
-                            day={d.day}
-                            date={d.date}
-                            reservation={d.reservation}
-                            isPast={d.isPast}
-                            isSelected={d.value === selectedDay}
-                            userId={userId}
-                          />
-                        ),
-                      )}
-                    </div>
-                  ))}
+                  <DayGrid
+                    grid={grid}
+                    picked={pickedSet}
+                    onToggle={togglePick}
+                    selectedDay={selectedDay}
+                    userId={userId}
+                  />
 
                   <DayLegend />
                 </fieldset>
 
                 {allowedToReserve
                   ? bookable.size > 0 && (
-                      <Button
-                        variant="primary"
-                        size="tall"
-                        className="w-full"
-                        disabled={isSubmitting || pickedDays.length === 0}
-                        type="submit"
-                      >
-                        {isSubmitting
-                          ? "Booking..."
-                          : pickedDays.length === 0
-                            ? "Pick days to book"
-                            : `Book ${pickedDays.length} ${pickedDays.length === 1 ? "day" : "days"}`}
-                      </Button>
+                      <BookButton
+                        count={pickedDays.length}
+                        isSubmitting={isSubmitting}
+                      />
                     )
                   : showReserveForToday && (
-                      <>
-                        <input
-                          type="hidden"
-                          name="date"
-                          value={formatDate(todayDate)}
-                        />
-                        <Button
-                          variant="primary"
-                          size="tall"
-                          className="w-full"
-                          disabled={isSubmitting}
-                          type="submit"
-                        >
-                          Reserve for today
-                        </Button>
-                      </>
+                      <ReserveTodayButton
+                        today={formatDate(todayDate)}
+                        isSubmitting={isSubmitting}
+                      />
                     )}
               </fetcher.Form>
             </div>
@@ -409,6 +326,177 @@ export function DeskSheet({
         </Sheet.View>
       </Sheet.Portal>
     </Sheet.Root>
+  );
+}
+
+type Reservation = DeskSheetProps["desk"]["reservations"][number];
+
+type GridRow = {
+  label: string;
+  days: {
+    day: Weekday;
+    date: Date;
+    value: string;
+    reservation?: Reservation;
+    isPast: boolean;
+    bookable: boolean;
+  }[];
+};
+
+/** Who the desk belongs to and who sits at it today. */
+function DeskDetails({
+  desk,
+  todaysReservation,
+  isWeekend,
+  userId,
+}: {
+  desk: DeskSheetProps["desk"];
+  todaysReservation?: Reservation;
+  isWeekend: boolean;
+  userId?: string;
+}) {
+  let borrower =
+    todaysReservation && todaysReservation.users.id !== desk.user?.id
+      ? todaysReservation.users
+      : null;
+  let sitter = todaysReservation?.users ?? null;
+  let sitterIsMe = sitter?.id === userId;
+  let today = isWeekend
+    ? "Weekend"
+    : !sitter
+      ? "Free"
+      : borrower
+        ? "is borrowing it"
+        : "is in";
+
+  return (
+    <>
+      <div className="grid gap-1">
+        <span className="text-xs text-ink-muted">Assigned to</span>
+        <p className="flex items-center gap-2 text-[15px] font-semibold capitalize">
+          {desk.user ? (
+            <>
+              <Avatar user={desk.user} />
+              {`${desk.user.firstName} ${desk.user.lastName || ""}`}
+            </>
+          ) : (
+            "None"
+          )}
+        </p>
+        {!desk.user && (
+          <p className="text-[13px] text-ink-muted">
+            Ask an admin (Christian, Sara, Michael or Vaggelis) to make it
+            yours.
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-1">
+        <span className="text-xs text-ink-muted">Today</span>
+        {sitter ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[15px]">
+            <Avatar user={sitter} tone={sitterIsMe ? "moss" : "ink"} />
+            <p className="font-semibold capitalize">
+              {`${sitter.firstName} ${sitter.lastName}`}
+            </p>
+            <span className="text-ink-muted">{today}</span>
+          </div>
+        ) : (
+          <p className="text-[15px] font-semibold">{today}</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+function DayGrid({
+  grid,
+  picked,
+  onToggle,
+  selectedDay,
+  userId,
+}: {
+  grid: GridRow[];
+  picked: Set<string>;
+  onToggle: (value: string) => void;
+  selectedDay?: string;
+  userId?: string;
+}) {
+  return grid.map(({ label, days }) => (
+    <div
+      key={label}
+      className="grid grid-cols-[80px_repeat(5,1fr)] items-center gap-1.5 text-[11px] text-ink-muted"
+    >
+      <span>{label}</span>
+      {days.map((d) =>
+        d.bookable ? (
+          <DayToggle
+            key={d.day}
+            date={d.date}
+            value={d.value}
+            checked={picked.has(d.value)}
+            onChange={() => onToggle(d.value)}
+          />
+        ) : (
+          <DayCell
+            key={d.day}
+            day={d.day}
+            date={d.date}
+            reservation={d.reservation}
+            isPast={d.isPast}
+            isSelected={d.value === selectedDay}
+            userId={userId}
+          />
+        ),
+      )}
+    </div>
+  ));
+}
+
+function BookButton({
+  count,
+  isSubmitting,
+}: {
+  count: number;
+  isSubmitting: boolean;
+}) {
+  return (
+    <Button
+      variant="primary"
+      size="tall"
+      className="w-full"
+      disabled={isSubmitting || count === 0}
+      type="submit"
+    >
+      {isSubmitting
+        ? "Booking..."
+        : count === 0
+          ? "Pick days to book"
+          : `Book ${count} ${count === 1 ? "day" : "days"}`}
+    </Button>
+  );
+}
+
+function ReserveTodayButton({
+  today,
+  isSubmitting,
+}: {
+  today: string;
+  isSubmitting: boolean;
+}) {
+  return (
+    <>
+      <input type="hidden" name="date" value={today} />
+      <Button
+        variant="primary"
+        size="tall"
+        className="w-full"
+        disabled={isSubmitting}
+        type="submit"
+      >
+        Reserve for today
+      </Button>
+    </>
   );
 }
 

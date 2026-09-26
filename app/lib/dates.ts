@@ -71,6 +71,17 @@ const OFFICE_TIMEZONE = "Europe/Copenhagen";
 /** The owner can book a day until 11:00 on that day. */
 export const LAST_BOOKING_HOUR = 11;
 
+let officeClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: OFFICE_TIMEZONE,
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
+  hourCycle: "h23",
+});
+
 /**
  * The office's wall-clock time, as a Date whose local fields read as that
  * time. The server may run in UTC (Vercel's default), where "today" would
@@ -78,16 +89,7 @@ export const LAST_BOOKING_HOUR = 11;
  */
 export function officeNow(now = new Date()) {
   let parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: OFFICE_TIMEZONE,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hourCycle: "h23",
-    })
+    officeClock
       .formatToParts(now)
       .map(({ type, value }) => [type, Number(value)]),
   );

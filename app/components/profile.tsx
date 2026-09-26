@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Form, useNavigation } from "react-router";
 import { AuthField } from "~/components/auth-card";
-import { deskPlace } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
-import { deskLabel } from "~/lib/utils";
+import { deskLabel, deskPlace } from "~/lib/utils";
 
 export type ProfileUser = {
   id: string;
@@ -26,15 +25,17 @@ type Props = {
 };
 
 function useNameForm(user: ProfileUser) {
+  let [saved, setSaved] = useState(user);
   let [firstName, setFirstName] = useState(user.firstName);
   let [lastName, setLastName] = useState(user.lastName);
   let navigation = useNavigation();
 
   // After a save the loader returns the new name; start from it again.
-  useEffect(() => {
+  if (saved.firstName !== user.firstName || saved.lastName !== user.lastName) {
+    setSaved(user);
     setFirstName(user.firstName);
     setLastName(user.lastName);
-  }, [user.firstName, user.lastName]);
+  }
 
   let changed =
     firstName.trim() !== user.firstName || lastName.trim() !== user.lastName;

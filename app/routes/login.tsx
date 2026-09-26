@@ -82,12 +82,16 @@ export default function LoginPage({
     navigation.state !== "idle" &&
     navigation.formData?.get("intent") === "employee-login";
 
+  // A failed attempt clears the field for the next try.
+  let [answered, setAnswered] = useState(actionData);
+  if (navigation.state === "idle" && actionData !== answered) {
+    setAnswered(actionData);
+    if (actionData?.error) setUserId("");
+  }
+
   useEffect(() => {
-    if (actionData?.error && navigation.state === "idle") {
-      setUserId("");
-      inputRef.current?.focus();
-    }
-  }, [actionData, navigation]);
+    if (actionData?.error) inputRef.current?.focus();
+  }, [actionData]);
 
   return (
     <AuthCard

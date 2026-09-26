@@ -1,11 +1,4 @@
-import {
-  format,
-  isSameMonth,
-  startOfMonth,
-  startOfWeek,
-  subDays,
-  subMonths,
-} from "date-fns";
+import { format, isSameMonth } from "date-fns";
 import { useState } from "react";
 import {
   Bar,
@@ -16,21 +9,23 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { MetricsHeader } from "~/components/metrics-skeleton";
 import { ChartContainer } from "~/components/ui/chart";
-import { calculatePercentDiff, cn, enterAt } from "~/lib/utils";
+import {
+  bookingsBy,
+  busiestDays,
+  summarise,
+  type Day,
+  type MetricRow,
+  type Period,
+} from "~/lib/metrics";
+import { cn, enterAt } from "~/lib/utils";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 // The Metrics tab: this month in one line, how full each weekday usually is,
 // and bookings week by week or month by month. Guest bookings are striped,
 // not just a second colour, and changes are spelled out ("Up 8%") rather
 // than shown as green or red.
-
-export type MetricRow = {
-  date: Date | string | number;
-  bookings: number;
-  guestBookings: number | null;
-  officeParticipationPct: number | null;
-};
 
 // cron.log-metrics divides by this many desks for participation.
 const OFFICE_DESKS = 33;
@@ -43,111 +38,6 @@ let LINE = "#d8ddda";
 
 let focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2";
-
-export type Day = {
-  date: Date;
-  bookings: number;
-  guests: number;
-  participation: number;
-};
-
-function toDays(rows: MetricRow[]): Day[] {
-  return rows.map((row) => ({
-    date: new Date(row.date),
-    bookings: row.bookings,
-    guests: row.guestBookings ?? 0,
-    participation: row.officeParticipationPct ?? 0,
-  }));
-}
-
-function sum(days: Day[], key: keyof Omit<Day, "date">) {
-  return days.reduce((acc, day) => acc + day[key], 0);
-}
-
-function avg(days: Day[], key: keyof Omit<Day, "date">) {
-  return days.length === 0 ? 0 : sum(days, key) / days.length;
-}
-
-export function summarise(rows: MetricRow[], now = new Date()) {
-  let days = toDays(rows);
-  let lastMonthDate = subMonths(now, 1);
-  let thisMonth = days.filter((d) => isSameMonth(d.date, now));
-  let lastMonth = days.filter((d) => isSameMonth(d.date, lastMonthDate));
-  // Month to date against the same days of last month, not the whole month.
-  let lastMonthToDate = lastMonth.filter(
-    (d) => d.date.getDate() <= now.getDate(),
-  );
-
-  return {
-    days,
-    now,
-    monthName: format(now, "MMMM"),
-    lastMonthName: format(lastMonthDate, "MMMM"),
-    total: sum(thisMonth, "bookings"),
-    totalChange: calculatePercentDiff(
-      sum(thisMonth, "bookings"),
-      sum(lastMonthToDate, "bookings"),
-    ),
-    perDay: avg(thisMonth, "bookings"),
-    participation: avg(thisMonth, "participation"),
-  };
-}
-
-let WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-/** Average bookings per weekday over the last eight weeks. */
-export function busiestDays(days: Day[], now: Date) {
-  let recent = days.filter((d) => d.date >= subDays(now, 56));
-
-  return WEEKDAYS.map((name, i) => ({
-    name,
-    bookings: avg(
-      recent.filter((d) => d.date.getDay() === i + 1),
-      "bookings",
-    ),
-  }));
-}
-
-export type Period = "weeks" | "months";
-
-/** Bookings per week (last 10) or month (last 6), split into own desk and guests. */
-export function bookingsBy(period: Period, days: Day[]) {
-  let groups = new Map<
-    number,
-    { start: number; own: number; guests: number }
-  >();
-
-  for (let d of days) {
-    let start = (
-      period === "weeks"
-        ? startOfWeek(d.date, { weekStartsOn: 1 })
-        : startOfMonth(d.date)
-    ).getTime();
-    let group = groups.get(start) ?? { start, own: 0, guests: 0 };
-    group.own += d.bookings - d.guests;
-    group.guests += d.guests;
-    groups.set(start, group);
-  }
-
-  return [...groups.values()]
-    .sort((a, b) => a.start - b.start)
-    .slice(period === "weeks" ? -10 : -6)
-    .map((g) => ({ ...g, total: g.own + g.guests }));
-}
-
-function MetricsHeader() {
-  return (
-    <header className="flex flex-col gap-2">
-      <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
-        Metrics
-      </h1>
-      <p className="max-w-[52ch] text-[14px] leading-relaxed text-ink-muted">
-        How busy the office is. Bookings are counted at the end of each workday,
-        so treat these as an estimate.
-      </p>
-    </header>
-  );
-}
 
 /** "▲ Up 8% vs August by this date": the words carry the direction. */
 function Change({ value, against }: { value: number | null; against: string }) {
@@ -490,22 +380,6 @@ export function Metrics({ rows }: { rows: MetricRow[] }) {
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-export function MetricsSkeleton() {
-  let block = "animate-pulse rounded-md bg-paper-muted";
-
-  return (
-    <div className="flex w-full flex-col gap-8 font-display text-ink">
-      <MetricsHeader />
-      <div aria-hidden className="flex flex-col gap-3">
-        <div className={cn(block, "h-9 w-72 max-w-full")} />
-        <div className={cn(block, "h-5 w-56")} />
-      </div>
-      <div aria-hidden className={cn(block, "h-[280px] rounded-xl")} />
-      <div aria-hidden className={cn(block, "h-[380px] rounded-xl")} />
     </div>
   );
 }

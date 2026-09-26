@@ -1,12 +1,12 @@
 import { format } from "date-fns";
 import { useLocation, useNavigation, useSearchParams } from "react-router";
 import { AdminHeader } from "~/components/admin";
-import { activeTab, type Tab } from "~/components/app-shell";
 import { BookingsHeader } from "~/components/bookings";
 import { DayStrip, DeskFilters } from "~/components/desk-filters";
-import { MetricsSkeleton } from "~/components/metrics";
+import { MetricsSkeleton } from "~/components/metrics-skeleton";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Wall } from "~/components/wall";
+import { activeTab, type Tab } from "~/lib/app-shell";
 import { defaultDay, formatDate, officeNow } from "~/lib/dates";
 import { cn } from "~/lib/utils";
 

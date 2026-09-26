@@ -39,6 +39,27 @@ export function deskLabel(desk: {
   return `${desk.block}.${desk.row}.${desk.column}`;
 }
 
+let placement: Record<number, string> = {
+  1: "by the window",
+  2: "in the middle",
+  3: "by the aisle",
+};
+
+// One word each, for where a row has little room.
+let shortPlacement: Record<number, string> = {
+  1: "window",
+  2: "middle",
+  3: "aisle",
+};
+
+export function deskPlace(
+  desk: { block: number; column: number },
+  { short = false } = {},
+) {
+  let where = (short ? shortPlacement : placement)[desk.column];
+  return `Block ${desk.block} · ${where ?? `column ${desk.column}`}`;
+}
+
 /** "1 booking", "3 bookings". */
 export function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;

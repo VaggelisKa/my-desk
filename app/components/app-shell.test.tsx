@@ -1,14 +1,9 @@
 import { act, screen, within } from "@testing-library/react";
 import { Link, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { activeTab } from "~/lib/app-shell";
 import { renderWithRouter } from "../../test/render-with-router";
-import {
-  activeTab,
-  AppMenu,
-  Dock,
-  Masthead,
-  type ShellUser,
-} from "./app-shell";
+import { AppMenu, Dock, Masthead, type ShellUser } from "./app-shell";
 
 let user: ShellUser = {
   id: "emp042",

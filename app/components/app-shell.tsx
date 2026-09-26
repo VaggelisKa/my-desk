@@ -1,12 +1,19 @@
 import {
   CalendarDays,
   ChartLine,
-  ShieldCheck,
   createLucideIcon,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { Link, useLocation, useNavigation } from "react-router";
+import { activeTab, PAGE_COLUMN, type Tab } from "~/lib/app-shell";
 import { cn, deskLabel } from "~/lib/utils";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
@@ -34,8 +41,6 @@ let Desk = createLucideIcon("desk", [
   ["path", { d: "M4 14v7", key: "left-leg" }],
   ["path", { d: "M20 14v7", key: "right-leg" }],
 ]);
-
-export type Tab = "desks" | "bookings" | "metrics" | "admin";
 
 let TABS: {
   id: Tab;
@@ -74,33 +79,6 @@ function tabsFor(user: ShellUser) {
 }
 
 let MENU_ID = "app-menu";
-
-/**
- * The column the masthead and every signed-in page share, so the first tab
- * sits on the page title's left edge and the avatar on the content's right
- * edge. Both live inside the same 16px gutter.
- */
-export let PAGE_COLUMN = "mx-auto w-full max-w-3xl";
-
-/** Secondary pages have no tab of their own; their parent tab stays lit. */
-export function activeTab(pathname: string): Tab | undefined {
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    return "admin";
-  }
-  if (pathname.startsWith("/metrics")) {
-    return "metrics";
-  }
-  if (
-    pathname.startsWith("/reservations") ||
-    pathname.startsWith("/automatic-reservations")
-  ) {
-    return "bookings";
-  }
-  if (pathname === "/") {
-    return "desks";
-  }
-  return undefined;
-}
 
 function initials(user: ShellUser) {
   return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
@@ -542,7 +520,9 @@ function useKeyboardOpen() {
   let [closed, setClosed] = useState(false);
   let shrunk = useRef(false);
   let focusedRef = useRef(focused);
-  focusedRef.current = focused;
+  useLayoutEffect(() => {
+    focusedRef.current = focused;
+  }, [focused]);
 
   useEffect(() => {
     let viewport = window.visualViewport;

@@ -8,7 +8,7 @@ import {
 import { X } from "lucide-react";
 import { NavLink, useFetcher, useLocation, useNavigation } from "react-router";
 import { parseDate } from "~/lib/dates";
-import { capitalize, cn, deskLabel, enterAt } from "~/lib/utils";
+import { capitalize, cn, deskLabel, deskPlace, enterAt } from "~/lib/utils";
 
 // The Bookings tab (design/design-options.html, "My reservations" and
 // "Bookings"): one heading and an Upcoming · Recurring switch. The tab is
@@ -22,27 +22,6 @@ export type OwnDesk = {
   row: number;
   column: number;
 };
-
-let placement: Record<number, string> = {
-  1: "by the window",
-  2: "in the middle",
-  3: "by the aisle",
-};
-
-// One word each, for where a row has little room.
-let shortPlacement: Record<number, string> = {
-  1: "window",
-  2: "middle",
-  3: "aisle",
-};
-
-export function deskPlace(
-  desk: { block: number; column: number },
-  { short = false } = {},
-) {
-  let where = (short ? shortPlacement : placement)[desk.column];
-  return `Block ${desk.block} · ${where ?? `column ${desk.column}`}`;
-}
 
 let focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2";

@@ -1,5 +1,5 @@
 import { startOfDay } from "date-fns";
-import { and, asc, eq, gt, gte, isNotNull, ne } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNotNull, ne } from "drizzle-orm";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireAuthCookie } from "~/cookies.server";
 import { deleteCron } from "~/lib/cron";
@@ -159,14 +159,15 @@ async function stopRecurring(userId: string) {
  * booked on it after today. Today stays, since they may already be sitting
  * there. Their weekly booking stops, because it was for this desk.
  */
-async function releaseDesk(deskId: number, ownerId: string) {
+async function releaseDesks(deskIds: number[], ownerId: string) {
+  if (deskIds.length === 0) return;
   await db.batch([
-    db.update(desks).set({ userId: null }).where(eq(desks.id, deskId)),
+    db.update(desks).set({ userId: null }).where(inArray(desks.id, deskIds)),
     db
       .delete(reservations)
       .where(
         and(
-          eq(reservations.deskId, deskId),
+          inArray(reservations.deskId, deskIds),
           eq(reservations.userId, ownerId),
           gt(reservations.dateTimestamp, todayStart()),
         ),
@@ -215,11 +216,12 @@ export async function handleAdminAction(request: Request) {
         where: and(eq(desks.userId, newOwner.id), ne(desks.id, deskId)),
         columns: { id: true },
       });
-      for (let previous of previousDesks) {
-        await releaseDesk(previous.id, newOwner.id);
-      }
+      await releaseDesks(
+        previousDesks.map((previous) => previous.id),
+        newOwner.id,
+      );
       if (desk.userId) {
-        await releaseDesk(deskId, desk.userId);
+        await releaseDesks([deskId], desk.userId);
       }
       await db
         .update(desks)
@@ -245,7 +247,7 @@ export async function handleAdminAction(request: Request) {
         );
       }
       if (desk.userId) {
-        await releaseDesk(deskId, desk.userId);
+        await releaseDesks([deskId], desk.userId);
       }
 
       return dataWithSuccess(null, {

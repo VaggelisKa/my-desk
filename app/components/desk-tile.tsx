@@ -32,6 +32,12 @@ let stateWords: Record<DeskTileState, string> = {
  * The state is written on the tile as well as coloured, so it reads without
  * telling the colours apart. The desk number lives in the sheet instead.
  */
+let faceClasses: Record<DeskTileState, string> = {
+  free: "border-ink bg-paper text-ink-muted shadow-[0_6px_0_var(--edge)]",
+  taken: "border-ink bg-taken text-white shadow-[0_6px_0_var(--edge)]",
+  mine: "border-moss-edge bg-moss text-white shadow-[0_6px_0_var(--edge)] [--edge:var(--moss-edge)]",
+};
+
 export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
   (
     {
@@ -96,15 +102,10 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
             "group-enabled:group-hover:-translate-y-0.5 group-enabled:group-hover:shadow-[0_8px_0_var(--edge)]",
             "group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-moss",
             "group-aria-expanded:outline group-aria-expanded:outline-2 group-aria-expanded:outline-offset-[3px] group-aria-expanded:outline-moss",
-            state === "free" &&
-              "border-ink bg-paper text-ink-muted shadow-[0_6px_0_var(--edge)]",
+            faceClasses[state],
             state === "free" &&
               unclaimed &&
               "border-line shadow-[0_6px_0_var(--line)]",
-            state === "taken" &&
-              "border-ink bg-taken text-white shadow-[0_6px_0_var(--edge)]",
-            state === "mine" &&
-              "border-moss-edge bg-moss text-white shadow-[0_6px_0_var(--edge)] [--edge:var(--moss-edge)]",
             dimmed &&
               "border-dashed border-dim bg-transparent text-ink-muted shadow-none",
           )}
@@ -122,8 +123,7 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
           <span
             className={cn(
               "max-w-full truncate text-[10px] font-medium leading-none tracking-[0.02em] sm:text-[10.5px]",
-              state === "taken" && !dimmed && "opacity-80",
-              (state !== "taken" || dimmed) && "opacity-95",
+              state === "taken" && !dimmed ? "opacity-80" : "opacity-95",
             )}
           >
             ({status})
