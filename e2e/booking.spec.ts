@@ -10,11 +10,7 @@ test("an employee books their desk for several days across both weeks from the s
   reservationsPage,
 }) => {
   await desksPage.goto();
-  await (await desksPage.menuLink("Book my desk")).click();
-  await expect(page).toHaveURL(`/?desk=${desks.alice.id}`);
-
-  // The menu link opens the sheet for the user's own desk.
-  let dialog = await desksPage.dialog();
+  let dialog = await desksPage.openDesk("Alice");
   await expect(dialog.title).toHaveText("Desk 1.1.1");
   await expect(dialog.bookButton).toHaveText("Pick days to book");
   await expect(dialog.bookButton).toBeDisabled();

@@ -299,8 +299,7 @@ export function AppMenu({ user }: { user: ShellUser }) {
     return () => element.removeEventListener("beforetoggle", place);
   }, []);
 
-  // Close after following a link from the menu, including "Book my desk",
-  // which stays on the desks page and only changes the search.
+  // Close after following a link from the menu.
   useEffect(() => {
     let element = menu.current;
     if (element?.matches(":popover-open")) {
@@ -331,12 +330,6 @@ export function AppMenu({ user }: { user: ShellUser }) {
         </p>
       </div>
 
-      {/* A shortcut to your desk's sheet, where booking happens. */}
-      {user.desk && (
-        <Link to={`/?desk=${user.desk.id}`} className={item}>
-          Book my desk
-        </Link>
-      )}
       <Link to={`/users/edit/${user.id}`} prefetch="intent" className={item}>
         Edit profile
       </Link>

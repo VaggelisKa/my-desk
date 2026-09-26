@@ -106,10 +106,11 @@ describe("AppShell", () => {
     expect(
       menu.getByRole("link", { name: "Edit profile", hidden: true }),
     ).toHaveAttribute("href", "/users/edit/emp042");
+    // Booking lives in the desk sheet and recurring bookings on the
+    // Bookings page, so neither has a menu entry.
     expect(
-      menu.getByRole("link", { name: "Book my desk", hidden: true }),
-    ).toHaveAttribute("href", "/?desk=7");
-    // Recurring bookings live on the Bookings page now.
+      menu.queryByRole("link", { name: "Book my desk", hidden: true }),
+    ).not.toBeInTheDocument();
     expect(
       menu.queryByRole("link", {
         name: "Automatic reservations",
@@ -123,13 +124,9 @@ describe("AppShell", () => {
     ).toHaveAttribute("action", "/login/logout");
   });
 
-  it("only offers reservation management to users with a desk", () => {
+  it("says so when the user has no desk", () => {
     renderShell("/", { ...user, role: "user", desk: null });
 
-    let menu = within(document.getElementById("app-menu")!);
-    expect(
-      menu.queryByRole("link", { name: "Book my desk", hidden: true }),
-    ).not.toBeInTheDocument();
     expect(document.getElementById("app-menu")).toHaveTextContent("No desk");
   });
 });

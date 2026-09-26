@@ -269,7 +269,7 @@ function FloorPlan({
 }) {
   let [searchParams, setSearchParams] = useSearchParams();
   let all = Object.values(desks).flat();
-  // "Book my desk" links here with `?desk=<id>` to open that desk's sheet.
+  // A link with `?desk=<id>` opens that desk's sheet.
   let openDesk = searchParams.get("desk");
 
   function closeDeskLink() {
