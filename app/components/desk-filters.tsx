@@ -17,7 +17,13 @@ import {
   workdaysOfWeek,
 } from "~/lib/dates";
 import { cn } from "~/lib/utils";
-import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
+import { useSlidingHighlight } from "./sliding-highlight";
+
+// The day pill glides and settles without the dock's overshoot: in a tight
+// strip a bounce pokes past the day and drifts back, which reads as a wobble.
+// Labels change colour on the same curve so they turn white as the pill lands.
+const DAY_EASE =
+  "duration-[350ms] [transition-timing-function:cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none";
 
 let COLUMNS = [
   { value: "1", label: "Window" },
@@ -236,13 +242,13 @@ export function DayStrip({
         <ChevronLeft className="h-4 w-4" />
       </WeekArrow>
 
-      <div className="relative grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
+      <div className="relative isolate grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
         {position && (
           <span
             aria-hidden
             className={cn(
               "absolute left-0 top-0 rounded-lg bg-ink sm:rounded-full",
-              animate && SLIDE,
+              animate && cn("transition-[transform,width,height]", DAY_EASE),
             )}
             style={{
               width: position.width,
@@ -347,16 +353,14 @@ function DayPill({
   pillRef: (node: HTMLElement | null) => void;
 }) {
   let className = cn(
-    "relative grid h-11 place-items-center rounded-lg border border-line bg-paper-muted text-center text-xs font-bold transition-colors duration-300 sm:h-auto sm:rounded-full sm:border-0 sm:bg-transparent sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold",
+    // On phones each day is a tile. Its fill sits in a layer behind the
+    // sliding pill, so the pill stays in view as it crosses the tiles.
+    "relative grid h-11 place-items-center rounded-lg text-center text-xs font-bold transition-colors before:absolute before:inset-0 before:-z-10 before:rounded-lg before:border before:border-line before:bg-paper-muted sm:h-auto sm:rounded-full sm:px-3 sm:py-1.5 sm:text-[13px] sm:font-semibold sm:before:hidden",
+    DAY_EASE,
     focusRing,
     isSelected
       ? // The sliding pill draws the fill once it has been measured.
-        cn(
-          "text-white",
-          measured
-            ? "border-transparent bg-transparent"
-            : "border-ink bg-ink sm:bg-ink",
-        )
+        cn("text-white", !measured && "bg-ink")
       : "text-ink-muted hover:text-ink",
   );
 
@@ -370,7 +374,7 @@ function DayPill({
         aria-label={`${format(date, "EEEE d MMMM")}, past`}
         className={cn(
           className,
-          "border-transparent bg-transparent text-dim line-through decoration-1 hover:text-dim",
+          "text-dim line-through decoration-1 before:hidden hover:text-dim",
         )}
       >
         {format(date, "EEE")}
