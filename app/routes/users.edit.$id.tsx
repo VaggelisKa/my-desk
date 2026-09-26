@@ -1,12 +1,9 @@
 import { eq } from "drizzle-orm";
-import { Form } from "react-router";
 import { redirectWithSuccess } from "remix-toast";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
+import { ProfilePage } from "~/components/profile";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema";
+import { desks, users } from "~/lib/db/schema";
 import type { Route } from "./+types/users.edit.$id";
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -21,15 +18,27 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw new Error("You are not allowed to edit this information");
   }
 
-  let userFromDb = await db.query.users.findFirst({
-    where: eq(users.id, paramsUserId),
-  });
+  let [userFromDb, desk] = await Promise.all([
+    db.query.users.findFirst({ where: eq(users.id, paramsUserId) }),
+    db.query.desks.findFirst({ where: eq(desks.userId, paramsUserId) }),
+  ]);
 
   if (!userFromDb) {
     throw new Error("User not found");
   }
 
-  return userFromDb;
+  return {
+    user: {
+      id: userFromDb.id,
+      firstName: userFromDb.firstName,
+      lastName: userFromDb.lastName,
+      role: userFromDb.role,
+    },
+    desk: desk
+      ? { block: desk.block, row: desk.row, column: desk.column }
+      : null,
+    isSelf: userId === paramsUserId,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -46,75 +55,27 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   let formData = await request.formData();
-  let updatedFirstName = String(formData.get("firstName"));
-  let updatedLastName = String(formData.get("lastName"));
+  let firstName = String(formData.get("firstName") ?? "").trim();
+  let lastName = String(formData.get("lastName") ?? "").trim();
 
-  if (!updatedFirstName && !updatedLastName) {
+  if (!firstName || !lastName) {
     return null;
   }
 
   await db
     .update(users)
-    .set({ firstName: updatedFirstName, lastName: updatedLastName })
+    .set({ firstName, lastName })
     .where(eq(users.id, userId));
 
-  return redirectWithSuccess("/", {
-    message: `User ${userId} updated successfully`,
+  // Stay on the page: the profile belongs to no tab to go back to.
+  return redirectWithSuccess(`/users/edit/${userId}`, {
+    message:
+      userId === sessionUserId
+        ? "Profile saved"
+        : `Saved ${firstName} ${lastName}'s profile`,
   });
 }
 
 export default function UserEditPage({ loaderData }: Route.ComponentProps) {
-  return (
-    <section className="flex w-full flex-col gap-16">
-      <Form
-        method="PUT"
-        className="flex w-full max-w-full flex-col gap-4 sm:max-w-xs"
-      >
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="user-id">User id</Label>
-
-          <Input
-            id="user-id"
-            name="user-id"
-            type="text"
-            defaultValue={loaderData.id}
-            readOnly
-          />
-
-          <p className="text-xs text-gray-600">
-            You cannot edit your id, if it is wrong please contact an admin!
-          </p>
-        </fieldset>
-
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="firstName">First name</Label>
-
-          <Input
-            id="firstName"
-            name="firstName"
-            type="text"
-            defaultValue={loaderData.firstName}
-            autoFocus
-            required
-          />
-        </fieldset>
-
-        <fieldset className="flex flex-col gap-2">
-          <Label htmlFor="lastName">Last name</Label>
-
-          <Input
-            id="lastName"
-            name="lastName"
-            type="text"
-            defaultValue={loaderData.lastName}
-            required
-          />
-        </fieldset>
-
-        <Button className="w-full" type="submit" disabled={false}>
-          Edit
-        </Button>
-      </Form>
-    </section>
-  );
+  return <ProfilePage {...loaderData} />;
 }
