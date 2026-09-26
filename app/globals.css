@@ -126,6 +126,17 @@
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
   }
+  /* Phones blur harder: the bottom sheet leaves most of the page in view.
+     Silk keeps the backdrop at a third opacity (it also dims the status bar
+     from it), which would thin any blur on it, so a separate layer carries
+     the blur and fades in fully with the sheet. */
+  .desk-sheet-blur {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
   .desk-sheet-content {
     box-sizing: border-box;
   }
@@ -173,6 +184,26 @@
     background: var(--line);
     cursor: pointer;
   }
+}
+
+/* Focus rings follow :focus-visible, but Safari on iOS also counts focus
+   that a script moves (a sheet focusing its handle, focus returning to the
+   desk tile or menu button on close) as visible, because a tap never focuses
+   a button. So after a touch those rings stay hidden; text fields still show
+   theirs, and any key press brings every ring back (see useTouchFocusRings). */
+html[data-touch]
+  :focus-visible:not(
+    input:not([type="checkbox"], [type="radio"]),
+    textarea,
+    select
+  ),
+html[data-touch] :has(> :focus-visible:is([type="checkbox"], [type="radio"])) {
+  outline: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+}
+html[data-touch] .group:focus-visible * {
+  outline: none;
 }
 
 /* Toasts (Silk). Silk stretches a sheet's content to the full view, so the

@@ -225,6 +225,12 @@ export function DeskSheet({
             className="desk-sheet-backdrop"
             themeColorDimming="auto"
           />
+          {isSmallDevice && (
+            <Sheet.Outlet
+              className="desk-sheet-blur"
+              travelAnimation={{ opacity: [0, 1] }}
+            />
+          )}
           <Sheet.Content
             className={cn(
               "desk-sheet-content",

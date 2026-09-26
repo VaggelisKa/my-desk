@@ -135,6 +135,29 @@ function useOutletScrollRestoration(outlet: RefObject<HTMLDivElement | null>) {
   }, [location, navigationType, outlet]);
 }
 
+/**
+ * Marks the page as driven by touch (see `html[data-touch]` in globals.css)
+ * from a finger tap until the next key press, so focus a sheet or menu moves
+ * by script shows no ring on phones while keyboards still get one.
+ */
+function useTouchFocusRings() {
+  useEffect(() => {
+    let root = document.documentElement;
+    let onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "touch") root.dataset.touch = "";
+      else delete root.dataset.touch;
+    };
+    let onKeyDown = () => delete root.dataset.touch;
+
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, []);
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   let data = useRouteLoaderData<typeof loader>("root");
   let error = useRouteError();
@@ -143,6 +166,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let user = data?.user?.id ? data.user : undefined;
 
   useOutletScrollRestoration(outlet);
+  useTouchFocusRings();
 
   useEffect(() => {
     if (!data?.toast) {
