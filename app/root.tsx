@@ -22,6 +22,7 @@ import { getToast } from "remix-toast";
 import { AppMenu, Dock, Masthead, PAGE_COLUMN } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
+import { TabPending, usePendingTab } from "~/components/tab-pending";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
@@ -95,11 +96,16 @@ let outletScroll = new Map<string, number>();
  * starts at the top, and Back or Forward returns to where that page was left.
  * On desktop the outlet does not scroll and this is a no-op.
  */
-function useOutletScrollRestoration(outlet: RefObject<HTMLDivElement | null>) {
+function useOutletScrollRestoration(
+  outlet: RefObject<HTMLDivElement | null>,
+  switchingTab: boolean,
+) {
   let location = useLocation();
   let navigationType = useNavigationType();
   let previous = useRef(location);
   let currentKey = useRef(location.key);
+  let paused = useRef(switchingTab);
+  paused.current = switchingTab;
 
   // Recorded as you scroll: once the next page has rendered, the old one's
   // position is gone (or clamped to the new page's height).
@@ -107,12 +113,26 @@ function useOutletScrollRestoration(outlet: RefObject<HTMLDivElement | null>) {
     let element = outlet.current;
     if (!element) return;
 
-    let onScroll = () =>
-      outletScroll.set(currentKey.current, element.scrollTop);
+    // Not while another tab's skeleton stands in: its scroll position is
+    // not the page's.
+    let onScroll = () => {
+      if (!paused.current) {
+        outletScroll.set(currentKey.current, element.scrollTop);
+      }
+    };
     element.addEventListener("scroll", onScroll, { passive: true });
 
     return () => element.removeEventListener("scroll", onScroll);
   }, [outlet]);
+
+  // The skeleton of the tab you tapped starts at the top, like its page will.
+  // React Router has already saved the window's position by now.
+  useLayoutEffect(() => {
+    if (!switchingTab) return;
+
+    outlet.current?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  }, [switchingTab, outlet]);
 
   // Before paint, so the page never shows at the old position first.
   useLayoutEffect(() => {
@@ -164,8 +184,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let { toast } = useToast();
   let outlet = useRef<HTMLDivElement>(null);
   let user = data?.user?.id ? data.user : undefined;
+  let pendingTab = usePendingTab();
 
-  useOutletScrollRestoration(outlet);
+  useOutletScrollRestoration(outlet, pendingTab !== undefined);
   useTouchFocusRings();
 
   useEffect(() => {
@@ -225,7 +246,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <ErrorCard message={error?.message} />
               ) : user ? (
                 <div className={cn(PAGE_COLUMN, "flex flex-col")}>
-                  {children}
+                  {pendingTab ? (
+                    <TabPending tab={pendingTab} hasDesk={!!user.desk} />
+                  ) : (
+                    children
+                  )}
                 </div>
               ) : (
                 children

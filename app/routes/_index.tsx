@@ -10,7 +10,7 @@ import { DayStrip, DeskFilters } from "~/components/desk-filters";
 import { DeskSheet } from "~/components/desk-sheet";
 import { DeskTile, type DeskTileState } from "~/components/desk-tile";
 import { ErrorCard } from "~/components/error-card";
-import { Skeleton } from "~/components/ui/skeleton";
+import { DesksSkeleton, Legend } from "~/components/tab-pending";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
 import {
@@ -376,70 +376,6 @@ function FloorPlan({
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-function Legend() {
-  let swatch = "inline-block h-[9px] w-[14px] rounded-[2px] border";
-
-  return (
-    <div className="flex flex-wrap gap-4 text-xs text-ink-muted">
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-ink bg-paper")} /> Free
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-ink bg-taken")} /> Taken
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-moss-edge bg-moss")} /> Yours
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-line bg-paper")} /> Unclaimed
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <i className={cn(swatch, "border-dashed border-dim bg-transparent")} />{" "}
-        Filtered out
-      </span>
-    </div>
-  );
-}
-
-// Mirrors the office layout rendered above: blocks 1-7 in a 3x2 grid, block 4
-// is a single row, and a wall sits above block 7.
-const skeletonBlocks = ["1", "2", "3", "4", "5", "6", "7"];
-
-function DesksSkeleton() {
-  let [searchParams] = useSearchParams();
-  let blockFilter = searchParams.get("block");
-  let blocks =
-    blockFilter === null || blockFilter === "all"
-      ? skeletonBlocks
-      : skeletonBlocks.filter((block) => block === blockFilter);
-
-  return (
-    <div className="max-w-[420px] pl-[26px] pr-[22px] sm:pl-8 sm:pr-7">
-      {blocks.map((block) => {
-        let singleRow = block === "4";
-
-        return (
-          <div key={block} className="flex flex-col [&+&]:pt-5">
-            {block === "7" && <Wall />}
-
-            <div className="mt-2 text-[13px] font-bold">Block {block}</div>
-            <div
-              className={cn(
-                "grid grid-cols-3 gap-x-2.5 gap-y-[22px] pb-3 pt-5 sm:gap-y-[26px] sm:pb-3.5 sm:pt-6",
-                singleRow ? "grid-rows-1" : "grid-rows-2",
-              )}
-            >
-              {Array.from({ length: singleRow ? 3 : 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full rounded sm:h-[50px]" />
-              ))}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

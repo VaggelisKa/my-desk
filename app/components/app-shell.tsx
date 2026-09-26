@@ -35,7 +35,7 @@ let Desk = createLucideIcon("desk", [
   ["path", { d: "M20 14v7", key: "right-leg" }],
 ]);
 
-type Tab = "desks" | "bookings" | "metrics" | "admin";
+export type Tab = "desks" | "bookings" | "metrics" | "admin";
 
 let TABS: {
   id: Tab;
