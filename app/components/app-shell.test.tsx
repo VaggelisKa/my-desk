@@ -1,4 +1,5 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
+import { Link, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import { renderWithRouter } from "../../test/render-with-router";
 import {
@@ -129,5 +130,35 @@ describe("AppShell", () => {
     renderShell("/", { ...user, role: "user", desk: null });
 
     expect(document.getElementById("app-menu")).toHaveTextContent("No desk");
+  });
+
+  it("brings the dock back when a page leaves with a text field focused", async () => {
+    let { user: pointer } = renderWithRouter(
+      <>
+        <Routes>
+          <Route
+            path="/users/edit/emp042"
+            element={
+              <>
+                <input aria-label="First name" />
+                <Link to="/">Back to desks</Link>
+              </>
+            }
+          />
+          <Route path="*" element={null} />
+        </Routes>
+        <Dock user={user} />
+      </>,
+      { path: "*", initialEntry: "/users/edit/emp042" },
+    );
+    let dock = document.querySelector(".app-dock");
+
+    await pointer.click(screen.getByLabelText("First name"));
+    expect(dock).toHaveAttribute("data-hidden");
+
+    // Like Back: the page changes while the field still has focus, and the
+    // field goes with it without a focusout.
+    await act(async () => screen.getByText("Back to desks").click());
+    expect(dock).not.toHaveAttribute("data-hidden");
   });
 });
