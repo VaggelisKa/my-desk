@@ -20,23 +20,13 @@ export class AdminPage {
   }
 
   // The tests run at desktop size, where the lists are tables. Each row has
-  // a Manage button that stretches over the whole row.
+  // a Manage button that stretches over the whole row and opens a menu.
 
   /** A desk's row, by desk number, e.g. "1.1.2". */
   deskRow(label: string) {
     return this.page
       .getByRole("main")
       .getByRole("button", { name: `Manage desk ${label}`, exact: true });
-  }
-
-  /** The row's shortcut that opens the sheet at the person picker. */
-  reassign(label: string) {
-    return this.page.getByRole("main").getByRole("button", {
-      name: new RegExp(
-        `^(Re)?assign desk ${label.replace(/\./g, "\\.")}$`,
-        "i",
-      ),
-    });
   }
 
   /** A person's row, by full name. */
@@ -55,12 +45,40 @@ export class AdminPage {
 
   async open(row: Locator) {
     await row.click();
-    let sheet = new AdminSheet(this.page.getByRole("dialog"));
+    let sheet = new AdminSheet(this.page.locator("[data-travel-status]"));
     // Interacting before the sheet has come to rest fights its animation.
     await sheet.root.waitFor();
     await this.page.locator("[data-travel-status='idleInside']").waitFor();
 
     return sheet;
+  }
+
+  /**
+   * On desktop, opens a row's actions menu, picks `action` and returns the
+   * sheet it opens.
+   */
+  async act(row: Locator, action: string) {
+    await row.click();
+    await this.page
+      .getByRole("menuitem", { name: action, exact: true })
+      .click();
+    await this.page.locator("[data-travel-status='idleInside']").waitFor();
+
+    return new AdminSheet(this.page.locator("[data-travel-status]"));
+  }
+
+  /** On desktop, picks a quick action from a row's menu (no sheet). */
+  async quickAction(row: Locator, action: string) {
+    await row.click();
+    await this.page
+      .getByRole("menuitem", { name: action, exact: true })
+      .click();
+  }
+
+  /** The page stacked on the sheet, once it has come to rest. */
+  async stackedPage() {
+    await this.page.locator("[data-page-status='idleInside']").waitFor();
+    return new AdminSheet(this.page.locator("[data-page-status]"));
   }
 }
 
@@ -78,6 +96,16 @@ export class AdminSheet {
       name,
       exact: typeof name === "string",
     });
+  }
+
+  /** Taps a settings row, e.g. "Owner", and waits for its page. */
+  async openPage(row: string) {
+    await this.root
+      .getByRole("button", { name: new RegExp(`^${row}`) })
+      .click();
+    let view = this.root.page().locator("[data-page-status]");
+    await this.root.page().locator("[data-page-status='idleInside']").waitFor();
+    return new AdminSheet(view);
   }
 
   /** Taps an action, then its confirm button. */

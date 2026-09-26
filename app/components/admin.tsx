@@ -1,8 +1,20 @@
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Sheet } from "@silk-hq/components";
 import { differenceInCalendarDays, format } from "date-fns";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Search, X } from "lucide-react";
 import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+  Search,
+  X,
+} from "lucide-react";
+import {
+  Fragment,
   useEffect,
+  useEffectEvent,
   useId,
   useMemo,
   useRef,
@@ -13,7 +25,12 @@ import { useFetcher, useOutletContext } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { DeskChip, SegmentSwitch } from "~/components/bookings";
 import { Button } from "~/components/ui/button";
-import type { AdminBooking, AdminDesk, AdminPerson } from "~/lib/admin.server";
+import type {
+  AdminActionData,
+  AdminBooking,
+  AdminDesk,
+  AdminPerson,
+} from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
 import { focusNeighbour, rescueFocus } from "~/lib/focus";
 import { capitalize, cn, deskLabel, deskPlace, plural } from "~/lib/utils";
@@ -429,16 +446,7 @@ export function DeskList({ data }: { data: AdminData }) {
                     />
                   </td>
                   <td className={cn(td, "w-px whitespace-nowrap pr-2")}>
-                    <DeskAdminSheet
-                      desk={desk}
-                      data={data}
-                      index={index}
-                      quick={{
-                        label: desk.owner ? "Reassign" : "Assign",
-                        ariaLabel: `${desk.owner ? "Reassign" : "Assign"} desk ${deskLabel(desk)}`,
-                        step: { name: "pick" },
-                      }}
-                    >
+                    <DeskAdminSheet desk={desk} data={data} index={index} menu>
                       <button
                         type="button"
                         aria-label={`Manage desk ${deskLabel(desk)}`}
@@ -489,95 +497,134 @@ function DeskAdminSheet({
   desk,
   data,
   index,
-  quick,
+  menu,
   children,
 }: {
   desk: AdminDesk;
   data: AdminData;
   index: Index;
-  quick?: QuickOpen;
+  /** Opens a menu of actions instead, each with a sheet of its own. */
+  menu?: boolean;
   children: ReactNode;
 }) {
   let bookings = index.bookingsOfDesk(desk.id);
+  let title = `Desk ${deskLabel(desk)}`;
+  let actions: Action[] = [
+    { sub: "owner", label: desk.owner ? "Change owner" : "Give to someone" },
+    { sub: "bookings", label: "Upcoming bookings" },
+  ];
+  if (desk.owner) {
+    actions.push({
+      sub: "unassign",
+      label: "Unassign desk",
+      danger: true,
+    });
+  }
 
   return (
     <AdminSheet
       trigger={children}
-      quick={quick}
-      title={`Desk ${deskLabel(desk)}`}
+      menu={menu ? { label: title, actions } : undefined}
+      title={title}
       description={deskPlace(desk)}
-    >
-      {(step, setStep) =>
-        step.name === "pick" ? (
-          <PersonPicker
-            data={data}
-            index={index}
-            exclude={desk.owner?.id}
-            onBack={() => setStep({ name: "view" })}
-            onPick={(person) =>
-              setStep({ name: "confirm", personId: person.id })
-            }
-          />
-        ) : step.name === "confirm" &&
-          step.personId &&
-          index.people.get(step.personId) ? (
-          <MoveConfirm
-            desk={desk}
-            person={index.people.get(step.personId)!}
-            index={index}
-            onBack={() => setStep({ name: "pick" })}
-            onDone={() => setStep({ name: "view" })}
-          />
-        ) : (
-          <>
-            <div className="grid gap-2">
-              <span className="text-xs text-ink-muted">Owner</span>
-              <p className="text-[15px] font-semibold capitalize">
-                {desk.owner ? (
-                  <>
-                    {fullName(desk.owner)}
-                    <span className="font-normal normal-case text-ink-muted">
-                      {` · ${desk.owner.id}`}
-                    </span>
-                  </>
-                ) : (
-                  "Nobody, it is unclaimed"
-                )}
-              </p>
-              <div className="mt-1 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="tall"
-                  className="flex-1"
-                  onClick={() => setStep({ name: "pick" })}
-                >
-                  {desk.owner ? "Change owner" : "Give to someone"}
-                </Button>
-                {desk.owner && (
-                  <ConfirmAction
-                    className="flex-1"
-                    label="Unassign"
-                    question={unassignQuestion(desk, index)}
-                    confirmLabel="Unassign desk"
-                    fields={{ intent: "unassign", deskId: desk.id }}
-                  />
-                )}
-              </div>
-            </div>
-
-            <BookingSection
-              title="Upcoming bookings"
-              bookings={bookings}
-              index={index}
-              show="person"
-              clearFields={{ intent: "clear-desk", deskId: desk.id }}
-              empty="Nobody has booked this desk from today on."
+      rows={(open) => (
+        <>
+          <SettingsList>
+            <SettingsRow
+              label="Owner"
+              value={desk.owner ? fullName(desk.owner) : "Nobody"}
+              valueClassName="capitalize"
+              onClick={() => open("owner")}
             />
-          </>
-        )
+            <SettingsRow
+              label="Upcoming bookings"
+              value={bookedDays(bookings.length)}
+              onClick={() => open("bookings")}
+            />
+          </SettingsList>
+          {desk.owner && (
+            <SettingsList>
+              <SettingsAction
+                label="Unassign desk"
+                onClick={() => open("unassign")}
+              />
+            </SettingsList>
+          )}
+        </>
+      )}
+      page={(sub, close) =>
+        sub === "unassign"
+          ? {
+              title: "Unassign desk",
+              description: title,
+              body: (
+                <UnassignConfirm desk={desk} index={index} onDone={close} />
+              ),
+            }
+          : sub === "owner"
+            ? {
+                title: desk.owner ? "Change owner" : "Give to someone",
+                description: title,
+                body: (
+                  <OwnerChoice
+                    desk={desk}
+                    data={data}
+                    index={index}
+                    onDone={close}
+                  />
+                ),
+              }
+            : {
+                title: "Upcoming bookings",
+                description: title,
+                body: (
+                  <BookingSection
+                    bookings={bookings}
+                    index={index}
+                    show="person"
+                    clearFields={{ intent: "clear-desk", deskId: desk.id }}
+                    empty="Nobody has booked this desk from today on."
+                  />
+                ),
+              }
       }
-    </AdminSheet>
+    />
+  );
+}
+
+/** Picks the desk's new owner, then says what that changes. */
+function OwnerChoice({
+  desk,
+  data,
+  index,
+  onDone,
+}: {
+  desk: AdminDesk;
+  data: AdminData;
+  index: Index;
+  onDone: () => void;
+}) {
+  let [step, go, frame, key] = useSteps<{ person?: AdminPerson }>({});
+
+  return (
+    <div key={key} {...frame}>
+      {step.person ? (
+        <MoveConfirm
+          desk={desk}
+          person={step.person}
+          index={index}
+          onBack={() => go({})}
+          onDone={onDone}
+        />
+      ) : (
+        <PersonPicker
+          data={data}
+          index={index}
+          exclude={desk.owner?.id}
+          onPick={(person) => go({ person })}
+        />
+      )}
+    </div>
   );
 }
 
@@ -591,18 +638,53 @@ function futureOnDesk(index: Index, deskId: number, personId: string) {
     ).length;
 }
 
-function unassignQuestion(desk: AdminDesk, index: Index) {
-  let owner = desk.owner!;
-  let person = index.people.get(owner.id);
-  let count = futureOnDesk(index, desk.id, owner.id);
-  let parts = [`${capitalize(owner.firstName)} loses this desk`];
+/**
+ * Unassigning takes more than the desk, so it says what goes before it runs:
+ * the owner's booked days after today and their weekly booking.
+ */
+function UnassignConfirm({
+  desk,
+  index,
+  onDone,
+}: {
+  desk: AdminDesk | null | undefined;
+  index: Index;
+  onDone: () => void;
+}) {
+  return (
+    <>
+      {desk?.owner && (
+        <p className="text-[15px] leading-snug text-ink">
+          {unassignConsequences(desk, desk.owner.id, index)}
+        </p>
+      )}
+      {/* Stays mounted once the desk has no owner, so the page can close. */}
+      <ConfirmStep
+        confirmLabel="Unassign desk"
+        fields={{ intent: "unassign", deskId: desk?.id ?? "" }}
+        onDone={onDone}
+      />
+    </>
+  );
+}
 
-  if (count) parts.push(`and ${plural(count, "booked day")} on it after today`);
-  let sentence = `${parts.join(" ")}.`;
+function unassignConsequences(desk: AdminDesk, ownerId: string, index: Index) {
+  let owner = index.people.get(ownerId);
+  let count = futureOnDesk(index, desk.id, ownerId);
+  let bookedToday = index
+    .bookingsOfDesk(desk.id)
+    .some(
+      (b) =>
+        b.userId === ownerId &&
+        differenceInCalendarDays(parseDate(b.date), index.today) === 0,
+    );
 
-  return person?.hasRecurring
-    ? `${sentence} Their weekly booking stops.`
-    : sentence;
+  return (
+    `${capitalize(owner?.firstName ?? "The owner")} loses desk ${deskLabel(desk)}` +
+    (count ? ` and ${plural(count, "booked day")} on it after today.` : ".") +
+    (bookedToday ? " Their booking today stays." : "") +
+    (owner?.hasRecurring ? " Their weekly booking stops." : "")
+  );
 }
 
 /** What moving `desk` to `person` changes, one line per person affected. */
@@ -643,6 +725,21 @@ function moveConsequences(desk: AdminDesk, person: AdminPerson, index: Index) {
   return lines;
 }
 
+/**
+ * A fetcher for /admin that runs `onDone` once its action succeeded. A failed
+ * one leaves the sheet where it is, with its toast saying why.
+ */
+function useAdminFetcher(onDone: () => void) {
+  let fetcher = useFetcher<AdminActionData>();
+  let finish = useEffectEvent(onDone);
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) finish();
+  }, [fetcher.state, fetcher.data]);
+
+  return fetcher;
+}
+
 function MoveConfirm({
   desk,
   person,
@@ -656,7 +753,7 @@ function MoveConfirm({
   onBack: () => void;
   onDone: () => void;
 }) {
-  let fetcher = useFetcher();
+  let fetcher = useAdminFetcher(onDone);
   let busy = fetcher.state !== "idle";
   let lines = moveConsequences(desk, person, index);
 
@@ -667,7 +764,7 @@ function MoveConfirm({
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        void fetcher.submit(event.currentTarget).then(onDone);
+        void fetcher.submit(event.currentTarget);
       }}
     >
       <input type="hidden" name="intent" value="reassign" />
@@ -704,13 +801,11 @@ function PersonPicker({
   data,
   index,
   exclude,
-  onBack,
   onPick,
 }: {
   data: AdminData;
   index: Index;
   exclude?: string;
-  onBack: () => void;
   onPick: (person: AdminPerson) => void;
 }) {
   let [query, setQuery] = useState("");
@@ -720,19 +815,6 @@ function PersonPicker({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-muted">Give this desk to</span>
-        <button
-          type="button"
-          onClick={onBack}
-          className={cn(
-            "rounded text-[13px] font-semibold text-ink-muted hover:text-ink",
-            focusRing,
-          )}
-        >
-          Cancel
-        </button>
-      </div>
       <SearchField
         id="admin-person-picker"
         label="Search name or ID"
@@ -930,7 +1012,7 @@ export function PeopleList({ data }: { data: AdminData }) {
                       )}
                     </td>
                     <td className={cn(td, "text-ink-muted")}>
-                      {person.hasRecurring ? "On" : <Dash spoken="Off" />}
+                      {person.hasRecurring ? "Set up" : <Dash spoken="Off" />}
                     </td>
                     <td className={cn(td, "text-right")}>
                       <BookedCount
@@ -939,7 +1021,12 @@ export function PeopleList({ data }: { data: AdminData }) {
                       />
                     </td>
                     <td className={cn(td, "w-px whitespace-nowrap pr-2")}>
-                      <PersonSheet person={person} data={data} index={index}>
+                      <PersonSheet
+                        person={person}
+                        data={data}
+                        index={index}
+                        menu
+                      >
                         <button
                           type="button"
                           aria-label={`${fullName(person)}, manage`}
@@ -972,141 +1059,282 @@ function PersonSheet({
   person,
   data,
   index,
+  menu,
   children,
 }: {
   person: AdminPerson;
   data: AdminData;
   index: Index;
+  /** Opens a menu of actions instead, each with a sheet of its own. */
+  menu?: boolean;
   children: ReactNode;
 }) {
   let desk = person.deskId !== null ? index.desks.get(person.deskId) : null;
   let isMe = person.id === data.me;
+  let isAdmin = person.role === "admin";
+  let bookings = index.bookingsOfPerson(person.id);
+  let name = fullName(person);
+  let first = capitalize(person.firstName);
+  let actions: Action[] = [
+    { sub: "desk", label: desk ? "Move to another desk" : "Give a desk" },
+    { sub: "name", label: "Rename" },
+  ];
+  // Quick ones run straight from the menu; the rest open a sheet.
+  if (!isMe) {
+    actions.push({
+      label: isAdmin ? "Remove admin role" : "Make admin",
+      run: {
+        intent: "set-role",
+        userId: person.id,
+        role: isAdmin ? "user" : "admin",
+      },
+    });
+  }
+  actions.push({ sub: "bookings", label: "Upcoming bookings" });
+  if (person.hasRecurring) {
+    actions.push({
+      label: "Stop weekly booking",
+      danger: true,
+      run: { intent: "stop-recurring", userId: person.id },
+    });
+  }
+  if (desk) {
+    actions.push({
+      sub: "unassign",
+      label: "Unassign desk",
+      danger: true,
+    });
+  }
 
   return (
     <AdminSheet
       trigger={children}
-      title={fullName(person)}
+      menu={menu ? { label: capitalize(name), actions } : undefined}
+      title={name}
       titleClassName="capitalize"
       description={[
         person.id,
         desk ? `Desk ${deskLabel(desk)}` : "No desk",
-        person.role === "admin" && "Admin",
+        isAdmin && "Admin",
       ]
         .filter(Boolean)
         .join(" · ")}
-    >
-      {(step, setStep) =>
-        step.name === "pick-desk" ? (
-          <DeskPicker
-            data={data}
-            exclude={desk?.id}
-            onBack={() => setStep({ name: "view" })}
-            onPick={(picked) => setStep({ name: "confirm", deskId: picked.id })}
-          />
-        ) : step.name === "confirm" &&
-          step.deskId &&
-          index.desks.get(step.deskId) ? (
-          <MoveConfirm
-            desk={index.desks.get(step.deskId)!}
-            person={person}
-            index={index}
-            onBack={() => setStep({ name: "pick-desk" })}
-            onDone={() => setStep({ name: "view" })}
-          />
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="primary"
-                size="tall"
-                className="flex-1"
-                onClick={() => setStep({ name: "pick-desk" })}
-              >
-                {desk ? "Move to another desk" : "Give a desk"}
-              </Button>
-              {desk && (
-                <ConfirmAction
-                  className="flex-1"
-                  label="Take desk away"
-                  question={unassignQuestion(desk, index)}
-                  confirmLabel="Unassign desk"
-                  fields={{ intent: "unassign", deskId: desk.id }}
+      rows={(open) => (
+        <>
+          <SettingsList>
+            <SettingsRow
+              label="Desk"
+              value={desk ? deskLabel(desk) : "None"}
+              onClick={() => open("desk")}
+            />
+            <SettingsRow
+              label="Name"
+              value={name}
+              valueClassName="capitalize"
+              onClick={() => open("name")}
+            />
+            <SettingsRow
+              label="Role"
+              value={isAdmin ? "Admin" : "Member"}
+              // You can't take the role from yourself: another admin can.
+              onClick={isMe ? undefined : () => open("role")}
+            />
+          </SettingsList>
+          <SettingsList title="Bookings">
+            <SettingsRow
+              label="Upcoming"
+              value={bookedDays(bookings.length)}
+              onClick={() => open("bookings")}
+            />
+            <SettingsRow
+              label="Weekly booking"
+              value={person.hasRecurring ? "Set up" : "Off"}
+              // Only its owner can set one up, so off has nothing to open.
+              onClick={person.hasRecurring ? () => open("weekly") : undefined}
+            />
+          </SettingsList>
+          {desk && (
+            <SettingsList>
+              <SettingsAction
+                label="Unassign desk"
+                onClick={() => open("unassign")}
+              />
+            </SettingsList>
+          )}
+        </>
+      )}
+      page={(sub, close) => {
+        let description = capitalize(name);
+        switch (sub) {
+          case "unassign":
+            return {
+              title: "Unassign desk",
+              description,
+              body: (
+                <UnassignConfirm desk={desk} index={index} onDone={close} />
+              ),
+            };
+          case "desk":
+            return {
+              title: desk ? "Move to another desk" : "Give a desk",
+              description,
+              body: (
+                <DeskChoice
+                  person={person}
+                  desk={desk}
+                  data={data}
+                  index={index}
+                  onDone={close}
                 />
-              )}
-            </div>
-
+              ),
+            };
+          case "name":
+            return {
+              title: "Name",
+              description,
+              body: <RenameForm person={person} onDone={close} />,
+            };
+          case "role":
+            return {
+              title: "Role",
+              description,
+              body: <RoleChoice person={person} onDone={close} />,
+            };
+          case "weekly":
+            return {
+              title: "Weekly booking",
+              description,
+              body: (
+                <>
+                  <p className="text-[15px] leading-snug text-ink">
+                    Books {desk ? `desk ${deskLabel(desk)}` : "their desk"} on
+                    the same days every week. If you stop it, the days it
+                    already booked stay booked.
+                  </p>
+                  <ConfirmStep
+                    confirmLabel="Stop weekly booking"
+                    fields={{ intent: "stop-recurring", userId: person.id }}
+                    onDone={close}
+                  />
+                </>
+              ),
+            };
+        }
+        return {
+          title: "Upcoming bookings",
+          description,
+          body: (
             <BookingSection
-              title="Upcoming bookings"
-              bookings={index.bookingsOfPerson(person.id)}
+              bookings={bookings}
               index={index}
               show="desk"
               clearFields={{ intent: "clear-person", userId: person.id }}
-              empty={`${capitalize(person.firstName)} has nothing booked from today on.`}
+              empty={`${first} has nothing booked from today on.`}
             />
+          ),
+        };
+      }}
+    />
+  );
+}
 
-            {person.hasRecurring && (
-              <div className="grid gap-2">
-                <span className="text-xs text-ink-muted">Weekly booking</span>
-                <p className="text-[13px] text-ink">
-                  Books {desk ? `desk ${deskLabel(desk)}` : "their desk"} on the
-                  same days every week.
-                </p>
-                <ConfirmAction
-                  label="Stop weekly booking"
-                  question="Days it already booked stay booked."
-                  confirmLabel="Stop it"
-                  fields={{ intent: "stop-recurring", userId: person.id }}
-                />
-              </div>
-            )}
+/** Picks the person's new desk, then says what that changes. */
+function DeskChoice({
+  person,
+  desk,
+  data,
+  index,
+  onDone,
+}: {
+  person: AdminPerson;
+  desk: AdminDesk | null | undefined;
+  data: AdminData;
+  index: Index;
+  onDone: () => void;
+}) {
+  let [step, go, frame, key] = useSteps<{ desk?: AdminDesk }>({});
 
-            <RenameForm person={person} />
+  return (
+    <div key={key} {...frame}>
+      {step.desk ? (
+        <MoveConfirm
+          desk={step.desk}
+          person={person}
+          index={index}
+          onBack={() => go({})}
+          onDone={onDone}
+        />
+      ) : (
+        <DeskPicker
+          data={data}
+          exclude={desk?.id}
+          onPick={(picked) => go({ desk: picked })}
+        />
+      )}
+    </div>
+  );
+}
 
-            <div className="grid gap-2">
-              <span className="text-xs text-ink-muted">Role</span>
-              {isMe ? (
-                <p className="text-[13px] text-ink-muted">
-                  You are an admin. Another admin can change that.
-                </p>
-              ) : (
-                <ConfirmAction
-                  label={
-                    person.role === "admin" ? "Remove admin role" : "Make admin"
-                  }
-                  question={
-                    person.role === "admin"
-                      ? `${capitalize(person.firstName)} loses the Admin tab.`
-                      : `${capitalize(person.firstName)} gets this Admin tab and can change any desk or booking.`
-                  }
-                  confirmLabel={
-                    person.role === "admin" ? "Remove role" : "Make admin"
-                  }
-                  tone={person.role === "admin" ? "danger" : "primary"}
-                  fields={{
-                    intent: "set-role",
-                    userId: person.id,
-                    role: person.role === "admin" ? "user" : "admin",
-                  }}
-                />
+function RoleChoice({
+  person,
+  onDone,
+}: {
+  person: AdminPerson;
+  onDone: () => void;
+}) {
+  let [picked, setPicked] = useState(() => person.role);
+  let first = capitalize(person.firstName);
+  let roles = [
+    { role: "user", label: "Member", hint: "Books desks" },
+    { role: "admin", label: "Admin", hint: "Also has this Admin tab" },
+  ] as const;
+
+  return (
+    <>
+      <ul className={listClass} aria-label="Role">
+        {roles.map(({ role, label, hint }) => (
+          <li key={role} className="border-b border-line last:border-b-0">
+            <button
+              type="button"
+              aria-pressed={picked === role}
+              onClick={() => setPicked(role)}
+              className={cn(rowClass, "border-b-0")}
+            >
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-[15px] font-medium">{label}</span>
+                <span className="text-xs text-ink-muted">{hint}</span>
+              </span>
+              {picked === role && (
+                <Check aria-hidden="true" className="size-4 text-moss-edge" />
               )}
-            </div>
-          </>
-        )
-      }
-    </AdminSheet>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {picked !== person.role && (
+        <ConfirmStep
+          question={
+            picked === "admin"
+              ? `${first} gets this Admin tab and can change any desk or booking.`
+              : `${first} loses the Admin tab.`
+          }
+          confirmLabel={picked === "admin" ? "Make admin" : "Remove admin role"}
+          tone={picked === "admin" ? "primary" : "danger"}
+          fields={{ intent: "set-role", userId: person.id, role: picked }}
+          onDone={onDone}
+        />
+      )}
+    </>
   );
 }
 
 function DeskPicker({
   data,
   exclude,
-  onBack,
   onPick,
 }: {
   data: AdminData;
   exclude?: number;
-  onBack: () => void;
   onPick: (desk: AdminDesk) => void;
 }) {
   let [query, setQuery] = useState("");
@@ -1118,19 +1346,6 @@ function DeskPicker({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-muted">Move to desk</span>
-        <button
-          type="button"
-          onClick={onBack}
-          className={cn(
-            "rounded text-[13px] font-semibold text-ink-muted hover:text-ink",
-            focusRing,
-          )}
-        >
-          Cancel
-        </button>
-      </div>
       <SearchField
         id="admin-desk-picker"
         label="Search desk or owner"
@@ -1176,53 +1391,61 @@ function DeskPicker({
   );
 }
 
-function RenameForm({ person }: { person: AdminPerson }) {
-  let fetcher = useFetcher();
-  let [firstName, setFirstName] = useState(person.firstName);
-  let [lastName, setLastName] = useState(person.lastName);
+function RenameForm({
+  person,
+  onDone,
+}: {
+  person: AdminPerson;
+  onDone: () => void;
+}) {
+  let fetcher = useAdminFetcher(onDone);
+  let [firstName, setFirstName] = useState(() => person.firstName);
+  let [lastName, setLastName] = useState(() => person.lastName);
   let busy = fetcher.state !== "idle";
-
-  useEffect(() => {
-    setFirstName(person.firstName);
-    setLastName(person.lastName);
-  }, [person.firstName, person.lastName]);
 
   let changed =
     firstName.trim() !== person.firstName ||
     lastName.trim() !== person.lastName;
   let input =
-    "h-10 w-full rounded-[10px] border border-field bg-paper px-3 text-base text-ink focus-visible:border-moss focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-moss";
+    "h-11 w-full rounded-[10px] border border-field bg-paper px-3 text-base text-ink focus-visible:border-moss focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-moss";
 
   return (
-    <fetcher.Form method="post" action="/admin" className="grid gap-2">
-      <span className="text-xs text-ink-muted">Name</span>
+    <fetcher.Form
+      method="post"
+      action="/admin"
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void fetcher.submit(event.currentTarget);
+      }}
+    >
       <input type="hidden" name="intent" value="rename" />
       <input type="hidden" name="userId" value={person.id} />
-      <div className="grid grid-cols-2 gap-2">
-        <label className="grid gap-1 text-xs text-ink-muted">
-          First name
-          <input
-            name="firstName"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            required
-            className={input}
-          />
-        </label>
-        <label className="grid gap-1 text-xs text-ink-muted">
-          Last name
-          <input
-            name="lastName"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            required
-            className={input}
-          />
-        </label>
-      </div>
+      <label className="grid gap-1.5 text-[13px] text-ink-muted">
+        First name
+        <input
+          name="firstName"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          required
+          autoComplete="off"
+          className={input}
+        />
+      </label>
+      <label className="grid gap-1.5 text-[13px] text-ink-muted">
+        Last name
+        <input
+          name="lastName"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          required
+          autoComplete="off"
+          className={input}
+        />
+      </label>
       <Button
         type="submit"
-        variant="quiet"
+        variant="primary"
         size="tall"
         disabled={!changed || busy}
       >
@@ -1293,7 +1516,6 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                 </span>
               </h2>
               <ConfirmAction
-                variant="link"
                 label="Clear day"
                 question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
                 confirmLabel={`Clear ${plural(all, "booking")}`}
@@ -1351,7 +1573,6 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                           </span>
                         </span>
                         <ConfirmAction
-                          variant="link"
                           label="Clear day"
                           question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
                           confirmLabel={`Clear ${plural(all, "booking")}`}
@@ -1421,6 +1642,7 @@ function BookingTableRow({
           <input type="hidden" name="intent" value="cancel" />
           <input type="hidden" name="deskId" value={booking.deskId} />
           <input type="hidden" name="date" value={booking.date} />
+          <input type="hidden" name="userId" value={booking.userId} />
           <button
             type="submit"
             data-cancel-booking
@@ -1496,6 +1718,7 @@ function BookingRow({
         <input type="hidden" name="intent" value="cancel" />
         <input type="hidden" name="deskId" value={booking.deskId} />
         <input type="hidden" name="date" value={booking.date} />
+        <input type="hidden" name="userId" value={booking.userId} />
         <button
           type="submit"
           data-cancel-booking
@@ -1538,14 +1761,12 @@ function bookingRowText({
 
 /** Bookings inside a sheet, with "Clear all" for the lot. */
 function BookingSection({
-  title,
   bookings,
   index,
   show,
   clearFields,
   empty,
 }: {
-  title: string;
   bookings: AdminBooking[];
   index: Index;
   show: "person" | "desk";
@@ -1556,12 +1777,11 @@ function BookingSection({
     <div className="grid gap-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-ink-muted">
-          {title}
+          From today on
           {bookings.length > 0 && ` · ${bookings.length}`}
         </span>
         {bookings.length > 0 && (
           <ConfirmAction
-            variant="link"
             label="Clear all"
             question={`Cancel all ${plural(bookings.length, "booking")}?`}
             confirmLabel={`Clear ${plural(bookings.length, "booking")}`}
@@ -1592,7 +1812,7 @@ function BookingSection({
 /* ------------------------------------------------------------------ */
 
 /**
- * A button that asks once more before it posts: the first tap swaps it for
+ * A link that asks once more before it posts: the first tap swaps it for
  * the question, the real button and "Keep". Built into the page because the
  * browser's confirm() is easy to click through and looks out of place.
  */
@@ -1601,17 +1821,11 @@ function ConfirmAction({
   question,
   confirmLabel,
   fields,
-  tone = "danger",
-  variant = "button",
-  className,
 }: {
   label: string;
   question: string;
   confirmLabel: string;
   fields: Record<string, string | number>;
-  tone?: "danger" | "primary";
-  variant?: "button" | "link";
-  className?: string;
 }) {
   let fetcher = useFetcher();
   let [asking, setAsking] = useState(false);
@@ -1628,7 +1842,7 @@ function ConfirmAction({
   };
 
   if (!asking) {
-    return variant === "link" ? (
+    return (
       <button
         ref={focusOnReturn}
         type="button"
@@ -1636,22 +1850,10 @@ function ConfirmAction({
         className={cn(
           "rounded text-[13px] font-semibold normal-case tracking-normal text-danger hover:underline",
           focusRing,
-          className,
         )}
       >
         {label}
       </button>
-    ) : (
-      <Button
-        ref={focusOnReturn}
-        type="button"
-        variant="quiet"
-        size="tall"
-        onClick={() => setAsking(true)}
-        className={cn(tone === "danger" && "text-danger", className)}
-      >
-        {label}
-      </Button>
     );
   }
 
@@ -1672,13 +1874,7 @@ function ConfirmAction({
           if (hadFocus) rescueFocus(home);
         });
       }}
-      className={cn(
-        "flex w-full basis-full flex-col gap-2.5 rounded-[10px] border px-3.5 py-3 text-[13px] normal-case leading-snug tracking-normal text-ink",
-        tone === "danger"
-          ? "border-danger/40 bg-danger/5"
-          : "border-line bg-paper-muted",
-        variant === "link" && "font-normal",
-      )}
+      className="border-danger/40 bg-danger/5 flex w-full basis-full flex-col gap-2.5 rounded-[10px] border px-3.5 py-3 text-[13px] font-normal normal-case leading-snug tracking-normal text-ink"
     >
       {Object.entries(fields).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
@@ -1693,11 +1889,7 @@ function ConfirmAction({
           autoFocus
           // Focus lands here, so the question is read out with it.
           aria-describedby={questionId}
-          className={cn(
-            "flex-1",
-            tone === "danger" &&
-              "hover:bg-danger/90 bg-danger focus-visible:ring-danger",
-          )}
+          className="hover:bg-danger/90 flex-1 bg-danger focus-visible:ring-danger"
         >
           {busy ? "Working..." : confirmLabel}
         </Button>
@@ -1720,172 +1912,612 @@ function ConfirmAction({
   );
 }
 
-/** A second button that opens the sheet straight at a later step. */
-type QuickOpen = { label: string; ariaLabel: string; step: Step };
-
-type Step =
-  | { name: "view" }
-  | { name: "pick" }
-  | { name: "pick-desk" }
-  | { name: "confirm"; personId?: string; deskId?: number };
+/** A settings-style group: rows that show a value and open a page. */
+function SettingsList({
+  title,
+  children,
+}: {
+  title?: string;
+  children: ReactNode;
+}) {
+  let id = useId();
+  return (
+    <div className="grid gap-2">
+      {title && (
+        <h3 id={id} className="px-1 text-[13px] text-ink-muted">
+          {title}
+        </h3>
+      )}
+      <ul className={listClass} aria-labelledby={title ? id : undefined}>
+        {children}
+      </ul>
+    </div>
+  );
+}
 
 /**
- * The admin sheet: from the bottom on phones and from the right on larger
- * screens, like the desk sheet on the Desks tab. It starts on its first step
- * every time it opens.
+ * One row of a settings list. With `onClick` it opens its page and ends in a
+ * chevron; without, it only shows the value.
+ */
+function SettingsRow({
+  label,
+  value,
+  valueClassName,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+  onClick?: () => void;
+}) {
+  let content = (
+    <>
+      <span className="shrink-0 text-[15px] font-medium">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-right text-[15px] text-ink-muted",
+          valueClassName,
+        )}
+      >
+        {value}
+      </span>
+      {onClick && (
+        <ChevronRight
+          aria-hidden="true"
+          className="-mr-1 size-4 shrink-0 text-ink-muted"
+        />
+      )}
+    </>
+  );
+
+  return (
+    <li className="border-b border-line last:border-b-0">
+      {onClick ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={onClick}
+          className={cn(rowClass, "min-h-12 border-b-0")}
+        >
+          {content}
+        </button>
+      ) : (
+        <div
+          className={cn(rowClass, "min-h-12 border-b-0 hover:bg-transparent")}
+        >
+          {content}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/** A red settings row that does its thing straight away, no page. */
+function SettingsAction({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          rowClass,
+          "min-h-12 border-b-0 text-[15px] font-medium text-danger",
+        )}
+      >
+        {label}
+      </button>
+    </li>
+  );
+}
+
+function bookedDays(count: number) {
+  return count ? plural(count, "day") : "None";
+}
+
+/**
+ * Steps inside a page (pick, then confirm). Moving on replaces the button
+ * you pressed, so the new step takes focus instead of the page.
+ */
+function useSteps<T extends object>(first: T) {
+  let [step, setStep] = useState(first);
+  let [count, setCount] = useState(0);
+  let moved = useRef(false);
+
+  function go(next: T) {
+    moved.current = true;
+    setStep(next);
+    setCount((n) => n + 1);
+  }
+
+  let frame = {
+    tabIndex: -1,
+    className: "flex flex-col gap-5 focus:outline-none",
+    ref: (node: HTMLDivElement | null) => {
+      if (node && moved.current) {
+        moved.current = false;
+        node.focus();
+      }
+    },
+  };
+
+  // A new key per step, so each step mounts fresh and takes focus.
+  return [step, go, frame, count] as const;
+}
+
+/** The last step of a page: what will happen, and the button that does it. */
+function ConfirmStep({
+  question,
+  confirmLabel,
+  fields,
+  tone = "danger",
+  onDone,
+}: {
+  question?: string;
+  confirmLabel: string;
+  fields: Record<string, string | number>;
+  tone?: "danger" | "primary";
+  onDone: () => void;
+}) {
+  let fetcher = useAdminFetcher(onDone);
+  let busy = fetcher.state !== "idle";
+  let questionId = useId();
+
+  return (
+    <fetcher.Form
+      method="post"
+      action="/admin"
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void fetcher.submit(event.currentTarget);
+      }}
+    >
+      {Object.entries(fields).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      {question && (
+        <p
+          id={questionId}
+          className="rounded-[10px] bg-paper-muted px-3.5 py-3 text-[13px] leading-snug"
+        >
+          {question}
+        </p>
+      )}
+      <Button
+        type="submit"
+        variant="primary"
+        size="tall"
+        disabled={busy}
+        aria-describedby={question ? questionId : undefined}
+        className={cn(
+          tone === "danger" &&
+            "hover:bg-danger/90 bg-danger focus-visible:ring-danger",
+        )}
+      >
+        {busy ? "Working..." : confirmLabel}
+      </Button>
+    </fetcher.Form>
+  );
+}
+
+type Sub =
+  | "owner"
+  | "bookings"
+  | "desk"
+  | "name"
+  | "role"
+  | "weekly"
+  | "unassign";
+
+/** An item of the desktop actions menu, and the page it opens. */
+type Action = {
+  label: string;
+  danger?: boolean;
+} & (
+  | { sub: Sub; run?: never }
+  /** Posts these fields straight away, no sheet. */
+  | { run: Record<string, string | number>; sub?: never }
+);
+
+type Page = { title: string; description: string; body: ReactNode };
+
+/**
+ * The admin sheet, built on Silk's "sheet with stacking" pattern: a floating
+ * card from the bottom on phones and from the right on larger screens. It
+ * lists settings rows, and each row opens its page as a second card of the
+ * same size stacked on top, which nudges this one back so its edge peeks
+ * out. Closing the page (Back, a swipe, Escape) comes back here.
  */
 function AdminSheet({
   trigger,
-  quick,
   title,
   titleClassName,
   description,
-  children,
+  rows,
+  page,
+  menu,
 }: {
   trigger: ReactNode;
-  quick?: QuickOpen;
   title: string;
   titleClassName?: string;
   description: string;
-  children: (step: Step, setStep: (step: Step) => void) => ReactNode;
+  rows: (open: (sub: Sub) => void) => ReactNode;
+  page: (sub: Sub, close: () => void) => Page;
+  menu?: { label: string; actions: Action[] };
+}) {
+  if (menu) {
+    return (
+      <ActionsMenu
+        trigger={trigger}
+        label={menu.label}
+        actions={menu.actions}
+        page={page}
+      />
+    );
+  }
+
+  return (
+    <StackedAdminSheet
+      trigger={trigger}
+      title={title}
+      titleClassName={titleClassName}
+      description={description}
+      rows={rows}
+      page={page}
+    />
+  );
+}
+
+/**
+ * On larger screens a row's Manage button opens a menu of its actions, and
+ * each action opens one sheet with just that page.
+ */
+function ActionsMenu({
+  trigger,
+  label,
+  actions,
+  page,
+}: {
+  trigger: ReactNode;
+  label: string;
+  actions: Action[];
+  page: (sub: Sub, close: () => void) => Page;
+}) {
+  let fetcher = useFetcher();
+  let [presented, setPresented] = useState(false);
+  let [sub, setSub] = useState<Sub | null>(null);
+  let [opened, setOpened] = useState(0);
+  let [travelStatus, setTravelStatus] = useState("idleOutside");
+
+  function open(next: Sub) {
+    setSub(next);
+    setOpened((n) => n + 1);
+    setPresented(true);
+  }
+
+  let current = sub && page(sub, () => setPresented(false));
+
+  return (
+    <>
+      <DropdownMenu.Root modal={false}>
+        <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={6}
+            // Back to the page, not the row, when a sheet takes over.
+            onCloseAutoFocus={(event) => presented && event.preventDefault()}
+            className="z-30 min-w-56 rounded-xl border border-line bg-paper p-1.5 font-display text-ink shadow-[0_12px_32px_rgb(0_0_0/0.14)]"
+          >
+            <DropdownMenu.Label className="truncate px-2.5 pb-1.5 pt-1 text-xs capitalize text-ink-muted">
+              {label}
+            </DropdownMenu.Label>
+            {actions.map((action, i) => (
+              <Fragment key={action.label}>
+                {action.danger && !actions[i - 1]?.danger && (
+                  <DropdownMenu.Separator className="mx-1 my-1.5 h-px bg-line" />
+                )}
+                <DropdownMenu.Item
+                  onSelect={() =>
+                    action.run
+                      ? void fetcher.submit(action.run, {
+                          method: "post",
+                          action: "/admin",
+                        })
+                      : open(action.sub)
+                  }
+                  aria-haspopup={action.sub ? "dialog" : undefined}
+                  className={cn(
+                    "flex cursor-pointer select-none items-center justify-between gap-4 rounded-lg px-2.5 py-2 text-sm font-medium outline-none data-[highlighted]:bg-paper-muted",
+                    action.danger && "text-danger",
+                  )}
+                >
+                  {action.label}
+                  {action.sub && (
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="-mr-0.5 size-4 shrink-0 text-ink-muted"
+                    />
+                  )}
+                </DropdownMenu.Item>
+              </Fragment>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+
+      <Sheet.Root
+        license="non-commercial"
+        forComponent="closest"
+        sheetRole="dialog"
+        presented={presented && current !== null}
+        onPresentedChange={setPresented}
+      >
+        <StackedCard
+          isSmallDevice={false}
+          status={{ "data-travel-status": travelStatus }}
+          onTravelStatusChange={setTravelStatus}
+          dismissLabel="Close"
+        >
+          {current && <PageBody key={opened} page={current} />}
+        </StackedCard>
+      </Sheet.Root>
+    </>
+  );
+}
+
+/** The phones' sheet: settings rows, each opening a page stacked on top. */
+function StackedAdminSheet({
+  trigger,
+  title,
+  titleClassName,
+  description,
+  rows,
+  page,
+}: {
+  trigger: ReactNode;
+  title: string;
+  titleClassName?: string;
+  description: string;
+  rows: (open: (sub: Sub) => void) => ReactNode;
+  page: (sub: Sub, close: () => void) => Page;
 }) {
   let [presented, setPresented] = useState(false);
-  let [step, setStep] = useState<Step>({ name: "view" });
+  let [sub, setSub] = useState<Sub | null>(null);
+  let [subPresented, setSubPresented] = useState(false);
   let [opened, setOpened] = useState(0);
-  // Moving between steps replaces what had focus (the button you pressed),
-  // so the new step takes focus instead of the page.
-  let focusStep = useRef(false);
-  let goTo = (next: Step) => {
-    focusStep.current = true;
-    setStep(next);
-  };
   let [travelStatus, setTravelStatus] = useState("idleOutside");
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
 
-  function handlePresentedChange(
-    value: boolean,
-    start: Step = { name: "view" },
-  ) {
-    if (value) {
-      setIsSmallDevice(isNarrow);
-      setStep(start);
-      setOpened((n) => n + 1);
-    }
+  function present(value: boolean) {
+    if (value) setIsSmallDevice(isNarrow);
+    setSubPresented(false);
     setPresented(value);
   }
+
+  function open(next: Sub) {
+    setSub(next);
+    setOpened((n) => n + 1);
+    setSubPresented(true);
+  }
+
+  let current = sub && page(sub, () => setSubPresented(false));
 
   return (
     <Sheet.Root
       // Free to use for everyone and not commercialised, so the free
       // licence applies (https://silkhq.com/access).
       license="non-commercial"
-      forComponent={isSmallDevice ? "closest" : undefined}
+      // The Admin tab's own stack, so its page can stack on it.
+      forComponent="closest"
       sheetRole="dialog"
       presented={presented}
-      onPresentedChange={(value) => handlePresentedChange(value)}
-      className={quick ? "flex items-center justify-end gap-1" : undefined}
+      onPresentedChange={(value) => present(value)}
     >
-      {quick && (
-        <button
-          type="button"
-          aria-label={quick.ariaLabel}
-          aria-haspopup="dialog"
-          onClick={() => handlePresentedChange(true, quick.step)}
-          // Above the row's stretched button, so it is not swallowed by it.
-          className={cn(
-            rowButton,
-            "relative z-10 text-moss-edge hover:text-moss",
-          )}
-        >
-          {quick.label}
-        </button>
-      )}
       <Sheet.Trigger asChild>{trigger}</Sheet.Trigger>
 
-      <Sheet.Portal>
-        <Sheet.View
-          className="desk-sheet-view"
-          // Lets tests wait for the sheet to come to rest, as on the desk sheet.
-          data-travel-status={travelStatus}
-          onTravelStatusChange={setTravelStatus}
-          contentPlacement={isSmallDevice ? "bottom" : "right"}
-          tracks={isSmallDevice ? "bottom" : "right"}
-          swipeOvershoot={isSmallDevice}
-          nativeEdgeSwipePrevention
-        >
-          <Sheet.Backdrop
-            className="desk-sheet-backdrop"
-            themeColorDimming="auto"
-          />
-          {isSmallDevice && (
-            <Sheet.Outlet
-              className="desk-sheet-blur"
-              travelAnimation={{ opacity: [0, 1] }}
-            />
-          )}
-          <Sheet.Content
-            className={cn(
-              "desk-sheet-content",
-              isSmallDevice
-                ? "desk-sheet-content-bottom"
-                : "desk-sheet-content-side",
-            )}
-          >
-            <Sheet.BleedingBackground
+      <StackedCard
+        isSmallDevice={isSmallDevice}
+        // Lets tests wait for the sheet to come to rest, as on the desk sheet.
+        status={{ "data-travel-status": travelStatus }}
+        onTravelStatusChange={setTravelStatus}
+        dismissLabel="Close"
+        blur
+      >
+        <div className="flex flex-col gap-6">
+          <div>
+            <Sheet.Title
               className={cn(
-                "desk-sheet-bg",
-                isSmallDevice && "desk-sheet-bg-bottom",
+                "pr-8 text-lg font-bold tracking-tight sm:text-xl",
+                titleClassName,
               )}
-            />
-            {isSmallDevice ? (
-              <Sheet.Handle
-                className="desk-sheet-handle"
-                action="dismiss"
-                aria-label="Close"
-              />
-            ) : (
-              <Sheet.Trigger
-                action="dismiss"
-                aria-label="Close"
-                className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-paper-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
-              >
-                <X aria-hidden="true" className="h-4 w-4" />
-              </Sheet.Trigger>
-            )}
+            >
+              {title}
+            </Sheet.Title>
+            <Sheet.Description className="mt-0.5 text-[13px] text-ink-muted">
+              {description}
+            </Sheet.Description>
+          </div>
+          {rows(open)}
+        </div>
 
-            <div className="desk-sheet-body flex flex-col gap-6 font-display text-ink">
-              <div>
-                <Sheet.Title
-                  className={cn(
-                    "pr-8 text-lg font-bold tracking-tight sm:text-xl",
-                    titleClassName,
-                  )}
-                >
-                  {title}
-                </Sheet.Title>
-                <Sheet.Description className="mt-0.5 text-[13px] text-ink-muted">
-                  {description}
-                </Sheet.Description>
-              </div>
-              <div
-                key={`${opened}-${step.name}`}
-                ref={(node) => {
-                  if (node && focusStep.current) {
-                    focusStep.current = false;
-                    node.focus();
-                  }
-                }}
-                tabIndex={-1}
-                data-sheet-step
-                className="flex flex-col gap-6"
-              >
-                {children(step, goTo)}
-              </div>
-            </div>
-          </Sheet.Content>
-        </Sheet.View>
-      </Sheet.Portal>
+        <PageSheet
+          key={opened}
+          isSmallDevice={isSmallDevice}
+          presented={subPresented}
+          onPresentedChange={setSubPresented}
+          page={current}
+        />
+      </StackedCard>
     </Sheet.Root>
   );
 }
+
+/** A page of the admin sheet, stacked on top of it. */
+function PageSheet({
+  isSmallDevice,
+  presented,
+  onPresentedChange,
+  page,
+}: {
+  isSmallDevice: boolean;
+  presented: boolean;
+  onPresentedChange: (value: boolean) => void;
+  page: Page | null;
+}) {
+  let [travelStatus, setTravelStatus] = useState("idleOutside");
+
+  return (
+    <Sheet.Root
+      license="non-commercial"
+      forComponent="closest"
+      sheetRole="dialog"
+      presented={presented && page !== null}
+      onPresentedChange={onPresentedChange}
+    >
+      <StackedCard
+        isSmallDevice={isSmallDevice}
+        status={{ "data-page-status": travelStatus }}
+        onTravelStatusChange={setTravelStatus}
+        dismissLabel="Back"
+      >
+        {page && <PageBody page={page} back />}
+      </StackedCard>
+    </Sheet.Root>
+  );
+}
+
+/** A page's title, then what it does. `back` adds a Back link above. */
+function PageBody({ page, back }: { page: Page; back?: boolean }) {
+  return (
+    <div
+      data-sheet-step
+      tabIndex={-1}
+      className="flex flex-col gap-5 focus:outline-none"
+    >
+      <div className="flex flex-col gap-2">
+        {back && (
+          <Sheet.Trigger
+            action="dismiss"
+            className={cn(
+              "-ml-1 inline-flex w-fit items-center gap-0.5 rounded text-[15px] font-semibold text-moss-edge hover:text-moss",
+              focusRing,
+            )}
+          >
+            <ChevronLeft aria-hidden="true" className="size-4" />
+            Back
+          </Sheet.Trigger>
+        )}
+        <div>
+          <Sheet.Title className="pr-8 text-lg font-bold tracking-tight sm:text-xl">
+            {page.title}
+          </Sheet.Title>
+          <Sheet.Description className="mt-0.5 text-[13px] capitalize text-ink-muted">
+            {page.description}
+          </Sheet.Description>
+        </div>
+      </div>
+      {page.body}
+    </div>
+  );
+}
+
+/**
+ * The floating card both levels share. Every card in the stack is the same
+ * size, so the one underneath shows as an edge above (phones) or beside
+ * (larger screens) the one on top.
+ */
+function StackedCard({
+  isSmallDevice,
+  status,
+  onTravelStatusChange,
+  dismissLabel,
+  blur,
+  children,
+}: {
+  isSmallDevice: boolean;
+  status: Record<string, string>;
+  onTravelStatusChange: (status: string) => void;
+  dismissLabel: string;
+  /** Blurs the page behind on phones, like the app's other sheets. */
+  blur?: boolean;
+  children: ReactNode;
+}) {
+  let placement = isSmallDevice ? ("bottom" as const) : ("right" as const);
+
+  return (
+    <Sheet.Portal>
+      <Sheet.View
+        {...status}
+        className={cn("admin-sheet-view", `admin-sheet-${placement}`)}
+        onTravelStatusChange={onTravelStatusChange}
+        contentPlacement={placement}
+        tracks={placement}
+        swipeOvershoot={isSmallDevice}
+        nativeEdgeSwipePrevention
+      >
+        <Sheet.Backdrop
+          className="admin-sheet-backdrop"
+          travelAnimation={{ opacity: [0, 0.2] }}
+          themeColorDimming="auto"
+        />
+        {blur && isSmallDevice && (
+          <Sheet.Outlet
+            className="desk-sheet-blur"
+            travelAnimation={{ opacity: [0, 1] }}
+          />
+        )}
+        <Sheet.Content
+          className="admin-sheet-content"
+          stackingAnimation={isSmallDevice ? stackUp : stackLeft}
+        >
+          <div className="admin-sheet-card">
+            {isSmallDevice && (
+              <Sheet.Handle
+                className="desk-sheet-handle"
+                action="dismiss"
+                aria-label={dismissLabel}
+              />
+            )}
+            {/* The close button sits in the scrolling body, so it scrolls
+            away with the title instead of floating over the content. */}
+            <div className="admin-sheet-body relative font-display text-ink">
+              {!isSmallDevice && (
+                <Sheet.Trigger
+                  action="dismiss"
+                  aria-label="Close"
+                  className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-paper-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
+                >
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </Sheet.Trigger>
+              )}
+              {children}
+            </div>
+          </div>
+        </Sheet.Content>
+      </Sheet.View>
+    </Sheet.Portal>
+  );
+}
+
+// Silk's stacking values: the card underneath moves 10px back and shrinks a
+// little from its far edge, and each card further down tucks in 2.5px more.
+let stackOffset = ({ progress }: { progress: number }) =>
+  progress <= 1 ? `${progress * -10}px` : `calc(-12.5px + 2.5px * ${progress})`;
+let stackUp = {
+  translateY: stackOffset,
+  scale: [1, 0.933] as [number, number],
+  transformOrigin: "50% 0",
+};
+let stackLeft = {
+  translateX: stackOffset,
+  scale: [1, 0.933] as [number, number],
+  transformOrigin: "0 50%",
+};

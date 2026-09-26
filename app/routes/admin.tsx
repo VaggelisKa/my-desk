@@ -1,3 +1,4 @@
+import { SheetStack } from "@silk-hq/components";
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import { AdminHeader, type AdminData } from "~/components/admin";
 import {
@@ -35,9 +36,12 @@ export function shouldRevalidate({
 
 export default function AdminLayout({ loaderData }: Route.ComponentProps) {
   return (
-    <section className="flex w-full flex-col gap-6 font-display text-ink">
-      <AdminHeader />
-      <Outlet context={loaderData satisfies AdminData} />
-    </section>
+    // The stack the admin sheets and their pages share.
+    <SheetStack.Root asChild>
+      <section className="flex w-full flex-col gap-6 font-display text-ink">
+        <AdminHeader />
+        <Outlet context={loaderData satisfies AdminData} />
+      </section>
+    </SheetStack.Root>
   );
 }

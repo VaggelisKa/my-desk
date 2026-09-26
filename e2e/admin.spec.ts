@@ -17,6 +17,29 @@ test.describe("as an admin", () => {
     await expect(page.getByRole("heading", { name: "Admin" })).toBeVisible();
   });
 
+  test("switches between Desks, People and Bookings without asking the server", async ({
+    page,
+    adminPage,
+  }) => {
+    await adminPage.goto();
+    await adminPage.deskRow("2.1.1").waitFor();
+
+    // The three lists share the data the tab already has, so a switch that
+    // waited on the server would never finish here.
+    await page.route("**/*.data*", () => new Promise(() => {}));
+
+    await adminPage.segment("People").click();
+    await expect(page).toHaveURL("/admin/people");
+    await expect(adminPage.personRow("Gary Guest")).toBeVisible();
+
+    await adminPage.segment("Bookings").click();
+    await expect(page).toHaveURL("/admin/bookings");
+
+    await adminPage.segment("Desks").click();
+    await expect(page).toHaveURL("/admin");
+    await expect(adminPage.deskRow("2.1.1")).toBeVisible();
+  });
+
   test("gives an unclaimed desk to someone", async ({
     page,
     db,
@@ -25,11 +48,14 @@ test.describe("as an admin", () => {
   }) => {
     await adminPage.goto();
 
-    let sheet = await adminPage.open(adminPage.deskRow("2.1.1"));
-    await sheet.button("Give to someone").click();
-    await sheet.pick("gary", /^Gary Guest/i);
-    await expect(sheet.root).toContainText("Gary gets desk 2.1.1");
-    await sheet.button("Move desk to Gary").click();
+    let owner = await adminPage.act(
+      adminPage.deskRow("2.1.1"),
+      "Give to someone",
+    );
+    await expect(owner.title).toHaveText("Give to someone");
+    await owner.pick("gary", /^Gary Guest/i);
+    await expect(owner.root).toContainText("Gary gets desk 2.1.1");
+    await owner.button("Move desk to Gary").click();
 
     await expectToast(page, "Moved desk 2.1.1 to Gary");
     await expect(db.desk(desks.unclaimed.id)).resolves.toMatchObject({
@@ -66,19 +92,19 @@ test.describe("as an admin", () => {
     });
 
     await adminPage.goto();
-    let sheet = await adminPage.open(adminPage.deskRow("1.1.2"));
-    await sheet.button("Change owner").click();
-    await sheet.pick("alice", /^Alice Andersen/i);
+    let owner = await adminPage.act(adminPage.deskRow("1.1.2"), "Change owner");
+    await owner.pick("alice", /^Alice Andersen/i);
 
-    await expect(sheet.root).toContainText(
+    await expect(owner.root).toContainText(
       "Bob loses desk 1.1.2 and 1 booked day on it after today. Their weekly booking stops.",
     );
-    await expect(sheet.root).toContainText(
+    await expect(owner.root).toContainText(
       "Alice's desk 1.1.1 becomes unclaimed. 1 booked day on it after today is cancelled.",
     );
-    await sheet.button("Move desk to Alice").click();
+    await owner.button("Move desk to Alice").click();
 
     await expectToast(page, "Moved desk 1.1.2 to Alice");
+    await expect(owner.root).toHaveCount(0);
     await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
       userId: users.alice.id,
     });
@@ -104,24 +130,6 @@ test.describe("as an admin", () => {
     await expect(cronJobOrg.calls()).resolves.toEqual([
       { method: "DELETE", path: "/jobs/4242" },
     ]);
-  });
-
-  test("goes straight to picking a person from a desk's Reassign button", async ({
-    page,
-    db,
-    adminPage,
-  }) => {
-    await adminPage.goto();
-
-    let sheet = await adminPage.open(adminPage.reassign("1.1.2"));
-    await expect(sheet.root.getByText("Give this desk to")).toBeVisible();
-    await sheet.pick("gary", /^Gary Guest/i);
-    await sheet.button("Move desk to Gary").click();
-
-    await expectToast(page, "Moved desk 1.1.2 to Gary");
-    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
-      userId: users.guest.id,
-    });
   });
 
   test("sorts the desks table by a column", async ({ page, db, adminPage }) => {
@@ -160,7 +168,7 @@ test.describe("as an admin", () => {
     await expect(manage.last()).toHaveAccessibleName("Manage desk 1.1.2");
   });
 
-  test("unassigns a desk after asking", async ({
+  test("unassigns a desk from its menu", async ({
     page,
     db,
     cronJobOrg,
@@ -168,20 +176,27 @@ test.describe("as an admin", () => {
   }) => {
     await db.setCronId("bob", "4242");
 
-    await adminPage.goto();
-    let sheet = await adminPage.open(adminPage.deskRow("1.1.2"));
-    await sheet.button("Unassign").click();
-    await expect(sheet.root).toContainText(
-      "Bob loses this desk. Their weekly booking stops.",
-    );
-    await sheet.button("Keep").click();
-    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
-      userId: users.bob.id,
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "thursday",
     });
 
-    await sheet.confirm("Unassign", "Unassign desk");
+    await adminPage.goto();
+    // It says what else goes before it runs.
+    let sheet = await adminPage.act(
+      adminPage.deskRow("1.1.2"),
+      "Unassign desk",
+    );
+    await expect(sheet.root).toContainText(
+      "Bob loses desk 1.1.2 and 1 booked day on it after today. Their weekly booking stops.",
+    );
+    await sheet.button("Unassign desk").click();
 
     await expectToast(page, "Desk 1.1.2 is unclaimed now");
+    await expect(
+      db.reservation(desks.bob.id, "thursday"),
+    ).resolves.toBeUndefined();
     await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
       userId: null,
     });
@@ -270,9 +285,12 @@ test.describe("as an admin", () => {
     });
 
     await adminPage.goto("people");
-    let sheet = await adminPage.open(adminPage.personRow("Bob Berg"));
-    await expect(sheet.bookings).toHaveCount(2);
-    await sheet.confirm("Clear all", "Clear 2 bookings");
+    let upcoming = await adminPage.act(
+      adminPage.personRow("Bob Berg"),
+      "Upcoming bookings",
+    );
+    await expect(upcoming.bookings).toHaveCount(2);
+    await upcoming.confirm("Clear all", "Clear 2 bookings");
 
     await expectToast(page, "Cleared 2 bookings");
     await expect(db.reservationsForDesk(desks.bob.id)).resolves.toEqual([]);
@@ -295,11 +313,13 @@ test.describe("as an admin", () => {
     });
 
     await adminPage.goto("people");
-    let sheet = await adminPage.open(adminPage.personRow("Bob Berg"));
-    await sheet.confirm("Stop weekly booking", "Stop it");
+    // A quick action: it runs straight from the menu.
+    await adminPage.quickAction(
+      adminPage.personRow("Bob Berg"),
+      "Stop weekly booking",
+    );
 
     await expectToast(page, "Recurring booking stopped");
-    await expect(sheet.button("Stop weekly booking")).toHaveCount(0);
     await expect(db.user(users.bob.id)).resolves.toMatchObject({
       autoReservationsCronId: null,
     });
@@ -312,19 +332,84 @@ test.describe("as an admin", () => {
     });
   });
 
+  test("keeps a weekly booking the scheduler could not stop", async ({
+    page,
+    db,
+  }) => {
+    await db.setCronId("bob", "down-2");
+
+    let response = await page.request.post("/admin", {
+      form: { intent: "stop-recurring", userId: users.bob.id },
+    });
+
+    expect(response.status()).toBe(502);
+    // Still saved on him, so it can be stopped once the scheduler is back.
+    await expect(db.user(users.bob.id)).resolves.toMatchObject({
+      autoReservationsCronId: "down-2",
+    });
+  });
+
+  test("cancels only the booking of the person the row showed", async ({
+    page,
+    db,
+  }) => {
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    // A row from before Alice booked, when Bob had the day.
+    let response = await page.request.post("/admin", {
+      form: {
+        intent: "cancel",
+        deskId: String(desks.alice.id),
+        date: bookingDay("tuesday").date,
+        userId: users.bob.id,
+      },
+    });
+
+    expect(response.status()).toBe(404);
+    await expect(
+      db.reservation(desks.alice.id, "tuesday"),
+    ).resolves.toBeDefined();
+  });
+
+  test("keeps the rename open when the name is turned down", async ({
+    page,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+    let name = await adminPage.act(
+      adminPage.personRow("Alice Andersen"),
+      "Rename",
+    );
+    await name.root.getByLabel("First name").fill("   ");
+    await name.button("Save name").click();
+
+    await expectToast(page, "First and last name are both needed");
+    await expect(name.root.getByLabel("First name")).toBeVisible();
+  });
+
   test("renames someone and makes them an admin", async ({
     page,
     db,
     adminPage,
   }) => {
     await adminPage.goto("people");
-    let sheet = await adminPage.open(adminPage.personRow("Alice Andersen"));
-
-    await sheet.root.getByLabel("First name").fill("Alicia");
-    await sheet.button("Save name").click();
+    let name = await adminPage.act(
+      adminPage.personRow("Alice Andersen"),
+      "Rename",
+    );
+    await name.root.getByLabel("First name").fill("Alicia");
+    await name.button("Save name").click();
     await expectToast(page, "Saved Alicia Andersen");
+    await expect(name.root).toHaveCount(0);
 
-    await sheet.confirm("Make admin", "Make admin");
+    await adminPage.quickAction(
+      adminPage.personRow("Alicia Andersen"),
+      "Make admin",
+    );
     await expectToast(page, "Alicia is an admin now");
 
     await expect(db.user(users.alice.id)).resolves.toMatchObject({
@@ -374,8 +459,29 @@ test.describe("as an admin on a phone", () => {
 
     let sheet = await adminPage.open(rows.getByRole("button"));
     await expect(sheet.title).toContainText("Bob Berg");
-    await expect(sheet.button("Clear all")).toHaveCount(0);
-    await expect(sheet.root).toContainText("Bob has nothing booked");
+    await expect(sheet.button(/^Upcoming/)).toContainText("None");
+
+    let upcoming = await sheet.openPage("Upcoming");
+    await expect(upcoming.button("Clear all")).toHaveCount(0);
+    await expect(upcoming.root).toContainText("Bob has nothing booked");
+  });
+
+  test("unassigns a desk from its sheet", async ({ page, db, adminPage }) => {
+    await adminPage.goto();
+
+    let sheet = await adminPage.open(
+      page.getByRole("main").getByRole("button", { name: /1\.1\.2/ }),
+    );
+    let confirm = await sheet.openPage("Unassign desk");
+    await expect(confirm.root).toContainText("Bob loses desk 1.1.2.");
+    await confirm.button("Unassign desk").click();
+
+    await expectToast(page, "Desk 1.1.2 is unclaimed now");
+    await expect(sheet.button(/^Owner/)).toContainText("Nobody");
+    await expect(sheet.button("Unassign desk")).toHaveCount(0);
+    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
+      userId: null,
+    });
   });
 });
 

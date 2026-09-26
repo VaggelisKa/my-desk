@@ -1,8 +1,18 @@
 import { startOfDay } from "date-fns";
-import { and, asc, eq, gt, gte, inArray, isNotNull, ne } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+} from "drizzle-orm";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireAuthCookie } from "~/cookies.server";
-import { deleteCron } from "~/lib/cron";
+import { CronError, deleteCron } from "~/lib/cron";
 import { normalizeDay, officeNow } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
@@ -133,7 +143,11 @@ export async function loadAdminData() {
   return { desks: adminDesks, people, bookings };
 }
 
-/** Stops someone's weekly booking, if they have one. */
+/**
+ * Stops someone's weekly booking, if they have one. The job stays saved on
+ * them until cron-job.org confirms it is gone, so a stop that did not happen
+ * is never reported as done and can be tried again. Returns false then.
+ */
 async function stopRecurring(userId: string) {
   let user = await db.query.users.findFirst({
     where: eq(users.id, userId),
@@ -142,27 +156,37 @@ async function stopRecurring(userId: string) {
   let cronId = user?.autoReservationsCronId;
 
   if (!cronId) {
-    return;
+    return true;
   }
 
-  // Clear our side even if cron-job.org is down: the job checks the desk on
-  // every run and removes itself once the desk is no longer theirs.
+  try {
+    await deleteCron({ cronId });
+  } catch (error) {
+    if (!(error instanceof CronError)) throw error;
+    console.error(error);
+    return false;
+  }
+
   await db
     .update(users)
     .set({ autoReservationsCronId: null })
     .where(and(eq(users.id, userId), eq(users.autoReservationsCronId, cronId)));
-  await deleteCron({ cronId }).catch(console.error);
+
+  return true;
 }
 
 /**
- * Takes a desk away from its owner: it loses them, and so do the days they
- * booked on it after today. Today stays, since they may already be sitting
- * there. Their weekly booking stops, because it was for this desk.
+ * Takes desks away from their owner: they lose them, and so do the days they
+ * booked on them after today. Today stays, since they may already be sitting
+ * there. Only while the desks are still theirs, in case someone else moved
+ * them meanwhile. Run in one batch with the rest of a move.
  */
-async function releaseDesks(deskIds: number[], ownerId: string) {
-  if (deskIds.length === 0) return;
-  await db.batch([
-    db.update(desks).set({ userId: null }).where(inArray(desks.id, deskIds)),
+function releaseDesks(deskIds: number[], ownerId: string) {
+  return [
+    db
+      .update(desks)
+      .set({ userId: null })
+      .where(and(inArray(desks.id, deskIds), eq(desks.userId, ownerId))),
     db
       .delete(reservations)
       .where(
@@ -172,9 +196,17 @@ async function releaseDesks(deskIds: number[], ownerId: string) {
           gt(reservations.dateTimestamp, todayStart()),
         ),
       ),
-  ]);
-  await stopRecurring(ownerId);
+  ] as const;
 }
+
+/** Said when a desk moved but the scheduler could not be reached to stop a weekly job. */
+let stopLater =
+  "The scheduler could not be reached, so the weekly booking stops on its next run instead.";
+
+/** What a successful action returns, so a sheet knows it may close. */
+let done = { ok: true } as const;
+
+export type AdminActionData = typeof done | null;
 
 function field(formData: FormData, name: string) {
   let value = formData.get(name);
@@ -206,31 +238,50 @@ export async function handleAdminAction(request: Request) {
         );
       }
       if (desk.userId === newOwner.id) {
-        return dataWithSuccess(null, {
+        return dataWithSuccess(done, {
           message: `${capitalize(newOwner.firstName)} already has this desk`,
         });
       }
 
       // The new owner gives up any desk they had, so nobody ends up with two.
+      // One batch, so a failure halfway leaves nobody without a desk.
       let previousDesks = await db.query.desks.findMany({
         where: and(eq(desks.userId, newOwner.id), ne(desks.id, deskId)),
         columns: { id: true },
       });
-      await releaseDesks(
-        previousDesks.map((previous) => previous.id),
-        newOwner.id,
-      );
-      if (desk.userId) {
-        await releaseDesks([deskId], desk.userId);
-      }
-      await db
-        .update(desks)
-        .set({ userId: newOwner.id })
-        .where(eq(desks.id, deskId));
+      let previousIds = previousDesks.map((previous) => previous.id);
+      let results = await db.batch([
+        ...(previousIds.length ? releaseDesks(previousIds, newOwner.id) : []),
+        ...(desk.userId ? releaseDesks([deskId], desk.userId) : []),
+        // Only if nobody else took the desk since it was read.
+        db
+          .update(desks)
+          .set({ userId: newOwner.id })
+          .where(and(eq(desks.id, deskId), isNull(desks.userId)))
+          .returning({ id: desks.id }),
+      ] as unknown as Parameters<typeof db.batch>[0]);
 
-      return dataWithSuccess(null, {
-        message: `Moved ${deskName(desk)} to ${capitalize(newOwner.firstName)}`,
-      });
+      if ((results.at(-1) as unknown[]).length === 0) {
+        return dataWithError(
+          null,
+          {
+            message: "The desk changed meanwhile",
+            description: "Nothing was moved. Look again and try once more.",
+          },
+          { status: 409 },
+        );
+      }
+
+      // Their weekly jobs were for the desks they no longer have.
+      let stopped = await Promise.all([
+        previousIds.length ? stopRecurring(newOwner.id) : true,
+        desk.userId ? stopRecurring(desk.userId) : true,
+      ]);
+      let message = `Moved ${deskName(desk)} to ${capitalize(newOwner.firstName)}`;
+
+      return stopped.every(Boolean)
+        ? dataWithSuccess(done, { message })
+        : dataWithError(done, { message, description: stopLater });
     }
 
     case "unassign": {
@@ -246,22 +297,33 @@ export async function handleAdminAction(request: Request) {
           { status: 404 },
         );
       }
-      if (desk.userId) {
-        await releaseDesks([deskId], desk.userId);
+      let message = `${capitalize(deskName(desk))} is unclaimed now`;
+
+      if (!desk.userId) {
+        return dataWithSuccess(done, { message });
       }
 
-      return dataWithSuccess(null, {
-        message: `${capitalize(deskName(desk))} is unclaimed now`,
-      });
+      await db.batch(releaseDesks([deskId], desk.userId));
+
+      return (await stopRecurring(desk.userId))
+        ? dataWithSuccess(done, { message })
+        : dataWithError(done, { message, description: stopLater });
     }
 
     case "cancel": {
       let deskId = Number(field(formData, "deskId"));
       let date = field(formData, "date");
+      // The person too: the row may be old, and the day taken by someone else
+      // since. Their booking is not the one the admin asked to cancel.
+      let userId = field(formData, "userId");
       let deleted = await db
         .delete(reservations)
         .where(
-          and(eq(reservations.deskId, deskId), eq(reservations.date, date)),
+          and(
+            eq(reservations.deskId, deskId),
+            eq(reservations.date, date),
+            eq(reservations.userId, userId),
+          ),
         )
         .returning({ deskId: reservations.deskId });
 
@@ -273,7 +335,7 @@ export async function handleAdminAction(request: Request) {
         );
       }
 
-      return dataWithSuccess(null, { message: "Booking cancelled" });
+      return dataWithSuccess(done, { message: "Booking cancelled" });
     }
 
     case "clear-desk":
@@ -297,16 +359,27 @@ export async function handleAdminAction(request: Request) {
         .where(and(where, gte(reservations.dateTimestamp, todayStart())))
         .returning({ deskId: reservations.deskId });
 
-      return dataWithSuccess(null, {
+      return dataWithSuccess(done, {
         message: `Cleared ${plural(deleted.length, "booking")}`,
       });
     }
 
     case "stop-recurring": {
       let userId = field(formData, "userId");
-      await stopRecurring(userId);
 
-      return dataWithSuccess(null, { message: "Recurring booking stopped" });
+      if (!(await stopRecurring(userId))) {
+        return dataWithError(
+          null,
+          {
+            message: "Could not reach the scheduler",
+            description:
+              "The weekly booking is still on. Try again in a moment.",
+          },
+          { status: 502 },
+        );
+      }
+
+      return dataWithSuccess(done, { message: "Recurring booking stopped" });
     }
 
     case "rename": {
@@ -327,7 +400,7 @@ export async function handleAdminAction(request: Request) {
         .set({ firstName, lastName })
         .where(eq(users.id, userId));
 
-      return dataWithSuccess(null, {
+      return dataWithSuccess(done, {
         message: `Saved ${firstName} ${lastName}`,
       });
     }
@@ -361,7 +434,7 @@ export async function handleAdminAction(request: Request) {
       }
 
       let name = capitalize(updated[0].firstName);
-      return dataWithSuccess(null, {
+      return dataWithSuccess(done, {
         message:
           role === "admin"
             ? `${name} is an admin now`

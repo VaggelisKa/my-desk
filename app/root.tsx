@@ -27,7 +27,7 @@ import { TabPending, usePendingTab } from "~/components/tab-pending";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
-import { PAGE_COLUMN } from "~/lib/app-shell";
+import { activeTab, PAGE_COLUMN } from "~/lib/app-shell";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -84,12 +84,26 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 // Toasts are flashed through this loader. React Router skips revalidation after
 // an action responds with a 4xx/5xx, which would swallow every error toast.
+// Switching between the Admin tab's Desks, People and Bookings needs nothing
+// new from the server (the tab's lists share one loader), so it skips this one
+// too and the switch lands on tap.
 export function shouldRevalidate({
   actionStatus,
+  currentUrl,
+  nextUrl,
+  formMethod,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
   if (actionStatus !== undefined && actionStatus >= 400) {
     return true;
+  }
+
+  if (
+    !formMethod &&
+    activeTab(currentUrl.pathname) === "admin" &&
+    activeTab(nextUrl.pathname) === "admin"
+  ) {
+    return false;
   }
 
   return defaultShouldRevalidate;
