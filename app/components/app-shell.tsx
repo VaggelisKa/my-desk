@@ -496,7 +496,15 @@ function isTextField(target: EventTarget | null) {
 }
 
 function useTextFieldFocused() {
+  let { key } = useLocation();
   let [focused, setFocused] = useState(false);
+
+  // Safari sends no focusout when the focused field is removed with its page,
+  // as on Back, which would leave the dock hidden. So check again whenever
+  // the page changes.
+  useEffect(() => {
+    setFocused(isTextField(document.activeElement));
+  }, [key]);
 
   useEffect(() => {
     let onFocusIn = (event: FocusEvent) =>
