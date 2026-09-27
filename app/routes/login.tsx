@@ -96,7 +96,7 @@ export default function LoginPage({
   return (
     <AuthCard
       title="Sign in"
-      description="Enter your six-character user ID, for example emp001."
+      description="Your user ID, for example G12345."
       notice={
         loaderData.signedOut && !actionData?.error
           ? "You're signed out. Sign in again when you're back."
