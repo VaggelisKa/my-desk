@@ -78,7 +78,7 @@ test.describe("an employee with a desk", () => {
     await expect(bar.getByRole("button", { name: "Remove" })).toBeDisabled();
     // Each row's own Remove makes way for a check.
     await expect(
-      page.getByRole("button", { name: /^Remove .+, desk/ }),
+      page.locator("form:not([inert]) [data-remove-booking]"),
     ).toHaveCount(0);
 
     await page

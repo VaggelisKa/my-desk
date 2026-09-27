@@ -114,7 +114,7 @@ export function SelectButton({
       type="button"
       onClick={() => (batch.selecting ? batch.toggleAll(all) : batch.start())}
       className={cn(
-        "shrink-0 rounded text-[15px] font-semibold text-moss-edge hover:underline",
+        "shrink-0 rounded text-[13px] font-semibold normal-case tracking-normal text-moss-edge hover:underline",
         focusRing,
       )}
     >
@@ -123,51 +123,39 @@ export function SelectButton({
   );
 }
 
-/** "Select day" or "Select week" on a group's heading, in select mode. */
-export function SelectGroupButton({
-  batch,
-  group,
-  noun,
-  label,
-}: {
-  batch: BatchSelect;
-  group: Keyed[];
-  noun: "day" | "week";
-  /** The group's name, so the button says which one it picks. */
-  label: string;
-}) {
-  let all = batch.allSelected(group);
-
-  return (
-    <button
-      type="button"
-      onClick={() => batch.toggleAll(group)}
-      aria-label={`${all ? "Unselect" : "Select"} ${label}`}
-      className={cn(
-        "rounded text-[13px] font-semibold normal-case tracking-normal text-moss-edge hover:underline",
-        focusRing,
-      )}
-    >
-      {all ? `Unselect ${noun}` : `Select ${noun}`}
-    </button>
-  );
-}
-
 /**
- * A row's round check. The input stretches over the nearest positioned
- * ancestor (the row), so a tap anywhere on the row picks it.
+ * A row's round check, which slides in (width and fade) when select mode
+ * starts and out when it ends. The input stretches over the nearest
+ * positioned ancestor (the row), so a tap anywhere on the row picks it.
  */
 export function RowCheck({
+  shown,
+  shownClassName,
+  hiddenClassName,
   checked,
   onChange,
   label,
 }: {
+  shown: boolean;
+  /** Margins that fit the check into the row once it is in. */
+  shownClassName?: string;
+  /** Margins that cancel the row's gap while it is out. */
+  hiddenClassName?: string;
   checked: boolean;
   onChange: () => void;
   label: string;
 }) {
   return (
-    <span className="grid size-10 shrink-0 place-items-center">
+    <span
+      // Out of reach (tab, taps, screen readers) while hidden.
+      inert={!shown}
+      className={cn(
+        "grid h-10 shrink-0 place-items-center transition-[width,margin,opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+        shown
+          ? cn("w-10 opacity-100", shownClassName)
+          : cn("pointer-events-none w-0 scale-50 opacity-0", hiddenClassName),
+      )}
+    >
       <input
         type="checkbox"
         checked={checked}
@@ -178,7 +166,7 @@ export function RowCheck({
       <span
         aria-hidden="true"
         className={cn(
-          "grid size-[22px] place-items-center rounded-full border-[1.5px] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-moss peer-focus-visible:ring-offset-2",
+          "grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-moss peer-focus-visible:ring-offset-2",
           checked ? "border-moss bg-moss text-white" : "border-field bg-paper",
         )}
       >

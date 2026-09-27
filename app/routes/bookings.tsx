@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
-import { BookingsHeader, type HeadingSlot } from "~/components/bookings";
+import { BookingsHeader } from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
 import type { Route } from "./+types/bookings";
 
@@ -26,14 +25,10 @@ export function shouldRevalidate({
 export default function BookingsLayout({
   loaderData: { desk },
 }: Route.ComponentProps) {
-  // Where a segment puts its own action beside the heading (Upcoming's
-  // "Select"), so the heading stays in this layout.
-  let [slot, setSlot] = useState<HTMLElement | null>(null);
-
   return (
     <section className="flex w-full flex-col gap-8 font-display text-ink">
-      <BookingsHeader desk={desk} slotRef={setSlot} />
-      <Outlet context={slot satisfies HeadingSlot} />
+      <BookingsHeader desk={desk} />
+      <Outlet />
     </section>
   );
 }

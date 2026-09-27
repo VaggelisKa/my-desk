@@ -205,7 +205,7 @@ test.describe("as an admin", () => {
     ]);
   });
 
-  test("removes a whole day and a booking from another day at once", async ({
+  test("removes bookings from several days at once", async ({
     page,
     db,
     adminPage,
@@ -240,9 +240,15 @@ test.describe("as an admin", () => {
     await page.getByRole("button", { name: "Select", exact: true }).click();
     // Select mode swaps each row's Cancel for a check.
     await expect(
-      page.getByRole("button", { name: /^Cancel .+'s booking/ }),
+      page.locator("form:not([inert]) [data-cancel-booking]"),
     ).toHaveCount(0);
-    await tuesday.getByRole("button", { name: /^Select / }).click();
+    for (let name of ["Alice Andersen", "Gary Guest"]) {
+      await page
+        .getByRole("checkbox", {
+          name: `${name}, ${bookingDay("tuesday").label}, desk`,
+        })
+        .check();
+    }
     await page
       .getByRole("checkbox", {
         name: `Bob Berg, ${bookingDay("wednesday").label}, desk 1.1.2`,

@@ -1,9 +1,5 @@
-import { data, useOutletContext, useRouteLoaderData } from "react-router";
-import {
-  BookingList,
-  EmptyBookings,
-  type HeadingSlot,
-} from "~/components/bookings";
+import { data, useRouteLoaderData } from "react-router";
+import { BookingList, EmptyBookings } from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
 import {
   listUpcomingBookings,
@@ -47,10 +43,9 @@ export default function UpcomingBookingsPage({
   loaderData: { bookings, today },
 }: Route.ComponentProps) {
   let desk = useRouteLoaderData<typeof bookingsLoader>("routes/bookings")?.desk;
-  let slot = useOutletContext<HeadingSlot>();
 
   return bookings.length ? (
-    <BookingList bookings={bookings} today={today} slot={slot} />
+    <BookingList bookings={bookings} today={today} />
   ) : (
     <EmptyBookings desk={desk ?? null} />
   );
