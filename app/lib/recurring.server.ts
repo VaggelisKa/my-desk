@@ -5,6 +5,7 @@ import { bookingRow } from "~/lib/bookings.server";
 import {
   addCron,
   addCronSchema,
+  changeCronDays,
   CronError,
   daysFromJob,
   deleteCron,
@@ -92,7 +93,7 @@ function nextSunday(now: Date) {
   return now.getDay() === 0 && now.getHours() < 10 ? startOfDay(now) : sunday;
 }
 
-/** Sets up, pauses, resumes or stops the signed-in user's weekly booking. */
+/** Sets up, changes the days of, pauses, resumes or stops the signed-in user's weekly booking. */
 export async function changeRecurring(
   user: { userId: string; firstName: string; lastName: string },
   formData: FormData,
@@ -169,6 +170,29 @@ export async function changeRecurring(
         { message: "There is no weekly booking to change" },
         { status: 404 },
       );
+    }
+
+    if (intent === "CHANGE_DAYS") {
+      let days = addCronSchema.shape.days.safeParse(formData.getAll("day"));
+
+      if (!days.success || days.data.length === 0) {
+        return dataWithError(
+          null,
+          { message: "Pick the days to book" },
+          { status: 400 },
+        );
+      }
+
+      await changeCronDays({
+        cronId,
+        deskId: String(desk.id),
+        userId: user.userId,
+        days: days.data,
+      });
+
+      return dataWithSuccess(null, {
+        message: "Weekly booking updated",
+      });
     }
 
     if (intent === "DELETE") {

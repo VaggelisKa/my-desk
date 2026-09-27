@@ -61,6 +61,24 @@ export const addCronSchema = z.object({
   lastName: z.string().optional(),
 });
 
+// The address cron-job.org calls every Sunday. The desk, person and days
+// ride along in it, which is also where the Recurring page reads them back.
+function callbackUrl({
+  deskId,
+  userId,
+  days,
+}: Pick<z.infer<typeof addCronSchema>, "deskId" | "userId" | "days">) {
+  let url = new URL(
+    "https://share-a-desk.vercel.app/cron/automatic-reservation",
+  );
+  url.searchParams.set("deskId", deskId);
+  url.searchParams.set("userId", userId);
+  url.searchParams.set("cronPassword", process.env.CRON_PASSWORD ?? "");
+  days.forEach((day) => url.searchParams.append("day", day));
+
+  return url.toString();
+}
+
 export async function addCron({
   deskId,
   days,
@@ -68,19 +86,11 @@ export async function addCron({
   firstName,
   lastName,
 }: z.infer<typeof addCronSchema>) {
-  let callbackUrl = new URL(
-    "https://share-a-desk.vercel.app/cron/automatic-reservation",
-  );
-  callbackUrl.searchParams.set("deskId", deskId);
-  callbackUrl.searchParams.set("userId", userId);
-  callbackUrl.searchParams.set("cronPassword", process.env.CRON_PASSWORD ?? "");
-  days.forEach((day) => callbackUrl.searchParams.append("day", day));
-
   let response = await cronRequest("/jobs", {
     method: "PUT",
     body: JSON.stringify({
       job: {
-        url: callbackUrl.toString(),
+        url: callbackUrl({ deskId, userId, days }),
         enabled: true,
         title: `auto-reservations-for-${[firstName, lastName].filter(Boolean).join("-").toLowerCase()}`,
         saveResponses: true,
@@ -144,6 +154,25 @@ export async function enableCron({ cronId }: { cronId: string }) {
     method: "PATCH",
     body: JSON.stringify({
       job: { enabled: true },
+    }),
+  });
+}
+
+/**
+ * Points a job at new days in place: it keeps its id, schedule and paused
+ * state, so there is never a moment without a weekly booking.
+ */
+export async function changeCronDays({
+  cronId,
+  ...job
+}: { cronId: string } & Pick<
+  z.infer<typeof addCronSchema>,
+  "deskId" | "userId" | "days"
+>) {
+  await cronRequest(`/jobs/${cronId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      job: { url: callbackUrl(job) },
     }),
   });
 }
