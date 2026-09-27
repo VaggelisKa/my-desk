@@ -55,11 +55,17 @@ export function BookingsHeader({
         <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
           Bookings
         </h1>
-        <div ref={slotRef} className="contents" />
+        {!desk && <div ref={slotRef} className="contents" />}
       </div>
 
-      {/* Recurring only makes sense with a desk of your own to repeat. */}
-      {desk && <SegmentSwitch label="Bookings" segments={SEGMENTS} />}
+      {/* Recurring only makes sense with a desk of your own to repeat.
+      "Select" sits on this row, next to the list it acts on. */}
+      {desk && (
+        <div className="flex items-center justify-between gap-3">
+          <SegmentSwitch label="Bookings" segments={SEGMENTS} />
+          <div ref={slotRef} className="contents" />
+        </div>
+      )}
     </header>
   );
 }
