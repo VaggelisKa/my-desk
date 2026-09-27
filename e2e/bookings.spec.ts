@@ -55,6 +55,108 @@ test.describe("an employee with a desk", () => {
     );
   });
 
+  test("removes several days at once from select mode", async ({
+    page,
+    db,
+    bookingsPage,
+  }) => {
+    for (let day of ["monday", "tuesday", "thursday"] as const) {
+      await db.addReservation({ user: "alice", deskId: desks.alice.id, day });
+    }
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "friday",
+      weekOffset: 1,
+    });
+
+    await bookingsPage.goto();
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+
+    let bar = page.getByRole("region", { name: "Selected bookings" });
+    await expect(bar).toContainText("Pick bookings");
+    await expect(bar.getByRole("button", { name: "Remove" })).toBeDisabled();
+    // Each row's own Remove makes way for a check.
+    await expect(
+      page.locator("form:not([inert]) [data-remove-booking]"),
+    ).toHaveCount(0);
+
+    await page
+      .getByRole("checkbox", {
+        name: `${bookingDay("tuesday").label}, desk 1.1.1`,
+      })
+      .check();
+    await page
+      .getByRole("checkbox", {
+        name: `${bookingDay("friday", 1).label}, desk 1.1.1`,
+      })
+      .check();
+    await expect(bar).toContainText("2 selected");
+
+    // Your own bookings go straight away, without a question.
+    await bar.getByRole("button", { name: "Remove", exact: true }).click();
+
+    await expectToast(page, "Removed 2 bookings");
+    await expect(bar).toHaveCount(0);
+    await expect(bookingsPage.rows).toHaveCount(2);
+    await expect(
+      db.reservation(desks.alice.id, "tuesday"),
+    ).resolves.toBeUndefined();
+    await expect(
+      db.reservation(desks.alice.id, "friday", 1),
+    ).resolves.toBeUndefined();
+    await expect(
+      db.reservation(desks.alice.id, "monday"),
+    ).resolves.toBeDefined();
+  });
+
+  test("picks every booking with Select all", async ({
+    page,
+    db,
+    bookingsPage,
+  }) => {
+    for (let day of ["monday", "wednesday"] as const) {
+      await db.addReservation({ user: "alice", deskId: desks.alice.id, day });
+    }
+
+    await bookingsPage.goto();
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    await page.getByRole("button", { name: "Select all" }).click();
+
+    let bar = page.getByRole("region", { name: "Selected bookings" });
+    await expect(bar).toContainText("2 selected");
+    await expect(
+      page.getByRole("button", { name: "Unselect all" }),
+    ).toBeVisible();
+
+    await bar.getByRole("button", { name: "Cancel" }).click();
+    await expect(bar).toHaveCount(0);
+    await expect(bookingsPage.rows).toHaveCount(2);
+  });
+
+  test("cannot remove someone else's booking by naming it", async ({
+    page,
+    db,
+  }) => {
+    await db.addReservation({
+      user: "guest",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    let response = await page.request.delete("/bookings?index", {
+      form: {
+        intent: "remove-many",
+        booking: `${desks.alice.id}@${bookingDay("tuesday").date}@${users.guest.id}`,
+      },
+    });
+
+    expect(response.status()).toBe(400);
+    await expect(
+      db.reservation(desks.alice.id, "tuesday"),
+    ).resolves.toMatchObject({ userId: users.guest.id });
+  });
+
   test("says where bookings come from when nothing is booked", async ({
     bookingsPage,
   }) => {

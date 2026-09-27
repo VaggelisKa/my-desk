@@ -299,3 +299,25 @@ html[data-touch] .group:focus-visible * {
 [tabindex="-1"]:focus {
   outline: none;
 }
+
+/* Select mode's bar takes the phone dock's place while it is up. */
+body:has([data-selection-bar]) .app-dock {
+  display: none;
+}
+
+/* Words that change in place (the selection bar's buttons as it asks to
+   confirm) fade over instead of snapping. */
+@keyframes swap {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.swap {
+  animation: swap 200ms ease-out backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .swap {
+    animation: none;
+  }
+}

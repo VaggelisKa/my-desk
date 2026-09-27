@@ -155,8 +155,9 @@ function ScheduleSummary({
   onSubmit: OnSubmit;
 }) {
   let isSubmitting = pendingIntent != null;
+  let saved = new Set(days);
   let changed =
-    picked.length !== days.length || picked.some((day) => !days.includes(day));
+    picked.length !== saved.size || picked.some((day) => !saved.has(day));
 
   return (
     <>

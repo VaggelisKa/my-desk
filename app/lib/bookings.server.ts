@@ -1,5 +1,5 @@
 import { format, getWeek, isValid, isWeekend } from "date-fns";
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte, or } from "drizzle-orm";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import type { Booking } from "~/components/bookings";
 import {
@@ -12,6 +12,7 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema";
+import { plural } from "~/lib/utils";
 
 /** A booking of `deskId` by `userId` on `date`, as the table stores it. */
 export function bookingRow(deskId: number, userId: string, date: Date) {
@@ -202,4 +203,103 @@ export async function removeBooking(
   }
 
   return dataWithSuccess(null, { message: "Booking removed" });
+}
+
+/**
+ * The most bookings one form may name: more than the whole office has
+ * upcoming, so Select all in Admin always fits.
+ */
+let MAX_PICKED = 5000;
+
+/** Bookings per delete statement, to keep each one's SQL variables small. */
+let CHUNK = 100;
+
+/**
+ * The bookings a form names in its `booking` fields (see `bookingKey`),
+ * without repeats, or null when there are none or too many.
+ */
+export function pickedBookings(formData: FormData) {
+  let picked = new Map<
+    string,
+    { deskId: number; date: string; userId: string }
+  >();
+
+  for (let value of formData.getAll("booking")) {
+    // Desk ids and dates never hold "@", but user IDs may, so the ID is
+    // everything after the second one.
+    let [deskId, date, ...rest] = String(value).split("@");
+    let userId = rest.join("@");
+    let id = Number(deskId);
+    if (!Number.isInteger(id) || id <= 0 || !date || !userId) continue;
+    picked.set(`${id}@${date}@${userId}`, { deskId: id, date, userId });
+  }
+
+  return picked.size > 0 && picked.size <= MAX_PICKED
+    ? [...picked.values()]
+    : null;
+}
+
+type Picked = NonNullable<ReturnType<typeof pickedBookings>>;
+
+/** Matches any of the picked bookings, each by desk, day and person. */
+function anyOf(picked: Picked) {
+  return or(
+    ...picked.map((booking) =>
+      and(
+        eq(reservations.deskId, booking.deskId),
+        eq(reservations.date, booking.date),
+        eq(reservations.userId, booking.userId),
+      ),
+    ),
+  );
+}
+
+/**
+ * Deletes the picked bookings, a chunk per statement, all in one batch (so
+ * all or none go). Returns how many there were.
+ */
+export async function deletePicked(picked: Picked) {
+  let [first, ...rest] = Array.from(
+    { length: Math.ceil(picked.length / CHUNK) },
+    (_, i) =>
+      db
+        .delete(reservations)
+        .where(anyOf(picked.slice(i * CHUNK, (i + 1) * CHUNK)))
+        .returning({ deskId: reservations.deskId }),
+  );
+  let results = await db.batch([first, ...rest]);
+  return results.reduce((count, deleted) => count + deleted.length, 0);
+}
+
+/**
+ * Removes several of `userId`'s own bookings at once. Bookings the form
+ * names for anyone else are left alone, whoever is asking.
+ */
+export async function removeBookings(userId: string, formData: FormData) {
+  let picked = pickedBookings(formData)?.filter(
+    (booking) => booking.userId === userId,
+  );
+
+  if (!picked?.length) {
+    return dataWithError(
+      null,
+      { message: "No bookings picked" },
+      { status: 400 },
+    );
+  }
+
+  // Only the person's own picks are left, so each deletes only their own.
+  let deleted = await deletePicked(picked);
+
+  if (!deleted) {
+    return dataWithError(
+      null,
+      { message: "Bookings not found" },
+      { status: 404 },
+    );
+  }
+
+  return dataWithSuccess(null, {
+    message: `Removed ${plural(deleted, "booking")}`,
+  });
 }

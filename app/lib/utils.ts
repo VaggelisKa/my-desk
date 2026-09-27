@@ -41,6 +41,18 @@ export function deskPlace(
   return `Block ${desk.block} · ${where ?? `column ${desk.column}`}`;
 }
 
+/**
+ * One booking as a single form value, "deskId@date@userId", for forms that
+ * send several at once.
+ */
+export function bookingKey(booking: {
+  deskId: number;
+  date: string;
+  userId: string;
+}) {
+  return `${booking.deskId}@${booking.date}@${booking.userId}`;
+}
+
 /** "1 booking", "3 bookings". */
 export function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;

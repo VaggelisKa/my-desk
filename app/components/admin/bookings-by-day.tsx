@@ -20,6 +20,13 @@ import {
   useIndex,
 } from "~/components/admin/shared";
 import { ConfirmAction } from "~/components/admin/sheets";
+import {
+  type BatchSelect,
+  RowCheck,
+  SelectButton,
+  SelectionBar,
+  useBatchSelect,
+} from "~/components/batch-select";
 import { DeskChip } from "~/components/desk-chip";
 import type { AdminBooking } from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
@@ -37,7 +44,7 @@ function dayHeading(date: Date, today: Date) {
 export function BookingsByDay({ data }: { data: AdminData }) {
   let index = useIndex(data);
   let [query, setQuery] = useState("");
-  let shown = data.bookings.filter((booking) => {
+  let matching = data.bookings.filter((booking) => {
     let person = index.people.get(booking.userId);
     let desk = index.desks.get(booking.deskId);
     return matches(
@@ -47,7 +54,18 @@ export function BookingsByDay({ data }: { data: AdminData }) {
       desk && deskLabel(desk),
     );
   });
+  let batch = useBatchSelect({
+    // Only what the search shows counts, so a row filtered out is never
+    // removed unseen.
+    bookings: matching,
+    action: "/admin",
+    intent: "cancel-many",
+  });
+  let shown = matching.filter((booking) => !batch.isRemoving(booking));
   let days = [...new Set(shown.map((b) => b.date))];
+  // One "Select" for the whole list, on the first day's heading.
+  let select = (first: boolean) =>
+    first && <SelectButton batch={batch} all={shown} />;
 
   return (
     <div className="flex flex-col gap-6">
@@ -65,9 +83,11 @@ export function BookingsByDay({ data }: { data: AdminData }) {
         <NothingFound>No booking matches “{query.trim()}”.</NothingFound>
       ) : null}
 
-      {days.map((date) => {
+      {days.map((date, i) => {
         let dayBookings = shown.filter((b) => b.date === date);
-        let all = data.bookings.filter((b) => b.date === date).length;
+        let all = data.bookings.filter(
+          (b) => b.date === date && !batch.isRemoving(b),
+        ).length;
         let label = dayHeading(parseDate(date), index.today);
 
         return (
@@ -84,12 +104,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                   {plural(all, "booking")}
                 </span>
               </h2>
-              <ConfirmAction
-                label="Clear day"
-                question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
-                confirmLabel={`Clear ${plural(all, "booking")}`}
-                fields={{ intent: "clear-day", date }}
-              />
+              {select(i === 0)}
             </div>
             <ul className={listClass}>
               {dayBookings.map((booking) => (
@@ -98,6 +113,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                   booking={booking}
                   index={index}
                   show="both"
+                  batch={batch}
                 />
               ))}
             </ul>
@@ -110,6 +126,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
           <table className="w-full text-sm">
             <thead className="sr-only">
               <tr>
+                <th>Selected</th>
                 <th>Desk</th>
                 <th>Person</th>
                 <th>Kind</th>
@@ -118,7 +135,9 @@ export function BookingsByDay({ data }: { data: AdminData }) {
             </thead>
             {days.map((date, i) => {
               let dayBookings = shown.filter((b) => b.date === date);
-              let all = data.bookings.filter((b) => b.date === date).length;
+              let all = data.bookings.filter(
+                (b) => b.date === date && !batch.isRemoving(b),
+              ).length;
               let label = dayHeading(parseDate(date), index.today);
 
               return (
@@ -130,7 +149,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                     )}
                   >
                     <th
-                      colSpan={4}
+                      colSpan={5}
                       scope="colgroup"
                       className="px-4 py-2 text-left"
                     >
@@ -141,12 +160,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                             {plural(all, "booking")}
                           </span>
                         </span>
-                        <ConfirmAction
-                          label="Clear day"
-                          question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
-                          confirmLabel={`Clear ${plural(all, "booking")}`}
-                          fields={{ intent: "clear-day", date }}
-                        />
+                        {select(i === 0)}
                       </div>
                     </th>
                   </tr>
@@ -155,6 +169,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                       key={`${booking.deskId}-${booking.date}`}
                       booking={booking}
                       index={index}
+                      batch={batch}
                     />
                   ))}
                 </tbody>
@@ -163,6 +178,8 @@ export function BookingsByDay({ data }: { data: AdminData }) {
           </table>
         </div>
       )}
+
+      {batch.selecting && <SelectionBar batch={batch} confirm />}
     </div>
   );
 }
@@ -170,9 +187,11 @@ export function BookingsByDay({ data }: { data: AdminData }) {
 function BookingTableRow({
   booking,
   index,
+  batch,
 }: {
   booking: AdminBooking;
   index: Index;
+  batch: BatchSelect;
 }) {
   let fetcher = useFetcher();
   let person = index.people.get(booking.userId);
@@ -188,7 +207,21 @@ function BookingTableRow({
   }
 
   return (
-    <tr className="border-t border-line hover:bg-paper-muted">
+    <tr
+      className={cn(
+        "relative border-t border-line transition-colors hover:bg-paper-muted",
+        batch.isSelected(booking) && "bg-moss-soft/30 hover:bg-moss-soft/40",
+      )}
+    >
+      <td className="w-px p-0">
+        <RowCheck
+          shown={batch.selecting}
+          shownClassName="ml-2"
+          checked={batch.isSelected(booking)}
+          onChange={() => batch.toggle(booking)}
+          label={`${name}, ${when}, desk ${label}`}
+        />
+      </td>
       <td className={cn(td, "w-px")}>
         <DeskChip label={label} tone={borrowed ? "taken" : "mine"} />
         <span className="sr-only">{label}</span>
@@ -202,6 +235,11 @@ function BookingTableRow({
       </td>
       <td className={cn(td, "w-px pr-2")}>
         <fetcher.Form
+          inert={batch.selecting}
+          className={cn(
+            "transition-opacity duration-200 motion-reduce:transition-none",
+            batch.selecting && "opacity-0",
+          )}
           method="post"
           action="/admin"
           onSubmit={(event) =>
@@ -231,10 +269,13 @@ function BookingRow({
   booking,
   index,
   show,
+  batch,
 }: {
   booking: AdminBooking;
   index: Index;
   show: "person" | "desk" | "both";
+  /** Admin › Bookings' select mode; sheets have none. */
+  batch?: BatchSelect;
 }) {
   let fetcher = useFetcher();
   let person = index.people.get(booking.userId);
@@ -253,7 +294,22 @@ function BookingRow({
   let { title, detail } = bookingRowText({ show, when, name, label, borrowed });
 
   return (
-    <li className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0 sm:px-5">
+    <li
+      className={cn(
+        "relative flex items-center gap-3 border-b border-line px-4 py-2.5 transition-colors last:border-b-0 sm:px-5",
+        batch?.isSelected(booking) && "bg-moss-soft/30",
+      )}
+    >
+      {batch && (
+        <RowCheck
+          shown={batch.selecting}
+          shownClassName="-my-1.5 -ml-2.5 -mr-1"
+          hiddenClassName="-mr-3"
+          checked={batch.isSelected(booking)}
+          onChange={() => batch.toggle(booking)}
+          label={`${name}, ${when}, desk ${label}`}
+        />
+      )}
       {show === "both" && (
         <DeskChip label={label} tone={borrowed ? "taken" : "mine"} />
       )}
@@ -274,6 +330,11 @@ function BookingRow({
         </span>
       </div>
       <fetcher.Form
+        inert={batch?.selecting}
+        className={cn(
+          "transition-opacity duration-200 motion-reduce:transition-none",
+          batch?.selecting && "opacity-0",
+        )}
         method="post"
         action="/admin"
         onSubmit={(event) =>
