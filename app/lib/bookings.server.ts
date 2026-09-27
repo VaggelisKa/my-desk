@@ -205,8 +205,14 @@ export async function removeBooking(
   return dataWithSuccess(null, { message: "Booking removed" });
 }
 
-/** The most bookings one form may name; more than anyone has upcoming. */
-let MAX_PICKED = 200;
+/**
+ * The most bookings one form may name: more than the whole office has
+ * upcoming, so Select all in Admin always fits.
+ */
+let MAX_PICKED = 5000;
+
+/** Bookings per delete statement, to keep each one's SQL variables small. */
+let CHUNK = 100;
 
 /**
  * The bookings a form names in its `booking` fields (see `bookingKey`),
@@ -219,7 +225,10 @@ export function pickedBookings(formData: FormData) {
   >();
 
   for (let value of formData.getAll("booking")) {
-    let [deskId, date, userId] = String(value).split("@");
+    // Desk ids and dates never hold "@", but user IDs may, so the ID is
+    // everything after the second one.
+    let [deskId, date, ...rest] = String(value).split("@");
+    let userId = rest.join("@");
     let id = Number(deskId);
     if (!Number.isInteger(id) || id <= 0 || !date || !userId) continue;
     picked.set(`${id}@${date}@${userId}`, { deskId: id, date, userId });
@@ -230,8 +239,10 @@ export function pickedBookings(formData: FormData) {
     : null;
 }
 
+type Picked = NonNullable<ReturnType<typeof pickedBookings>>;
+
 /** Matches any of the picked bookings, each by desk, day and person. */
-export function anyOf(picked: NonNullable<ReturnType<typeof pickedBookings>>) {
+function anyOf(picked: Picked) {
   return or(
     ...picked.map((booking) =>
       and(
@@ -241,6 +252,24 @@ export function anyOf(picked: NonNullable<ReturnType<typeof pickedBookings>>) {
       ),
     ),
   );
+}
+
+/**
+ * Deletes the picked bookings, a chunk per statement, all in one
+ * transaction. Returns how many there were.
+ */
+export async function deletePicked(picked: Picked) {
+  return db.transaction(async (tx) => {
+    let count = 0;
+    for (let start = 0; start < picked.length; start += CHUNK) {
+      let deleted = await tx
+        .delete(reservations)
+        .where(anyOf(picked.slice(start, start + CHUNK)))
+        .returning({ deskId: reservations.deskId });
+      count += deleted.length;
+    }
+    return count;
+  });
 }
 
 /**
@@ -260,12 +289,10 @@ export async function removeBookings(userId: string, formData: FormData) {
     );
   }
 
-  let deleted = await db
-    .delete(reservations)
-    .where(and(eq(reservations.userId, userId), anyOf(picked)))
-    .returning({ deskId: reservations.deskId });
+  // Only the person's own picks are left, so each deletes only their own.
+  let deleted = await deletePicked(picked);
 
-  if (!deleted.length) {
+  if (!deleted) {
     return dataWithError(
       null,
       { message: "Bookings not found" },
@@ -274,6 +301,6 @@ export async function removeBookings(userId: string, formData: FormData) {
   }
 
   return dataWithSuccess(null, {
-    message: `Removed ${plural(deleted.length, "booking")}`,
+    message: `Removed ${plural(deleted, "booking")}`,
   });
 }

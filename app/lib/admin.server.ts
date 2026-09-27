@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireAuthCookie } from "~/cookies.server";
-import { anyOf, pickedBookings } from "~/lib/bookings.server";
+import { deletePicked, pickedBookings } from "~/lib/bookings.server";
 import { CronError, deleteCron } from "~/lib/cron";
 import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
@@ -358,12 +358,9 @@ export async function handleAdminAction(request: Request) {
         );
       }
 
-      let deleted = await db
-        .delete(reservations)
-        .where(anyOf(picked))
-        .returning({ deskId: reservations.deskId });
+      let deleted = await deletePicked(picked);
 
-      if (!deleted.length) {
+      if (!deleted) {
         return dataWithError(
           null,
           { message: "Bookings not found" },
@@ -372,7 +369,7 @@ export async function handleAdminAction(request: Request) {
       }
 
       return dataWithSuccess(done, {
-        message: `Removed ${plural(deleted.length, "booking")}`,
+        message: `Removed ${plural(deleted, "booking")}`,
       });
     }
 
