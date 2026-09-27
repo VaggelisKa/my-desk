@@ -62,8 +62,9 @@ export default function RecurringBookingsPage({
   let [picked, setPicked] = useState<Weekday[]>(schedule?.days ?? []);
   let scheduledDays = schedule?.days.join();
 
-  // After "Stop and remove" the setup form starts from the days you had, so
-  // changing them is stop, adjust, set up.
+  // The days are edited in place on the summary, and after "Stop and
+  // remove" the setup form starts from them too. Once a save lands, the
+  // picked days follow the saved ones.
   useEffect(() => {
     if (scheduledDays) {
       setPicked(scheduledDays.split(",") as Weekday[]);
@@ -110,6 +111,8 @@ export default function RecurringBookingsPage({
         <ScheduleSummary
           desk={desk}
           days={schedule.days}
+          picked={picked}
+          onPickedChange={setPicked}
           enabled={enabled}
           nextRunLabel={nextRunLabel}
           pendingIntent={pendingIntent}
@@ -135,6 +138,8 @@ type OnSubmit = (event: FormEvent<HTMLFormElement>) => void;
 function ScheduleSummary({
   desk,
   days,
+  picked,
+  onPickedChange,
   enabled,
   nextRunLabel,
   pendingIntent,
@@ -142,12 +147,16 @@ function ScheduleSummary({
 }: {
   desk: OwnDesk;
   days: Weekday[];
+  picked: Weekday[];
+  onPickedChange: Dispatch<SetStateAction<Weekday[]>>;
   enabled: boolean;
   nextRunLabel: string;
   pendingIntent: PendingIntent;
   onSubmit: OnSubmit;
 }) {
   let isSubmitting = pendingIntent != null;
+  let changed =
+    picked.length !== days.length || picked.some((day) => !days.includes(day));
 
   return (
     <>
@@ -171,41 +180,40 @@ function ScheduleSummary({
         </span>
       </div>
 
-      <div className="flex flex-col gap-3.5">
-        <Rule desk={desk} />
-        {days.length > 0 ? (
-          <div className="grid grid-cols-5 gap-2 sm:max-w-[420px]">
-            {WEEKDAYS.map((day) => {
-              let on = days.includes(day);
-              return (
-                <span
-                  key={day}
-                  role="img"
-                  aria-label={`${dayNames[day]}, ${on ? "booked" : "not booked"}`}
-                  className={cn(
-                    "grid h-11 place-items-center rounded-lg border-[1.5px] text-[13px] font-semibold",
-                    on
-                      ? "border-moss-edge bg-moss text-white"
-                      : "border-line bg-paper text-ink-muted",
-                  )}
-                >
-                  {dayNames[day]}
-                </span>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-ink-muted">
-            the days you picked when you set it up.
+      <Form
+        id="weekly-days"
+        method="POST"
+        className="contents"
+        onSubmit={onSubmit}
+      >
+        <input type="hidden" name="intent" value="CHANGE_DAYS" />
+        <fieldset className="flex flex-col gap-3.5">
+          <legend className="contents">
+            <Rule desk={desk} />
+          </legend>
+          <DayPicker picked={picked} onPickedChange={onPickedChange} />
+          <p className="text-[13px] leading-relaxed text-ink-muted">
+            Change the days here and save. Days already booked stay booked.
           </p>
-        )}
-        <p className="text-[13px] leading-relaxed text-ink-muted">
-          To change the days, stop it and set it up again. Days already booked
-          stay booked.
-        </p>
-      </div>
+        </fieldset>
+      </Form>
 
       <div className="flex flex-col gap-2.5 border-t border-line pt-6 sm:flex-row">
+        <Button
+          form="weekly-days"
+          variant="primary"
+          size="tall"
+          className="w-full px-5 sm:w-auto"
+          type="submit"
+          disabled={isSubmitting || !changed || picked.length === 0}
+        >
+          {pendingIntent === "CHANGE_DAYS"
+            ? "Saving..."
+            : changed && picked.length === 0
+              ? "Pick your days"
+              : "Save days"}
+        </Button>
+
         <Form method="POST" onSubmit={onSubmit}>
           <input
             type="hidden"
@@ -264,39 +272,7 @@ function SetupForm({
         <legend className="contents">
           <Rule desk={desk} />
         </legend>
-        <div className="grid grid-cols-5 gap-2 sm:max-w-[420px]">
-          {WEEKDAYS.map((day) => {
-            let on = picked.includes(day);
-            return (
-              <label
-                key={day}
-                className={cn(
-                  "relative grid h-11 cursor-pointer place-items-center rounded-lg border-[1.5px] text-[13px] font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-moss has-[:focus-visible]:ring-offset-2",
-                  on
-                    ? "border-moss-edge bg-moss text-white"
-                    : "border-dashed border-mist-edge bg-paper text-ink hover:bg-paper-muted",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  name="day"
-                  value={day}
-                  checked={on}
-                  onChange={() =>
-                    onPickedChange((current) =>
-                      current.includes(day)
-                        ? current.filter((d) => d !== day)
-                        : [...current, day],
-                    )
-                  }
-                  aria-label={dayNames[day]}
-                  className="absolute inset-0 cursor-pointer appearance-none rounded-lg opacity-0"
-                />
-                {dayNames[day]}
-              </label>
-            );
-          })}
-        </div>
+        <DayPicker picked={picked} onPickedChange={onPickedChange} />
         <p className="text-[13px] leading-relaxed text-ink-muted">
           The first run is on {nextRunLabel}.
         </p>
@@ -318,6 +294,50 @@ function SetupForm({
         </Button>
       </div>
     </Form>
+  );
+}
+
+function DayPicker({
+  picked,
+  onPickedChange,
+}: {
+  picked: Weekday[];
+  onPickedChange: Dispatch<SetStateAction<Weekday[]>>;
+}) {
+  return (
+    <div className="grid grid-cols-5 gap-2 sm:max-w-[420px]">
+      {WEEKDAYS.map((day) => {
+        let on = picked.includes(day);
+        return (
+          <label
+            key={day}
+            className={cn(
+              "relative grid h-11 cursor-pointer place-items-center rounded-lg border-[1.5px] text-[13px] font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-moss has-[:focus-visible]:ring-offset-2",
+              on
+                ? "border-moss-edge bg-moss text-white"
+                : "border-dashed border-mist-edge bg-paper text-ink hover:bg-paper-muted",
+            )}
+          >
+            <input
+              type="checkbox"
+              name="day"
+              value={day}
+              checked={on}
+              onChange={() =>
+                onPickedChange((current) =>
+                  current.includes(day)
+                    ? current.filter((d) => d !== day)
+                    : [...current, day],
+                )
+              }
+              aria-label={dayNames[day]}
+              className="absolute inset-0 cursor-pointer appearance-none rounded-lg opacity-0"
+            />
+            {dayNames[day]}
+          </label>
+        );
+      })}
+    </div>
   );
 }
 
