@@ -1,5 +1,4 @@
-import { format, nextDay, startOfDay } from "date-fns";
-import { and, eq } from "drizzle-orm";
+import { format } from "date-fns";
 import {
   useEffect,
   useRef,
@@ -9,199 +8,31 @@ import {
   type SetStateAction,
 } from "react";
 import { Form, redirect, useNavigation, useSubmit } from "react-router";
-import { dataWithError, dataWithSuccess } from "remix-toast";
-import { DeskChip, type OwnDesk } from "~/components/bookings";
+import type { OwnDesk } from "~/components/bookings";
+import { DeskChip } from "~/components/desk-chip";
 import { Button } from "~/components/ui/button";
 import { requireAuthCookie } from "~/cookies.server";
-import {
-  addCron,
-  addCronSchema,
-  CronError,
-  daysFromJob,
-  deleteCron,
-  disableCron,
-  enableCron,
-  getCronDetails,
-} from "~/lib/cron";
-import {
-  formatDate,
-  officeNow,
-  parseDate,
-  WEEKDAYS,
-  type Weekday,
-} from "~/lib/dates";
-import { db } from "~/lib/db/drizzle.server";
-import { desks, users } from "~/lib/db/schema";
+import { parseDate, WEEKDAYS, type Weekday } from "~/lib/dates";
 import { rescueFocus } from "~/lib/focus";
+import { changeRecurring, loadRecurring } from "~/lib/recurring.server";
 import { cn, deskLabel } from "~/lib/utils";
-import type { Route } from "./+types/_bookings.automatic-reservations";
+import type { Route } from "./+types/bookings.recurring";
 
 export let meta: Route.MetaFunction = () => [{ title: "Recurring bookings" }];
 
-// The signed-in user's desk and weekly job, from the database. The job id is
-// never taken from the form: it would let anyone pause or remove anyone's job.
-async function findOwnDesk(userId: string) {
-  return db.query.desks.findFirst({
-    where: eq(desks.userId, userId),
-    columns: { id: true, block: true, row: true, column: true },
-    with: {
-      user: {
-        columns: {
-          autoReservationsCronId: true,
-        },
-      },
-    },
-  });
-}
-
-let schedulerDown = {
-  message: "Could not reach the scheduler",
-  description: "Nothing was changed. Try again in a moment.",
-};
-
 export async function loader({ request }: Route.LoaderArgs) {
-  let user = await requireAuthCookie(request);
-  let desk = await findOwnDesk(user.userId);
+  let { userId } = await requireAuthCookie(request);
+  let recurring = await loadRecurring(userId);
 
   // Only your own desk can be booked ahead, so without one there is nothing
   // to repeat.
-  if (!desk?.id) {
-    return redirect("/reservations");
-  }
-
-  let { user: owner, ...ownDesk } = desk;
-  let cronId = owner?.autoReservationsCronId ?? null;
-  let schedule: { enabled: boolean; days: Weekday[] } | null = null;
-  // Set up, but its state could not be read: neither active nor paused.
-  let unavailable = false;
-
-  if (cronId) {
-    try {
-      let { jobDetails } = await getCronDetails({ cronId });
-      schedule = {
-        enabled: jobDetails.enabled === true,
-        days: daysFromJob(jobDetails),
-      };
-    } catch (error) {
-      if (!(error instanceof CronError)) throw error;
-      console.error(error);
-      unavailable = true;
-    }
-  }
-
-  return {
-    desk: ownDesk,
-    cronId,
-    schedule,
-    unavailable,
-    nextRun: formatDate(nextSunday(officeNow())),
-  };
-}
-
-// The job runs every Sunday at 10:00 office time (see addCron).
-function nextSunday(now: Date) {
-  let sunday = nextDay(startOfDay(now), 0);
-  return now.getDay() === 0 && now.getHours() < 10 ? startOfDay(now) : sunday;
+  return recurring ?? redirect("/bookings");
 }
 
 export async function action({ request }: Route.ActionArgs) {
   let user = await requireAuthCookie(request);
-  let formData = await request.formData();
-  let intent = formData.get("intent");
-  let desk = await findOwnDesk(user.userId);
-  let cronId = desk?.user?.autoReservationsCronId ?? null;
 
-  if (!desk) {
-    return dataWithError(
-      null,
-      { message: "Only your own desk can be booked every week" },
-      { status: 403 },
-    );
-  }
-
-  try {
-    if (intent === "ADD") {
-      // One weekly job per person: a double submit must not leave a second
-      // job running that nothing points at any more.
-      if (cronId) {
-        return dataWithError(
-          null,
-          { message: "Weekly booking is already set up" },
-          { status: 409 },
-        );
-      }
-
-      let parsedInput = addCronSchema.safeParse({
-        days: formData.getAll("day"),
-        deskId: String(desk.id),
-        userId: user.userId,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      });
-
-      if (!parsedInput.success || parsedInput.data.days.length === 0) {
-        return dataWithError(
-          null,
-          { message: "Pick the days to book" },
-          { status: 400 },
-        );
-      }
-
-      let { jobId } = await addCron(parsedInput.data);
-      await db
-        .update(users)
-        .set({ autoReservationsCronId: String(jobId) })
-        .where(eq(users.id, user.userId));
-
-      return dataWithSuccess(null, {
-        message: "Weekly booking set up",
-      });
-    }
-
-    if (!cronId) {
-      return dataWithError(
-        null,
-        { message: "There is no weekly booking to change" },
-        { status: 404 },
-      );
-    }
-
-    if (intent === "DELETE") {
-      await deleteCron({ cronId });
-      await db
-        .update(users)
-        .set({ autoReservationsCronId: null })
-        .where(
-          and(
-            eq(users.id, user.userId),
-            eq(users.autoReservationsCronId, cronId),
-          ),
-        );
-
-      return dataWithSuccess(null, {
-        message: "Weekly booking stopped",
-      });
-    } else if (intent === "DISABLE") {
-      await disableCron({ cronId });
-
-      return dataWithSuccess(null, {
-        message: "Weekly booking paused",
-      });
-    } else if (intent === "ENABLE") {
-      await enableCron({ cronId });
-
-      return dataWithSuccess(null, {
-        message: "Weekly booking resumed",
-      });
-    }
-  } catch (error) {
-    if (!(error instanceof CronError)) throw error;
-    console.error(error);
-
-    return dataWithError(null, schedulerDown, { status: 502 });
-  }
-
-  return null;
+  return changeRecurring(user, await request.formData());
 }
 
 let dayNames: Record<Weekday, string> = {
@@ -212,7 +43,7 @@ let dayNames: Record<Weekday, string> = {
   friday: "Fri",
 };
 
-export default function AutomaticReservationsPage({
+export default function RecurringBookingsPage({
   loaderData: { desk, cronId, schedule, unavailable, nextRun },
 }: Route.ComponentProps) {
   let navigation = useNavigation();
@@ -271,7 +102,8 @@ export default function AutomaticReservationsPage({
           role="status"
           className="rounded-lg bg-paper-muted px-4 py-3 text-sm"
         >
-          {`${schedulerDown.message}, so its status is unknown. Try again in a moment.`}
+          Could not reach the scheduler, so its status is unknown. Try again in
+          a moment.
         </p>
       ) : schedule && cronId ? (
         <ScheduleSummary

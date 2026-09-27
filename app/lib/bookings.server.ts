@@ -1,0 +1,205 @@
+import { format, getWeek, isValid, isWeekend } from "date-fns";
+import { and, asc, eq, gte } from "drizzle-orm";
+import { dataWithError, dataWithSuccess } from "remix-toast";
+import type { Booking } from "~/components/bookings";
+import {
+  formatDate,
+  isOpenForBooking,
+  LAST_BOOKING_HOUR,
+  officeNow,
+  parseDate,
+  todayStart,
+} from "~/lib/dates";
+import { db } from "~/lib/db/drizzle.server";
+import { desks, reservations } from "~/lib/db/schema";
+
+/** A booking of `deskId` by `userId` on `date`, as the table stores it. */
+export function bookingRow(deskId: number, userId: string, date: Date) {
+  return {
+    day: format(date, "EEEE").toLowerCase(),
+    week: getWeek(date),
+    deskId,
+    userId,
+    date: formatDate(date),
+    dateTimestamp: date.getTime(),
+  };
+}
+
+let notOwnerError = {
+  message: "Not allowed!",
+  description:
+    "Only the person assigned to a desk can book it ahead. Others can book it for today.",
+};
+
+// Reservations are unique per desk, day and week.
+function isAlreadyBookedError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "SQLITE_CONSTRAINT_PRIMARYKEY"
+  );
+}
+
+/**
+ * Books `deskId` for the picked `date` fields (`dd.MM.yyyy`). The desk owner
+ * can plan ahead; anyone else can only take the desk for today.
+ */
+export async function bookDesk(userId: string, formData: FormData) {
+  let deskId = Number(formData.get("deskId"));
+  let dates = [...new Set(formData.getAll("date").map(String))];
+
+  if (dates.length === 0) {
+    return dataWithError(
+      null,
+      {
+        message: "No days picked",
+        description: "Pick at least one free day.",
+      },
+      { status: 400 },
+    );
+  }
+
+  let desk = await db.query.desks.findFirst({
+    where: eq(desks.id, deskId),
+    columns: { userId: true },
+  });
+
+  if (!desk) {
+    return dataWithError(null, { message: "Desk not found!" }, { status: 404 });
+  }
+
+  // The same rules the sheet shows, in office time: the owner books weekdays
+  // of this week and the next (today until 11:00); anyone else only today.
+  let now = officeNow();
+  let today = formatDate(now);
+  let days = dates.map((value) => parseDate(value));
+  let isOwner = desk.userId === userId;
+
+  if (!isOwner && !dates.every((date) => date === today)) {
+    return dataWithError(null, notOwnerError, { status: 403 });
+  }
+
+  let isBookable = isOwner
+    ? (date: Date) => isOpenForBooking(date, now)
+    : (date: Date) => isValid(date) && !isWeekend(date);
+
+  if (!days.every(isBookable)) {
+    return dataWithError(
+      null,
+      {
+        message: "Those days cannot be booked",
+        description: isOwner
+          ? `You can book weekdays this week and next. Today closes at ${LAST_BOOKING_HOUR}:00.`
+          : undefined,
+      },
+      { status: 400 },
+    );
+  }
+
+  try {
+    await db
+      .insert(reservations)
+      .values(days.map((date) => bookingRow(deskId, userId, date)));
+  } catch (error) {
+    if (!isAlreadyBookedError(error)) {
+      throw error;
+    }
+
+    return dataWithError(
+      null,
+      {
+        message: "Desk already booked",
+        description: "Someone else booked this desk in the meantime.",
+      },
+      { status: 409 },
+    );
+  }
+
+  let booked = days
+    .sort((a, b) => a.getTime() - b.getTime())
+    .map((date) => format(date, "EEE d MMM"));
+
+  return dataWithSuccess(null, {
+    message: "Desk booked",
+    description: `Booked ${booked.join(", ")}.`,
+  });
+}
+
+/** `userId`'s bookings from today on, soonest first, for Bookings › Upcoming. */
+export async function listUpcomingBookings(userId: string) {
+  let rows = await db.query.reservations.findMany({
+    with: {
+      desks: {
+        columns: { id: true, block: true, row: true, column: true },
+        with: { user: { columns: { id: true, firstName: true } } },
+      },
+    },
+    where: and(
+      eq(reservations.userId, userId),
+      gte(reservations.dateTimestamp, todayStart()),
+    ),
+    orderBy: [asc(reservations.dateTimestamp)],
+  });
+
+  return rows.flatMap((r): Booking[] =>
+    r.desks && r.date && r.deskId !== null
+      ? [
+          {
+            deskId: r.deskId,
+            day: r.day,
+            date: r.date,
+            userId: r.userId,
+            desk: r.desks,
+            mine: r.desks.user?.id === userId,
+            ownerName: r.desks.user?.firstName ?? null,
+          },
+        ]
+      : [],
+  );
+}
+
+/**
+ * Removes the booking the form names. People can only remove their own;
+ * admins anyone's, whatever the form claims.
+ */
+export async function removeBooking(
+  user: { userId: string; role: "user" | "admin" | null },
+  formData: FormData,
+) {
+  let date = String(formData.get("reservation-date") ?? "");
+  let day = String(formData.get("reservation-day") ?? "");
+  let deskId = Number(formData.get("desk-id"));
+
+  if (!date || !day || !deskId) {
+    return dataWithError(
+      null,
+      { message: "Booking information missing" },
+      { status: 400 },
+    );
+  }
+
+  let deleted = await db
+    .delete(reservations)
+    .where(
+      and(
+        user.role === "admin"
+          ? undefined
+          : eq(reservations.userId, user.userId),
+        eq(reservations.date, date),
+        eq(reservations.day, day),
+        eq(reservations.deskId, deskId),
+      ),
+    )
+    .returning({ deskId: reservations.deskId });
+
+  if (!deleted.length) {
+    return dataWithError(
+      null,
+      { message: "Booking not found" },
+      { status: 404 },
+    );
+  }
+
+  return dataWithSuccess(null, { message: "Booking removed" });
+}

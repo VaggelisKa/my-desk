@@ -7,7 +7,7 @@ test("a guest reserves someone else's desk for today", async ({
   page,
   db,
   desksPage,
-  reservationsPage,
+  bookingsPage,
 }) => {
   await desksPage.goto();
 
@@ -19,7 +19,7 @@ test("a guest reserves someone else's desk for today", async ({
 
   await dialog.reserveForTodayButton.click();
 
-  await expectToast(page, "Reservation added!");
+  await expectToast(page, "Desk booked");
   await expect(dialog.usedTodayBy).toHaveText("Gary Guest");
   await expect(dialog.reserveForTodayButton).toBeHidden();
 
@@ -27,12 +27,12 @@ test("a guest reserves someone else's desk for today", async ({
     { userId: users.guest.id, date: bookingDay("monday").date },
   );
 
-  await reservationsPage.goto();
-  await expect(reservationsPage.rows).toHaveCount(1);
-  await expect(reservationsPage.row(bookingDay("monday").date)).toContainText(
+  await bookingsPage.goto();
+  await expect(bookingsPage.rows).toHaveCount(1);
+  await expect(bookingsPage.row(bookingDay("monday").date)).toContainText(
     "Alice's desk",
   );
-  await expect(reservationsPage.row(bookingDay("monday").date)).toContainText(
+  await expect(bookingsPage.row(bookingDay("monday").date)).toContainText(
     "borrowed",
   );
 });
@@ -49,7 +49,7 @@ test("a guest can reserve an unclaimed desk for today", async ({
 
   await dialog.reserveForTodayButton.click();
 
-  await expectToast(page, "Reservation added!");
+  await expectToast(page, "Desk booked");
   await expect(
     db.reservation(desks.unclaimed.id, "monday"),
   ).resolves.toMatchObject({ userId: users.guest.id });

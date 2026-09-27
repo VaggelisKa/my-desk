@@ -546,7 +546,7 @@ test.describe("as a regular user", () => {
     });
 
     // Even when the form claims to be the reservation's owner.
-    let response = await page.request.delete("/reservations", {
+    let response = await page.request.delete("/bookings?index", {
       form: {
         "reservation-date": bookingDay("tuesday").date,
         "reservation-user-id": users.guest.id,

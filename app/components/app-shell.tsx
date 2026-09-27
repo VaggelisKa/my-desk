@@ -53,7 +53,7 @@ let TABS: {
   {
     id: "bookings",
     label: "Bookings",
-    to: "/reservations",
+    to: "/bookings",
     icon: CalendarDays,
     prefetch: "render",
   },

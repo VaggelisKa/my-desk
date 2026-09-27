@@ -4,7 +4,7 @@ import { AuthField } from "~/components/auth-card";
 import { Button } from "~/components/ui/button";
 import { deskLabel, deskPlace } from "~/lib/utils";
 
-export type ProfileUser = {
+type ProfileUser = {
   id: string;
   firstName: string;
   lastName: string;

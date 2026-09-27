@@ -1,4 +1,5 @@
-import { DeskList, useAdminData } from "~/components/admin";
+import { DeskList } from "~/components/admin/desk-list";
+import { useAdminData } from "~/components/admin/shared";
 
 export default function AdminDeskListPage() {
   return (

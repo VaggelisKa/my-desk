@@ -11,12 +11,12 @@ setup("warm up the dev server", async ({ page, loginPage }) => {
 
   let pages = [
     "/",
-    "/reservations",
+    "/bookings",
     "/admin",
     "/admin/people",
     "/admin/bookings",
     `/users/edit/${users.admin.id}`,
-    "/automatic-reservations",
+    "/bookings/recurring",
     "/metrics",
   ];
 

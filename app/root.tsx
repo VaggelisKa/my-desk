@@ -79,7 +79,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     getAuthenticatedUser(request),
   ]);
 
-  return data({ user, toast }, { headers });
+  // Only what the app chrome shows goes to the browser.
+  let shellUser = user && {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    desk: user.desk && {
+      id: user.desk.id,
+      block: user.desk.block,
+      row: user.desk.row,
+      column: user.desk.column,
+    },
+  };
+
+  return data({ user: shellUser, toast }, { headers });
 }
 
 // Toasts are flashed through this loader. React Router skips revalidation after
@@ -295,7 +309,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <SheetStack.Root>
           <SheetStack.Outlet
             ref={outlet}
-            className="app-outlet bg-background"
+            className="app-outlet bg-paper"
             stackingAnimation={depth}
           >
             {user && <Masthead user={user} />}

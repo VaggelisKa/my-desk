@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { useLocation, useNavigation, useSearchParams } from "react-router";
-import { AdminHeader } from "~/components/admin";
+import { AdminHeader } from "~/components/admin/shared";
 import { BookingsHeader } from "~/components/bookings";
 import { DayStrip, DeskFilters } from "~/components/desk-filters";
 import { MetricsSkeleton } from "~/components/metrics-skeleton";

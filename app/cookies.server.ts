@@ -83,5 +83,12 @@ export async function requireAuthCookie(request: Request) {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
+    /** Their own desk, loaded with them, so pages need not query it again. */
+    desk: user.desk && {
+      id: user.desk.id,
+      block: user.desk.block,
+      row: user.desk.row,
+      column: user.desk.column,
+    },
   };
 }

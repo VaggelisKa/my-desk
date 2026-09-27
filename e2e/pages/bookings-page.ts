@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { gotoHydrated } from "./hydration";
 
 /** The Bookings page's Upcoming list, grouped by week. */
-export class ReservationsPage {
+export class BookingsPage {
   readonly rows;
   readonly emptyState;
 
@@ -19,6 +19,6 @@ export class ReservationsPage {
   }
 
   async goto() {
-    await gotoHydrated(this.currentPage, "/reservations");
+    await gotoHydrated(this.currentPage, "/bookings");
   }
 }

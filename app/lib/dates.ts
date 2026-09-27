@@ -105,6 +105,14 @@ export function officeNow(now = new Date()) {
 }
 
 /**
+ * Midnight of the office's today, in the form `dateTimestamp` is stored.
+ * Bookings on or after it are today's or later.
+ */
+export function todayStart(now = officeNow()) {
+  return startOfDay(now).getTime();
+}
+
+/**
  * Whether the owner can still book `date`, as the desk sheet offers it: a
  * weekday of this week or the next (from the coming week on a Saturday), not
  * in the past, and today only until {@link LAST_BOOKING_HOUR}.

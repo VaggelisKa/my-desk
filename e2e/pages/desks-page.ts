@@ -73,7 +73,7 @@ export class DeskDialog {
   constructor(readonly root: Locator) {
     this.title = root.getByRole("heading");
     this.reserveForTodayButton = root.getByRole("button", {
-      name: "Reserve for today",
+      name: "Book for today",
     });
     this.bookButton = root.getByRole("button", {
       name: /^(Book \d|Pick days)/,

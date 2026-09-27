@@ -1,4 +1,5 @@
-import { PeopleList, useAdminData } from "~/components/admin";
+import { PeopleList } from "~/components/admin/people-list";
+import { useAdminData } from "~/components/admin/shared";
 
 export default function AdminPeopleListPage() {
   return (

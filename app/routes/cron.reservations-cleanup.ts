@@ -1,6 +1,5 @@
-import { startOfDay } from "date-fns";
 import { lt } from "drizzle-orm";
-import { officeNow } from "~/lib/dates";
+import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { reservations } from "~/lib/db/schema";
 import type { Route } from "./+types/cron.reservations-cleanup";
@@ -12,10 +11,10 @@ export async function loader({ url }: Route.LoaderArgs) {
 
   // Days before the office's today only: bookings are stored at midnight of
   // their day, so comparing with the time now would also take today's.
-  let today = startOfDay(officeNow()).getTime();
-
   try {
-    await db.delete(reservations).where(lt(reservations.dateTimestamp, today));
+    await db
+      .delete(reservations)
+      .where(lt(reservations.dateTimestamp, todayStart()));
 
     return new Response("Subscriptions cleaned up", { status: 200 });
   } catch (error: any) {

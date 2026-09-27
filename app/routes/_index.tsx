@@ -13,6 +13,7 @@ import { ErrorCard } from "~/components/error-card";
 import { DesksSkeleton, Legend } from "~/components/tab-pending";
 import { Wall } from "~/components/wall";
 import { requireAuthCookie } from "~/cookies.server";
+import { bookDesk } from "~/lib/bookings.server";
 import {
   defaultDay,
   formatDate,
@@ -20,119 +21,13 @@ import {
   officeNow,
   parseDate,
 } from "~/lib/dates";
-import { db } from "~/lib/db/drizzle.server";
-import { reserveDesk } from "~/lib/reservations.server";
+import { loadDesks } from "~/lib/desks.server";
 import { cn, deskLabel, deskPlacement, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Desks" }];
 };
-
-type DeskQuery = {
-  showFree: string | null;
-  column: string | null;
-  block: string | null;
-  /** The day the map shows, in `dd.MM.yyyy`. */
-  selectedDayFilter: string;
-};
-
-async function loadDesks({
-  showFree,
-  column,
-  block,
-  selectedDayFilter,
-}: DeskQuery) {
-  let desksRes = await db.query.desks.findMany({
-    columns: {
-      block: true,
-      row: true,
-      column: true,
-      id: true,
-    },
-    with: {
-      reservations: {
-        columns: {
-          date: true,
-          week: true,
-          day: true,
-        },
-        with: {
-          users: {
-            columns: {
-              id: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-      },
-      user: {
-        columns: {
-          firstName: true,
-          lastName: true,
-          id: true,
-        },
-      },
-    },
-  });
-
-  let desksAggregatedByBlock = desksRes.reduce(
-    (acc, desk) => {
-      if (
-        !acc[desk.block] &&
-        (block === null || block === "all" || block === desk.block.toString())
-      ) {
-        acc[desk.block] = [];
-      }
-
-      let reserved = !!desk.reservations.find(
-        (r) => r.date === selectedDayFilter,
-      );
-
-      if (
-        (showFree && reserved) ||
-        (column !== null && column !== "all" && desk.column !== Number(column))
-      ) {
-        acc[desk.block]?.push({
-          ...desk,
-          disabled: true,
-          reserved: true,
-        });
-      } else if (reserved && !showFree) {
-        acc[desk.block]?.push({ ...desk, reserved: true });
-      } else {
-        acc[desk.block]?.push(desk);
-      }
-
-      return acc;
-    },
-    {} as Record<
-      number,
-      Array<
-        (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
-      >
-    >,
-  );
-
-  let sortedDesksOnBlockRowAndColumn = Object.entries(
-    desksAggregatedByBlock,
-  ).reduce(
-    (acc, [block, desks]) => {
-      acc[block] = desks.sort((a, b) => a.row - b.row || a.column - b.column);
-
-      return acc;
-    },
-    {} as Record<
-      string,
-      Array<
-        (typeof desksRes)[number] & { disabled?: boolean; reserved?: boolean }
-      >
-    >,
-  );
-
-  return sortedDesksOnBlockRowAndColumn;
-}
 
 export async function loader({ request, url }: Route.LoaderArgs) {
   let { userId } = await requireAuthCookie(request);
@@ -163,7 +58,7 @@ export async function loader({ request, url }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   let { userId } = await requireAuthCookie(request);
 
-  return reserveDesk(userId, await request.formData());
+  return bookDesk(userId, await request.formData());
 }
 
 // Fetcher actions that fail skip revalidation by default. A 409 means someone
@@ -357,7 +252,7 @@ function FloorPlan({
                   key={desk.id}
                   desk={desk}
                   userId={userId}
-                  allowedToReserve={desk.user?.id === userId}
+                  allowedToBook={desk.user?.id === userId}
                   selectedDay={selectedDay}
                   today={today}
                   // Silk wraps the tile in a div, and that wrapper is the

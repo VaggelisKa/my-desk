@@ -3,9 +3,9 @@
 // a new one replaces whatever is on screen.
 import * as React from "react";
 
-export type ToastVariant = "success" | "error";
+type ToastVariant = "success" | "error";
 
-export type ToasterToast = {
+type ToasterToast = {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;

@@ -27,16 +27,13 @@ type DeskSheetProps = {
       typeof users.$inferSelect,
       "firstName" | "lastName" | "id"
     > | null;
-    reservations: (Pick<
-      typeof reservations.$inferSelect,
-      "date" | "week" | "day"
-    > & {
+    reservations: (Pick<typeof reservations.$inferSelect, "date"> & {
       users: Pick<typeof users.$inferSelect, "id" | "firstName" | "lastName">;
     })[];
   };
   /** The desk tile; it becomes the trigger. */
   children: React.ReactNode;
-  allowedToReserve?: boolean;
+  allowedToBook?: boolean;
   /** The signed-in user, to show their own bookings in moss. */
   userId?: string;
   /** The day shown on the map, in `dd.MM.yyyy`; marked in the two-week grid. */
@@ -94,7 +91,7 @@ let placement: Record<number, string> = {
 export function DeskSheet({
   desk,
   children,
-  allowedToReserve,
+  allowedToBook,
   userId,
   selectedDay,
   today: todayValue,
@@ -143,7 +140,7 @@ export function DeskSheet({
         value: formatDate(date),
         reservation,
         isPast,
-        bookable: !!allowedToReserve && !reservation && !isClosed,
+        bookable: !!allowedToBook && !reservation && !isClosed,
       };
     }),
   }));
@@ -167,7 +164,7 @@ export function DeskSheet({
   }
 
   let todaysReservation = reservationOn(todayDate);
-  let showReserveForToday = !isWeekend && !todaysReservation;
+  let showBookForToday = !isWeekend && !todaysReservation;
 
   function handlePresentedChange(value: boolean) {
     if (value) {
@@ -292,9 +289,9 @@ export function DeskSheet({
                   <fieldset className="grid gap-3">
                     <legend className="mb-3 flex w-full justify-between text-xs text-ink-muted">
                       <span>
-                        {allowedToReserve ? "Book days" : "Next two weeks"}
+                        {allowedToBook ? "Book days" : "Next two weeks"}
                       </span>
-                      {allowedToReserve && bookable.size > 0 && (
+                      {allowedToBook && bookable.size > 0 && (
                         <span aria-hidden="true">Tap to pick</span>
                       )}
                     </legend>
@@ -320,15 +317,15 @@ export function DeskSheet({
                     <DayLegend />
                   </fieldset>
 
-                  {allowedToReserve
+                  {allowedToBook
                     ? bookable.size > 0 && (
                         <BookButton
                           count={pickedDays.length}
                           isSubmitting={isSubmitting}
                         />
                       )
-                    : showReserveForToday && (
-                        <ReserveTodayButton
+                    : showBookForToday && (
+                        <BookTodayButton
                           today={formatDate(todayDate)}
                           isSubmitting={isSubmitting}
                         />
@@ -491,7 +488,7 @@ function BookButton({
   );
 }
 
-function ReserveTodayButton({
+function BookTodayButton({
   today,
   isSubmitting,
 }: {
@@ -508,7 +505,7 @@ function ReserveTodayButton({
         disabled={isSubmitting}
         type="submit"
       >
-        Reserve for today
+        Book for today
       </Button>
     </>
   );
@@ -561,7 +558,7 @@ function DayCell({
 
   let who =
     status === "yours"
-      ? "reserved by you"
+      ? "booked by you"
       : status === "taken"
         ? `taken by ${reservation?.users.firstName}`
         : status;

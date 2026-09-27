@@ -9,7 +9,7 @@ test("an employee books their desk for several days across both weeks from the s
   page,
   db,
   desksPage,
-  reservationsPage,
+  bookingsPage,
 }) => {
   await desksPage.goto();
   let dialog = await desksPage.openDesk("Alice");
@@ -27,25 +27,25 @@ test("an employee books their desk for several days across both weeks from the s
 
   await dialog.book(booked.map(({ label }) => label));
 
-  await expectToast(page, "Reservation added!");
+  await expectToast(page, "Desk booked");
   // The sheet stays open and the booked days turn into "yours".
   await expect(dialog.root).toBeVisible();
   for (let { label } of booked) {
     await expect(dialog.dayStatus(label)).toHaveAccessibleName(
-      `${label}, reserved by you`,
+      `${label}, booked by you`,
     );
   }
   await expect(dialog.bookableDays()).toHaveCount(10 - booked.length);
 
-  await reservationsPage.goto();
-  await expect(reservationsPage.rows).toHaveCount(booked.length);
+  await bookingsPage.goto();
+  await expect(bookingsPage.rows).toHaveCount(booked.length);
   for (let { date, label } of booked) {
     // "Mon 17" from "Mon 17 Mar".
-    await expect(reservationsPage.row(date)).toContainText(
+    await expect(bookingsPage.row(date)).toContainText(
       label.split(" ").slice(0, 2).join(" "),
     );
-    await expect(reservationsPage.row(date)).toContainText("Your desk");
-    await expect(reservationsPage.row(date)).toContainText("1.1.1");
+    await expect(bookingsPage.row(date)).toContainText("Your desk");
+    await expect(bookingsPage.row(date)).toContainText("1.1.1");
   }
 
   // The dates the server stored match the days picked in the UI.
@@ -84,7 +84,7 @@ test("days that are already booked cannot be picked again", async ({
   await expect(dialog.day(bookingDay("tuesday").label)).toHaveCount(0);
   await expect(
     dialog.dayStatus(bookingDay("tuesday").label),
-  ).toHaveAccessibleName(/reserved by you/);
+  ).toHaveAccessibleName(/booked by you/);
   await expect(dialog.day(bookingDay("monday", 1).label)).toHaveCount(0);
   await expect(
     dialog.dayStatus(bookingDay("monday", 1).label),
@@ -122,6 +122,14 @@ test("the old reserve page is gone", async ({ page }) => {
   let response = await page.goto("/reserve");
 
   expect(response?.status()).toBe(404);
+});
+
+test("the old Bookings addresses lead to the new ones", async ({ page }) => {
+  await page.goto("/reservations");
+  await expect(page).toHaveURL("/bookings");
+
+  await page.goto("/automatic-reservations");
+  await expect(page).toHaveURL("/bookings/recurring");
 });
 
 test.describe("someone else's desk", () => {

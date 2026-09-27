@@ -1,9 +1,9 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { AdminPage } from "./pages/admin-page";
+import { BookingsPage } from "./pages/bookings-page";
 import { DesksPage } from "./pages/desks-page";
 import { trackHydration } from "./pages/hydration";
 import { LoginPage } from "./pages/login-page";
-import { ReservationsPage } from "./pages/reservations-page";
 import { CronJobOrgStub } from "./support/cron";
 import { TestDatabase, type SeedUser } from "./support/db";
 import { NOW } from "./support/env";
@@ -18,7 +18,7 @@ type Fixtures = {
   cronJobOrg: CronJobOrgStub;
   loginPage: LoginPage;
   desksPage: DesksPage;
-  reservationsPage: ReservationsPage;
+  bookingsPage: BookingsPage;
   adminPage: AdminPage;
 };
 
@@ -53,7 +53,7 @@ export const test = base.extend<Fixtures>({
 
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
   desksPage: async ({ page }, use) => use(new DesksPage(page)),
-  reservationsPage: async ({ page }, use) => use(new ReservationsPage(page)),
+  bookingsPage: async ({ page }, use) => use(new BookingsPage(page)),
   adminPage: async ({ page }, use) => use(new AdminPage(page)),
 });
 

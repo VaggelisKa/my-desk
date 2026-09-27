@@ -1,4 +1,3 @@
-import { startOfDay } from "date-fns";
 import {
   and,
   asc,
@@ -13,7 +12,7 @@ import {
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireAuthCookie } from "~/cookies.server";
 import { CronError, deleteCron } from "~/lib/cron";
-import { normalizeDay, officeNow } from "~/lib/dates";
+import { normalizeDay, todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
 import { capitalize, deskLabel, plural } from "~/lib/utils";
@@ -32,11 +31,6 @@ export async function requireAdmin(request: Request) {
   }
 
   return session;
-}
-
-/** Midnight of the office's today, in the same form `dateTimestamp` is stored. */
-function todayStart() {
-  return startOfDay(officeNow()).getTime();
 }
 
 export type AdminDesk = {

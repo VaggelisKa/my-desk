@@ -129,6 +129,7 @@ describe("authenticated principal", () => {
       firstName: "Current",
       lastName: "Name",
       role: "user",
+      desk: null,
     });
     expect(findUser).toHaveBeenCalledOnce();
   });

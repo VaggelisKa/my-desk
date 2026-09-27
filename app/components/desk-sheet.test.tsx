@@ -202,7 +202,7 @@ describe("DeskSheet", () => {
 
       expect(within(dialog).getByText("Weekend")).toBeInTheDocument();
       expect(
-        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+        within(dialog).queryByRole("button", { name: "Book for today" }),
       ).not.toBeInTheDocument();
     });
 
@@ -217,7 +217,7 @@ describe("DeskSheet", () => {
         within(dialog).queryByText("is borrowing it"),
       ).not.toBeInTheDocument();
       expect(
-        within(dialog).getByRole("button", { name: "Reserve for today" }),
+        within(dialog).getByRole("button", { name: "Book for today" }),
       ).toBeEnabled();
     });
   });
@@ -229,11 +229,11 @@ describe("DeskSheet", () => {
     let { dialog } = await openSheet({
       desk: makeDesk({ reservations: [reservation("monday", owner, 1)] }),
       userId: owner.id,
-      allowedToReserve: true,
+      allowedToBook: true,
     });
 
     expect(
-      within(dialog).getByRole("img", { name: "Mon 28 Dec, reserved by you" }),
+      within(dialog).getByRole("img", { name: "Mon 28 Dec, booked by you" }),
     ).toBeInTheDocument();
     expect(
       within(dialog).queryByRole("checkbox", { name: "Mon 28 Dec, free" }),
@@ -267,7 +267,7 @@ describe("DeskSheet", () => {
       within(dialog).getByRole("img", { name: "Thu 13 Mar, taken by john" }),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByRole("img", { name: "Fri 14 Mar, reserved by you" }),
+      within(dialog).getByRole("img", { name: "Fri 14 Mar, booked by you" }),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("img", { name: "Mon 10 Mar, past" }),
@@ -281,7 +281,7 @@ describe("DeskSheet", () => {
     it("lets the desk owner pick free days from the grid and book them", async () => {
       let { dialog, user, reserveAction } = await openSheet({
         desk: makeDesk({ reservations: [reservation("thursday", guest)] }),
-        allowedToReserve: true,
+        allowedToBook: true,
         userId: owner.id,
       });
 
@@ -311,7 +311,7 @@ describe("DeskSheet", () => {
       expect(data.deskId).toBe("12");
       expect(dates).toEqual(["12.03.2025", "17.03.2025"]);
       expect(
-        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+        within(dialog).queryByRole("button", { name: "Book for today" }),
       ).not.toBeInTheDocument();
     });
 
@@ -320,7 +320,7 @@ describe("DeskSheet", () => {
 
       let { dialog } = await openSheet({
         desk: makeDesk(),
-        allowedToReserve: true,
+        allowedToBook: true,
       });
 
       expect(
@@ -343,7 +343,7 @@ describe("DeskSheet", () => {
       });
 
       await user.click(
-        within(dialog).getByRole("button", { name: "Reserve for today" }),
+        within(dialog).getByRole("button", { name: "Book for today" }),
       );
 
       await waitFor(() => expect(reserveAction).toHaveBeenCalledTimes(1));
@@ -360,7 +360,7 @@ describe("DeskSheet", () => {
       });
 
       expect(
-        within(dialog).queryByRole("button", { name: "Reserve for today" }),
+        within(dialog).queryByRole("button", { name: "Book for today" }),
       ).not.toBeInTheDocument();
     });
 
@@ -394,7 +394,7 @@ describe("DeskSheet", () => {
         let { dialog } = await openSheet({ desk: makeDesk() });
 
         expect(
-          within(dialog).queryByRole("button", { name: "Reserve for today" }),
+          within(dialog).queryByRole("button", { name: "Book for today" }),
         ).not.toBeInTheDocument();
       },
     );

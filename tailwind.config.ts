@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import animate from "tailwindcss-animate";
 
 const config = {
   content: ["./app/**/*.{ts,tsx}"],
@@ -22,19 +21,6 @@ const config = {
         mist: { DEFAULT: "var(--mist)", edge: "var(--mist-edge)" },
         dim: "var(--dim)",
         danger: "var(--danger)",
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -43,7 +29,6 @@ const config = {
       },
     },
   },
-  plugins: [animate],
   future: {
     hoverOnlyWhenSupported: true,
   },

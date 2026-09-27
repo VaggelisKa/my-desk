@@ -8,7 +8,7 @@ test.describe("an employee with a desk", () => {
   test("sees upcoming days grouped by week and removes one", async ({
     page,
     db,
-    reservationsPage,
+    bookingsPage,
   }) => {
     await db.addReservation({
       user: "alice",
@@ -22,7 +22,7 @@ test.describe("an employee with a desk", () => {
       weekOffset: 1,
     });
 
-    await reservationsPage.goto();
+    await bookingsPage.goto();
 
     await expect(
       page.getByRole("heading", { name: "Bookings", level: 1 }),
@@ -33,8 +33,8 @@ test.describe("an employee with a desk", () => {
     await expect(
       page.getByRole("heading", { name: /Next week/ }),
     ).toBeVisible();
-    await expect(reservationsPage.rows).toHaveCount(2);
-    await expect(reservationsPage.row(bookingDay("monday").date)).toContainText(
+    await expect(bookingsPage.rows).toHaveCount(2);
+    await expect(bookingsPage.row(bookingDay("monday").date)).toContainText(
       "Today",
     );
     // Each tab is self-contained: booking happens on Desks, not from here.
@@ -43,25 +43,25 @@ test.describe("an employee with a desk", () => {
       "Recurring",
     ]);
 
-    await reservationsPage
+    await bookingsPage
       .row(bookingDay("monday").date)
       .getByRole("button", { name: /^Remove/ })
       .click();
 
-    await expectToast(page, "Reservation deleted!");
-    await expect(reservationsPage.rows).toHaveCount(1);
+    await expectToast(page, "Booking removed");
+    await expect(bookingsPage.rows).toHaveCount(1);
     await expect(db.reservationsForDesk(desks.alice.id)).resolves.toHaveLength(
       1,
     );
   });
 
   test("says where bookings come from when nothing is booked", async ({
-    reservationsPage,
+    bookingsPage,
   }) => {
-    await reservationsPage.goto();
+    await bookingsPage.goto();
 
-    await expect(reservationsPage.emptyState).toBeVisible();
-    await expect(reservationsPage.emptyState.locator("..")).toContainText(
+    await expect(bookingsPage.emptyState).toBeVisible();
+    await expect(bookingsPage.emptyState.locator("..")).toContainText(
       "Desks tab",
     );
   });
@@ -71,12 +71,12 @@ test.describe("an employee with a desk", () => {
     db,
     cronJobOrg,
   }) => {
-    await gotoHydrated(page, "/reservations");
+    await gotoHydrated(page, "/bookings");
     await page
       .getByRole("navigation", { name: "Bookings" })
       .getByRole("link", { name: "Recurring" })
       .click();
-    await expect(page).toHaveURL("/automatic-reservations");
+    await expect(page).toHaveURL("/bookings/recurring");
 
     let setUp = page.getByRole("button", { name: "Set up weekly booking" });
     await expect(
@@ -123,7 +123,7 @@ test.describe("an employee with a desk", () => {
     await db.setCronId("bob", "777");
 
     for (let intent of ["DISABLE", "ENABLE", "DELETE"]) {
-      let response = await page.request.post("/automatic-reservations", {
+      let response = await page.request.post("/bookings/recurring", {
         form: { intent, cronId: "777" },
       });
       // Alice has no weekly booking of her own to change.
@@ -142,14 +142,14 @@ test.describe("an employee with a desk", () => {
   }) => {
     await db.setCronId("alice", "down-1");
 
-    await gotoHydrated(page, "/automatic-reservations");
+    await gotoHydrated(page, "/bookings/recurring");
     await expect(
       page.getByText("Could not reach the scheduler, so its status is unknown"),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Pause" })).toHaveCount(0);
 
     for (let intent of ["DISABLE", "DELETE"]) {
-      let response = await page.request.post("/automatic-reservations", {
+      let response = await page.request.post("/bookings/recurring", {
         form: { intent },
       });
       expect(response.status()).toBe(502);
@@ -166,7 +166,7 @@ test.describe("an employee with a desk", () => {
     cronJobOrg,
   }) => {
     let setUp = () =>
-      page.request.post("/automatic-reservations", {
+      page.request.post("/bookings/recurring", {
         form: { intent: "ADD", day: "monday", deskId: String(desks.bob.id) },
       });
 
@@ -177,7 +177,7 @@ test.describe("an employee with a desk", () => {
     expect(calls.filter((c) => c.method === "PUT")).toHaveLength(1);
     let jobId = (await db.user("emp001"))?.autoReservationsCronId;
     expect(jobId).toEqual(expect.any(String));
-    await page.goto("/automatic-reservations");
+    await page.goto("/bookings/recurring");
     await expect(page.getByRole("img", { name: "Mon, booked" })).toBeVisible();
   });
 });
@@ -187,16 +187,16 @@ test.describe("a guest without a desk", () => {
 
   test("has no Recurring segment and is sent back from it", async ({
     page,
-    reservationsPage,
+    bookingsPage,
   }) => {
-    await reservationsPage.goto();
+    await bookingsPage.goto();
 
-    await expect(reservationsPage.emptyState).toBeVisible();
+    await expect(bookingsPage.emptyState).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: "Bookings" }),
     ).toHaveCount(0);
 
-    await page.goto("/automatic-reservations");
-    await expect(page).toHaveURL("/reservations");
+    await page.goto("/bookings/recurring");
+    await expect(page).toHaveURL("/bookings");
   });
 });

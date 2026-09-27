@@ -1,6 +1,6 @@
 import { SheetStack } from "@silk-hq/components";
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
-import { AdminHeader, type AdminData } from "~/components/admin";
+import { AdminHeader, type AdminData } from "~/components/admin/shared";
 import {
   handleAdminAction,
   loadAdminData,

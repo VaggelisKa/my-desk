@@ -29,8 +29,8 @@ describe("activeTab", () => {
     ["/", "desks"],
     ["/admin", "admin"],
     ["/admin/people", "admin"],
-    ["/reservations", "bookings"],
-    ["/automatic-reservations", "bookings"],
+    ["/bookings", "bookings"],
+    ["/bookings/recurring", "bookings"],
     ["/metrics", "metrics"],
     ["/users/edit/emp042", undefined],
   ])("lights the parent tab for %s", (pathname, tab) => {
@@ -49,7 +49,7 @@ describe("AppShell", () => {
       );
       expect(
         within(nav).getByRole("link", { name: "Bookings" }),
-      ).toHaveAttribute("href", "/reservations");
+      ).toHaveAttribute("href", "/bookings");
       expect(
         within(nav).getByRole("link", { name: "Metrics" }),
       ).toHaveAttribute("href", "/metrics");
@@ -71,7 +71,7 @@ describe("AppShell", () => {
   });
 
   it("marks the parent tab as current on a secondary page", () => {
-    renderShell("/automatic-reservations");
+    renderShell("/bookings/recurring");
 
     let current = screen.getAllByRole("link", { current: "page" });
     expect(current).toHaveLength(2);

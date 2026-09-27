@@ -61,8 +61,8 @@ test.describe("as a guest", () => {
     await dialog.reserveForTodayButton.click();
 
     expect((await response).status()).toBe(409);
-    await expectToast(page, "Desk already reserved");
-    await expectNoToast(page, "Reservation added!");
+    await expectToast(page, "Desk already booked");
+    await expectNoToast(page, "Desk booked");
     await expect(dialog.root).toBeVisible();
     await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([
       expect.objectContaining({ userId: users.bob.id, day: "monday" }),
@@ -112,7 +112,7 @@ test.describe("as the desk owner", () => {
     await dialog.bookButton.click();
 
     expect((await response).status()).toBe(409);
-    await expectToast(page, "Desk already reserved");
+    await expectToast(page, "Desk already booked");
     await expect(dialog.dayStatus(friday)).toHaveAccessibleName(/taken by Bob/);
   });
 });

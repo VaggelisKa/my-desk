@@ -135,7 +135,7 @@ test.describe("the weekly booking callback", () => {
       db,
       cronJobOrg,
     }) => {
-      let setUp = await page.request.post("/automatic-reservations", {
+      let setUp = await page.request.post("/bookings/recurring", {
         form: { intent: "ADD", day: "monday" },
       });
       expect(setUp.status()).toBe(200);

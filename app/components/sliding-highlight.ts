@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 export let SLIDE =
   "transition-[transform,width,height] duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none";
 
-export type HighlightPosition = {
+type HighlightPosition = {
   left: number;
   top: number;
   width: number;

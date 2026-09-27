@@ -17,10 +17,7 @@ export function activeTab(pathname: string): Tab | undefined {
   if (pathname.startsWith("/metrics")) {
     return "metrics";
   }
-  if (
-    pathname.startsWith("/reservations") ||
-    pathname.startsWith("/automatic-reservations")
-  ) {
+  if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
     return "bookings";
   }
   if (pathname === "/") {

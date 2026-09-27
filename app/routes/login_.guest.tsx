@@ -31,7 +31,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
-  let employeeNumber = String(formData.get("employee-number"));
+  let employeeNumber = String(formData.get("employee-number") ?? "")
+    .trim()
+    .toLowerCase();
   let firstName = String(formData.get("name") ?? "").trim();
   let lastName = String(formData.get("last-name") ?? "").trim();
   let errors: {
@@ -60,20 +62,22 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: false, errors }, { status: 400 });
   }
 
-  let newUser = await db
+  let [newUser] = await db
     .insert(users)
-    .values({
-      id: employeeNumber.toLowerCase(),
-      firstName,
-      lastName,
-    })
+    .values({ id: employeeNumber, firstName, lastName })
     .onConflictDoNothing()
     .returning({ id: users.id });
 
+  // The ID belongs to someone already: registering must never sign in as
+  // them.
+  if (!newUser) {
+    errors.employeeNumber =
+      "This user ID is already registered. Sign in instead.";
+    return data({ ok: false, errors }, { status: 409 });
+  }
+
   return redirect("/", {
-    headers: {
-      "Set-Cookie": await createUserCookie(newUser?.[0]?.id || employeeNumber),
-    },
+    headers: { "Set-Cookie": await createUserCookie(newUser.id) },
   });
 }
 

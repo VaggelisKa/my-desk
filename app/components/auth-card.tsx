@@ -232,10 +232,9 @@ export function AuthSubmit({ className, ...props }: ButtonProps) {
   return (
     <Button
       type="submit"
-      className={cn(
-        "h-11 w-full rounded-[10px] bg-moss text-sm font-semibold text-white shadow-none hover:bg-moss-edge focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2",
-        className,
-      )}
+      variant="primary"
+      size="tall"
+      className={cn("w-full", className)}
       {...props}
     />
   );

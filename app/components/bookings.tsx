@@ -6,16 +6,17 @@ import {
   startOfWeek,
 } from "date-fns";
 import { X } from "lucide-react";
-import { NavLink, useFetcher, useLocation, useNavigation } from "react-router";
+import { useFetcher } from "react-router";
+import { DeskChip } from "~/components/desk-chip";
+import { SegmentSwitch } from "~/components/segment-switch";
 import { parseDate } from "~/lib/dates";
 import { focusNeighbour } from "~/lib/focus";
 import { capitalize, cn, deskLabel, deskPlace, enterAt } from "~/lib/utils";
 
-// The Bookings tab ("My reservations" and
-// "Bookings"): one heading and an Upcoming · Recurring switch. The tab is
-// self-contained, with no actions that send you to another tab. Upcoming is
-// /reservations and Recurring is /automatic-reservations, so both keep their
-// own loader and action.
+// The Bookings tab: one heading and an Upcoming · Recurring switch. The tab
+// is self-contained, with no actions that send you to another tab. Upcoming
+// is /bookings and Recurring is /bookings/recurring, so both keep their own
+// loader and action.
 
 export type OwnDesk = {
   id: number;
@@ -36,100 +37,15 @@ export function BookingsHeader({ desk }: { desk: OwnDesk | null }) {
       </h1>
 
       {/* Recurring only makes sense with a desk of your own to repeat. */}
-      {desk && <SegmentSwitch />}
+      {desk && <SegmentSwitch label="Bookings" segments={SEGMENTS} />}
     </header>
   );
 }
 
 let SEGMENTS = [
-  { to: "/reservations", label: "Upcoming" },
-  { to: "/automatic-reservations", label: "Recurring" },
+  { to: "/bookings", label: "Upcoming" },
+  { to: "/bookings/recurring", label: "Recurring" },
 ];
-
-/**
- * A sliding switch between sibling pages, like Upcoming · Recurring. Each tab
- * keeps it in its layout, so it stays mounted across the switch and the pill
- * slides rather than jumps. It moves as soon as you tap, not when the other
- * page has loaded, like the dock.
- */
-export function SegmentSwitch({
-  label = "Bookings",
-  segments = SEGMENTS,
-}: {
-  label?: string;
-  segments?: { to: string; label: string }[];
-}) {
-  let location = useLocation();
-  let navigation = useNavigation();
-  let pathname = navigation.location?.pathname ?? location.pathname;
-  let active = Math.max(
-    0,
-    segments.findIndex((segment) => segment.to === pathname),
-  );
-
-  return (
-    <nav
-      aria-label={label}
-      className="relative grid self-start rounded-full bg-paper-muted p-1 ring-1 ring-inset ring-line"
-      style={{
-        width: `${segments.length * 112 + 8}px`,
-        maxWidth: "100%",
-        gridTemplateColumns: `repeat(${segments.length}, minmax(0, 1fr))`,
-      }}
-    >
-      <span
-        aria-hidden="true"
-        className="absolute inset-y-1 left-1 rounded-full bg-paper shadow-[0_1px_3px_rgb(31_42_46/0.14)] ring-1 ring-line transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.36,0.64,1)] motion-reduce:transition-none"
-        style={{
-          width: `calc(${100 / segments.length}% - ${8 / segments.length}px)`,
-          transform: `translateX(${active * 100}%)`,
-        }}
-      />
-      {segments.map(({ to, label }, index) => (
-        <NavLink
-          key={to}
-          to={to}
-          end
-          prefetch="intent"
-          preventScrollReset
-          className={cn(
-            "relative inline-flex h-9 items-center justify-center rounded-full px-3 text-[13px] font-semibold transition-colors duration-300",
-            focusRing,
-            index === active ? "text-ink" : "text-ink-muted hover:text-ink",
-          )}
-        >
-          {label}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
-/** The desk as a small slab, the same shapes and colours as the map. */
-export function DeskChip({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "mine" | "taken" | "free";
-}) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-grid h-8 min-w-[48px] shrink-0 place-items-center rounded border-[1.5px] px-1.5 text-[11px] font-bold tracking-[0.03em]",
-        tone === "mine" &&
-          "border-moss-edge bg-moss text-white shadow-[0_3px_0_var(--moss-edge)]",
-        tone === "taken" &&
-          "border-ink bg-taken text-white shadow-[0_3px_0_var(--ink)]",
-        tone === "free" &&
-          "border-ink bg-paper text-ink shadow-[0_3px_0_var(--ink)]",
-      )}
-    >
-      {label}
-    </span>
-  );
-}
 
 export type Booking = {
   deskId: number;
@@ -295,7 +211,7 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
 
       <fetcher.Form
         method="DELETE"
-        action="/reservations"
+        action="/bookings?index"
         // The row hides as soon as this submits; keep keyboard focus on
         // the list instead of losing it to the page.
         onSubmit={(event) =>
@@ -303,11 +219,6 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
         }
       >
         <input type="hidden" name="reservation-date" value={booking.date} />
-        <input
-          type="hidden"
-          name="reservation-user-id"
-          value={booking.userId}
-        />
         <input type="hidden" name="reservation-day" value={booking.day} />
         <input type="hidden" name="desk-id" value={booking.deskId} />
         <button

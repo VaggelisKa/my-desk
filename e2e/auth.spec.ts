@@ -7,7 +7,7 @@ test.describe("logged out", () => {
     page,
     loginPage,
   }) => {
-    await page.goto("/reservations");
+    await page.goto("/bookings");
 
     await expect(page).toHaveURL("/login");
     await expect(loginPage.heading).toBeVisible();
@@ -106,6 +106,29 @@ test.describe("registration", () => {
       page.getByText("Employee number must be 6 characters"),
     ).toBeVisible();
     await expect(db.user("abc")).resolves.toBeUndefined();
+  });
+
+  test("an existing user id is refused instead of signing in as its owner", async ({
+    page,
+    db,
+  }) => {
+    let registration = new GuestRegistrationPage(page);
+
+    await page.goto("/login/guest");
+    await registration.register({
+      id: "ADM001",
+      firstName: "Not",
+      lastName: "Ada",
+    });
+
+    await expect(
+      page.getByText("This user ID is already registered. Sign in instead."),
+    ).toBeVisible();
+    await expect(page).toHaveURL("/login/guest");
+    await expect(db.user("adm001")).resolves.toMatchObject({
+      firstName: "Ada",
+      role: "admin",
+    });
   });
 });
 

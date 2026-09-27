@@ -19,7 +19,7 @@ test("Back returns to where the page was scrolled; a new page starts at the top"
   await expect.poll(scrollTop).toBe(250);
 
   await page.getByRole("link", { name: "Bookings" }).last().click();
-  await expect(page).toHaveURL("/reservations");
+  await expect(page).toHaveURL("/bookings");
   await expect.poll(scrollTop).toBe(0);
 
   await page.goBack();
@@ -40,7 +40,7 @@ test("a tapped tab shows up straight away and fills in once its data arrives", a
   // Hold Bookings' data back until the skeleton has been checked.
   let release!: () => void;
   let held = new Promise<void>((resolve) => (release = resolve));
-  await page.route("**/reservations.data*", async (route) => {
+  await page.route("**/bookings.data*", async (route) => {
     await held;
     await route.continue();
   });
@@ -52,7 +52,7 @@ test("a tapped tab shows up straight away and fills in once its data arrives", a
   await expect.poll(scrollTop).toBe(0);
 
   release();
-  await expect(page).toHaveURL("/reservations");
+  await expect(page).toHaveURL("/bookings");
   await expect(page.getByText("Nothing booked yet")).toBeVisible();
 
   // The skeleton's scroll to the top did not overwrite where Desks was left.
@@ -85,7 +85,7 @@ test("the dock tucks into icons while scrolling down and opens again on the way 
   }
   await expect(dock).toHaveAttribute("data-compact", "true");
   await dock.getByRole("link", { name: "Bookings" }).click();
-  await expect(page).toHaveURL("/reservations");
+  await expect(page).toHaveURL("/bookings");
   await expect(dock).not.toHaveAttribute("data-compact");
 });
 
