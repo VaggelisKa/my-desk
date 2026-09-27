@@ -32,8 +32,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
   let employeeNumber = String(formData.get("employee-number"));
-  let firstName = String(formData.get("name"));
-  let lastName = String(formData.get("last-name"));
+  let firstName = String(formData.get("name") ?? "").trim();
+  let lastName = String(formData.get("last-name") ?? "").trim();
   let errors: {
     employeeNumber?: string;
     firstName?: string;

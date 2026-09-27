@@ -4,23 +4,33 @@ import { ErrorCard } from "~/components/error-card";
 import { Metrics } from "~/components/metrics";
 import { MetricsSkeleton } from "~/components/metrics-skeleton";
 import { requireAuthCookie } from "~/cookies.server";
+import { parseDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
-import { bookingMetrics } from "~/lib/db/schema";
+import { bookingMetrics, desks } from "~/lib/db/schema";
 import type { Route } from "./+types/metrics";
 
 export let meta: Route.MetaFunction = () => [{ title: "Metrics" }];
 
 // One row per workday from cron.log-metrics; the page does the grouping.
+// Each row counts for the day it measured, not the moment it was written.
 async function loadMetrics() {
-  return await db
+  let rows = await db
     .select({
       bookings: bookingMetrics.totalBookings,
       guestBookings: bookingMetrics.totalGuestBookings,
-      date: bookingMetrics.createdAt,
+      metricDate: bookingMetrics.metricDate,
       officeParticipationPct: bookingMetrics.participation_percentage,
     })
-    .from(bookingMetrics)
-    .orderBy(bookingMetrics.createdAt);
+    .from(bookingMetrics);
+
+  return rows
+    .map(({ metricDate, ...row }) => ({ ...row, date: parseDate(metricDate) }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+async function loadPage() {
+  let [rows, deskCount] = await Promise.all([loadMetrics(), db.$count(desks)]);
+  return { rows, deskCount };
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -28,7 +38,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Not awaited on purpose: the shell streams immediately and the page fills
   // in once the query resolves.
-  return { metrics: loadMetrics() };
+  return { metrics: loadPage() };
 }
 
 // Client navigations await the query so the navigation stays pending until the
@@ -46,7 +56,7 @@ export default function MetricsPage({ loaderData }: Route.ComponentProps) {
         resolve={loaderData.metrics}
         errorElement={<ErrorCard message="Could not load metrics." />}
       >
-        {(rows) => <Metrics rows={rows} />}
+        {({ rows, deskCount }) => <Metrics rows={rows} deskCount={deskCount} />}
       </Await>
     </Suspense>
   );

@@ -23,7 +23,13 @@ import {
   enableCron,
   getCronDetails,
 } from "~/lib/cron";
-import { formatDate, parseDate, WEEKDAYS, type Weekday } from "~/lib/dates";
+import {
+  formatDate,
+  officeNow,
+  parseDate,
+  WEEKDAYS,
+  type Weekday,
+} from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
 import { rescueFocus } from "~/lib/focus";
@@ -88,11 +94,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     cronId,
     schedule,
     unavailable,
-    nextRun: formatDate(nextSunday(new Date())),
+    nextRun: formatDate(nextSunday(officeNow())),
   };
 }
 
-// The job runs every Sunday at 10:00 (see addCron).
+// The job runs every Sunday at 10:00 office time (see addCron).
 function nextSunday(now: Date) {
   let sunday = nextDay(startOfDay(now), 0);
   return now.getDay() === 0 && now.getHours() < 10 ? startOfDay(now) : sunday;

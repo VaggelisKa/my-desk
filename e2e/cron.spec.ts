@@ -1,7 +1,7 @@
 import { addDays, format, getWeek } from "date-fns";
 import { eq } from "drizzle-orm";
 import * as schema from "../app/lib/db/schema";
-import { expect, test } from "./fixtures";
+import { authFile, expect, test } from "./fixtures";
 import { bookingDay, desks, users } from "./support/db";
 import { NOW } from "./support/env";
 
@@ -42,7 +42,10 @@ test.describe("logging the day's metrics", () => {
         metricDate: format(NOW, "dd.MM.yyyy"),
         totalBookings: 2,
         totalGuestBookings: 1,
-        participation_percentage: Math.round((2 / 33) * 100),
+        // Out of the seeded desks, however many there are.
+        participation_percentage: Math.round(
+          (2 / Object.keys(desks).length) * 100,
+        ),
       }),
     ]);
   });
@@ -117,9 +120,47 @@ test.describe("the weekly booking callback", () => {
     await expect(db.user(users.alice.id)).resolves.toMatchObject({
       autoReservationsCronId: null,
     });
+    // Read first: only a job for another desk than hers now is removed.
     expect(await cronJobOrg.calls()).toEqual([
+      { method: "GET", path: "/jobs/5150" },
       { method: "DELETE", path: "/jobs/5150" },
     ]);
+  });
+
+  test.describe("after a new job for her new desk", () => {
+    test.use({ storageState: authFile("alice") });
+
+    test("an old job's call leaves the new one alone", async ({
+      page,
+      db,
+      cronJobOrg,
+    }) => {
+      let setUp = await page.request.post("/automatic-reservations", {
+        form: { intent: "ADD", day: "monday" },
+      });
+      expect(setUp.status()).toBe(200);
+      let newJob = (await db.user(users.alice.id))?.autoReservationsCronId;
+      expect(newJob).toEqual(expect.any(String));
+      await cronJobOrg.clear();
+
+      // A job for a desk she had before calls in.
+      let response = await page.request.get(
+        callback({
+          cronPassword: password,
+          deskId: String(desks.bob.id),
+          userId: users.alice.id,
+          day: "monday",
+        }),
+      );
+
+      expect(response.status()).toBe(401);
+      await expect(db.user(users.alice.id)).resolves.toMatchObject({
+        autoReservationsCronId: newJob,
+      });
+      expect(
+        (await cronJobOrg.calls()).filter((c) => c.method === "DELETE"),
+      ).toEqual([]);
+    });
   });
 
   test("refuses a wrong password", async ({ page, db }) => {
@@ -156,13 +197,19 @@ test("the cleanup removes bookings from past days only", async ({
     deskId: desks.alice.id,
     day: "tuesday",
   });
+  // Today stays: the clock is Monday morning, after midnight.
+  await db.addReservation({
+    user: "alice",
+    deskId: desks.alice.id,
+    day: "monday",
+  });
 
   expect(
     (
       await page.request.get("/cron/reservations-cleanup?cronPassword=wrong")
     ).status(),
   ).toBe(401);
-  await expect(db.reservationsForDesk(desks.alice.id)).resolves.toHaveLength(2);
+  await expect(db.reservationsForDesk(desks.alice.id)).resolves.toHaveLength(3);
 
   let response = await page.request.get(
     `/cron/reservations-cleanup?cronPassword=${password}`,
@@ -172,5 +219,5 @@ test("the cleanup removes bookings from past days only", async ({
   let left = await db.db.query.reservations.findMany({
     where: eq(schema.reservations.deskId, desks.alice.id),
   });
-  expect(left.map((r) => r.day)).toEqual(["tuesday"]);
+  expect(left.map((r) => r.day).sort()).toEqual(["monday", "tuesday"]);
 });

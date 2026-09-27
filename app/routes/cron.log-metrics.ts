@@ -1,5 +1,5 @@
 import { and, count, eq, isNull, ne, or } from "drizzle-orm";
-import { formatDate } from "~/lib/dates";
+import { formatDate, officeNow } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks, reservations } from "~/lib/db/schema";
 import type { Route } from "./+types/cron.log-metrics";
@@ -9,7 +9,7 @@ export async function loader({ url }: Route.LoaderArgs) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let today = formatDate(new Date());
+  let today = formatDate(officeNow());
 
   let metricsForToday = await db
     .select()
@@ -20,7 +20,7 @@ export async function loader({ url }: Route.LoaderArgs) {
     return new Response(`Metrics for ${today} already exists`, { status: 406 });
   }
 
-  let [todaysReservationsCount, todaysGuestReservationsCount] =
+  let [todaysReservationsCount, todaysGuestReservationsCount, deskCount] =
     await Promise.all([
       db.$count(reservations, eq(reservations.date, today)),
       db
@@ -34,13 +34,17 @@ export async function loader({ url }: Route.LoaderArgs) {
             or(isNull(desks.userId), ne(reservations.userId, desks.userId)),
           ),
         ),
+      // Out of the desks there are today, so adding desks later just works.
+      db.$count(desks),
     ]);
 
   await db.insert(bookingMetrics).values({
     metricDate: today,
     totalBookings: todaysReservationsCount,
     totalGuestBookings: todaysGuestReservationsCount[0].value ?? 0,
-    participation_percentage: Math.round((todaysReservationsCount / 33) * 100),
+    participation_percentage: deskCount
+      ? Math.round((todaysReservationsCount / deskCount) * 100)
+      : 0,
   });
 
   return new Response(`Metrics for ${today} have been successfully created`, {

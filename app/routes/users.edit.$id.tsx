@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { redirectWithSuccess } from "remix-toast";
+import { dataWithError, redirectWithSuccess } from "remix-toast";
 import { ProfilePage } from "~/components/profile";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
@@ -61,7 +61,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   let lastName = String(formData.get("lastName") ?? "").trim();
 
   if (!firstName || !lastName) {
-    return null;
+    return dataWithError(
+      null,
+      { message: "First and last name are both needed" },
+      { status: 400 },
+    );
   }
 
   await db

@@ -27,9 +27,6 @@ import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 // not just a second colour, and changes are spelled out ("Up 8%") rather
 // than shown as green or red.
 
-// cron.log-metrics divides by this many desks for participation.
-const OFFICE_DESKS = 33;
-
 let INK = "#1f2a2e";
 let MOSS = "#4f7a5a";
 let MOSS_SOFT = "#e2ede5";
@@ -62,7 +59,13 @@ function Change({ value, against }: { value: number | null; against: string }) {
   );
 }
 
-function ThisMonth({ s }: { s: ReturnType<typeof summarise> }) {
+function ThisMonth({
+  s,
+  deskCount,
+}: {
+  s: ReturnType<typeof summarise>;
+  deskCount: number;
+}) {
   return (
     <section aria-label="This month" className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
@@ -92,7 +95,7 @@ function ThisMonth({ s }: { s: ReturnType<typeof summarise> }) {
           <dd className="text-[22px] font-bold">
             {s.participation.toFixed()}%{" "}
             <span className="text-[13px] font-normal text-ink-muted">
-              of {OFFICE_DESKS}
+              of {deskCount}
             </span>
           </dd>
         </div>
@@ -101,7 +104,15 @@ function ThisMonth({ s }: { s: ReturnType<typeof summarise> }) {
   );
 }
 
-function BusiestDays({ days, now }: { days: Day[]; now: Date }) {
+function BusiestDays({
+  days,
+  now,
+  deskCount,
+}: {
+  days: Day[];
+  now: Date;
+  deskCount: number;
+}) {
   let weekdays = busiestDays(days, now);
   let busiest = Math.max(...weekdays.map((w) => w.bookings));
 
@@ -117,7 +128,7 @@ function BusiestDays({ days, now }: { days: Day[]; now: Date }) {
       <ul className="flex flex-col gap-4">
         {weekdays.map((w) => {
           let isBusiest = busiest > 0 && w.bookings === busiest;
-          let share = Math.min(1, w.bookings / OFFICE_DESKS);
+          let share = Math.min(1, w.bookings / Math.max(1, deskCount));
 
           return (
             <li
@@ -249,7 +260,7 @@ let axisTick = { fill: MUTED, fontSize: 11 };
 
 function BookingsChart({ days, now }: { days: Day[]; now: Date }) {
   let [period, setPeriod] = useState<Period>("weeks");
-  let data = bookingsBy(period, days);
+  let data = bookingsBy(period, days, now);
 
   return (
     <section className="flex flex-col gap-5 rounded-xl p-5 ring-1 ring-inset ring-line sm:p-6">
@@ -400,7 +411,14 @@ function ChartTable({
   );
 }
 
-export function Metrics({ rows }: { rows: MetricRow[] }) {
+/** `deskCount`: the office's desks now, what participation is out of. */
+export function Metrics({
+  rows,
+  deskCount,
+}: {
+  rows: MetricRow[];
+  deskCount: number;
+}) {
   let s = summarise(rows);
 
   return (
@@ -413,10 +431,10 @@ export function Metrics({ rows }: { rows: MetricRow[] }) {
       ) : (
         <>
           <div className="enter">
-            <ThisMonth s={s} />
+            <ThisMonth s={s} deskCount={deskCount} />
           </div>
           <div className="enter" style={enterAt(1)}>
-            <BusiestDays days={s.days} now={s.now} />
+            <BusiestDays days={s.days} now={s.now} deskCount={deskCount} />
           </div>
           <div className="enter" style={enterAt(2)}>
             <BookingsChart days={s.days} now={s.now} />

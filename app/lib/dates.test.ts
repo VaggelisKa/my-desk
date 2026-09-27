@@ -35,6 +35,19 @@ describe("workdaysOfWeek", () => {
     expect(days[0].day).toBe("monday");
   });
 
+  it("gives the weekly job's Sunday the week ahead, across New Year", () => {
+    // Sunday 27 December 2026 is in week 1 of 2027 by week number.
+    let days = workdaysOfWeek(new Date(2026, 11, 27, 10));
+
+    expect(days.map(({ date }) => formatDate(date))).toEqual([
+      "28.12.2026",
+      "29.12.2026",
+      "30.12.2026",
+      "31.12.2026",
+      "01.01.2027",
+    ]);
+  });
+
   it("can step one week ahead", () => {
     let days = workdaysOfWeek(new Date(2025, 2, 12), 1);
 

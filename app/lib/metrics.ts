@@ -5,6 +5,7 @@ import {
   startOfWeek,
   subDays,
   subMonths,
+  subWeeks,
 } from "date-fns";
 import { calculatePercentDiff } from "~/lib/utils";
 
@@ -83,14 +84,22 @@ export function busiestDays(days: Day[], now: Date) {
 
 export type Period = "weeks" | "months";
 
-/** Bookings per week (last 10) or month (last 6), split into own desk and guests. */
-export function bookingsBy(period: Period, days: Day[]) {
+/**
+ * Bookings per week (the last 10 calendar weeks) or month (the last 6),
+ * split into own desk and guests. Older days stay out even when the recent
+ * weeks have gaps.
+ */
+export function bookingsBy(period: Period, days: Day[], now: Date) {
+  let since =
+    period === "weeks"
+      ? startOfWeek(subWeeks(now, 9), { weekStartsOn: 1 })
+      : startOfMonth(subMonths(now, 5));
   let groups = new Map<
     number,
     { start: number; own: number; guests: number }
   >();
 
-  for (let d of days) {
+  for (let d of days.filter((day) => day.date >= since)) {
     let start = (
       period === "weeks"
         ? startOfWeek(d.date, { weekStartsOn: 1 })
@@ -104,6 +113,5 @@ export function bookingsBy(period: Period, days: Day[]) {
 
   return [...groups.values()]
     .sort((a, b) => a.start - b.start)
-    .slice(period === "weeks" ? -10 : -6)
     .map((g) => ({ ...g, total: g.own + g.guests }));
 }

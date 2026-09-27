@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import {
   formatDate,
   LAST_BOOKING_HOUR,
+  officeNow,
   parseDate,
   workdaysOfWeek,
   type Weekday,
@@ -110,7 +111,8 @@ export function DeskSheet({
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
   let fetcher = useFetcher();
   let body = useRef<HTMLDivElement>(null);
-  let now = new Date();
+  // Office time, as the server checks the 11:00 cutoff, wherever you are.
+  let now = officeNow();
   let todayDate = parseDate(todayValue ?? formatDate(now));
   let todaysDay = days[todayDate.getDay()];
   let isWeekend = todaysDay === "saturday" || todaysDay === "sunday";

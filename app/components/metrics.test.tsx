@@ -77,13 +77,25 @@ describe("bookingsBy", () => {
   ).days;
 
   it("groups weeks from Monday and splits out guests", () => {
-    expect(bookingsBy("weeks", days)).toEqual([
+    expect(bookingsBy("weeks", days, now)).toEqual([
       { start: new Date(2026, 7, 31).getTime(), own: 15, guests: 3, total: 18 },
       { start: new Date(2026, 8, 7).getTime(), own: 5, guests: 0, total: 5 },
     ]);
   });
 
   it("groups by calendar month", () => {
-    expect(bookingsBy("months", days).map((m) => m.total)).toEqual([10, 13]);
+    expect(bookingsBy("months", days, now).map((m) => m.total)).toEqual([
+      10, 13,
+    ]);
+  });
+
+  it("leaves out days older than the period, even with gaps since", () => {
+    let sparse = summarise(
+      [row(new Date(2024, 0, 15), 7), row(new Date(2026, 8, 7), 5)],
+      now,
+    ).days;
+
+    expect(bookingsBy("months", sparse, now).map((m) => m.total)).toEqual([5]);
+    expect(bookingsBy("weeks", sparse, now).map((m) => m.total)).toEqual([5]);
   });
 });

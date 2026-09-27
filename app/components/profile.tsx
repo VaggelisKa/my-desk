@@ -37,11 +37,15 @@ function useNameForm(user: ProfileUser) {
     setLastName(user.lastName);
   }
 
-  let changed =
-    firstName.trim() !== user.firstName || lastName.trim() !== user.lastName;
+  // Spaces alone are no name: the server would turn them down.
+  let canSave =
+    (firstName.trim() !== user.firstName ||
+      lastName.trim() !== user.lastName) &&
+    firstName.trim() !== "" &&
+    lastName.trim() !== "";
   let saving = navigation.state !== "idle" && navigation.formMethod === "PUT";
 
-  return { firstName, setFirstName, lastName, setLastName, changed, saving };
+  return { firstName, setFirstName, lastName, setLastName, canSave, saving };
 }
 
 function title(user: ProfileUser, isSelf: boolean) {
@@ -83,7 +87,7 @@ function SaveButton({ form }: { form: ReturnType<typeof useNameForm> }) {
       type="submit"
       variant="primary"
       size="tall"
-      disabled={!form.changed || form.saving}
+      disabled={!form.canSave || form.saving}
       className="w-full sm:w-auto sm:self-start sm:px-6"
     >
       {form.saving ? "Saving…" : "Save changes"}

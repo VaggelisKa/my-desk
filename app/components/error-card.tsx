@@ -8,9 +8,11 @@ import { cn } from "~/lib/utils";
  * its own h1 and a way back.
  */
 export function ErrorCard({
+  title = "Something went wrong",
   message,
   page = false,
 }: {
+  title?: string;
   message?: string;
   page?: boolean;
 }) {
@@ -37,7 +39,7 @@ export function ErrorCard({
             page ? "text-[20px] sm:text-[22px]" : "text-[15px]",
           )}
         >
-          Something went wrong
+          {title}
         </Heading>
         <p className="text-pretty text-sm leading-relaxed text-ink-muted">
           {message || "Something went wrong. Please try again later."}

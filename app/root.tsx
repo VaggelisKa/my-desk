@@ -309,7 +309,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               {error ? (
                 <div className={cn(PAGE_COLUMN, "flex flex-col")}>
-                  <ErrorCard page message={errorMessage(error)} />
+                  <ErrorCard
+                    page
+                    title={
+                      isRouteErrorResponse(error) && error.status === 404
+                        ? "Page not found"
+                        : undefined
+                    }
+                    message={errorMessage(error)}
+                  />
                 </div>
               ) : user ? (
                 <div className={cn(PAGE_COLUMN, "flex flex-col")}>

@@ -232,3 +232,47 @@ describe("daysFromJob", () => {
     expect(daysFromJob(job)).toEqual([]);
   });
 });
+
+describe("deskFromJob", () => {
+  it("reads the desk back from the callback URL", async () => {
+    let { deskFromJob } = await importCron();
+
+    expect(
+      deskFromJob({ url: "https://example.com/cron?deskId=7&day=monday" }),
+    ).toBe(7);
+  });
+
+  it.each([undefined, {}, { url: "not a url" }, { url: "https://x.dev/" }])(
+    "returns no desk for %j",
+    async (job) => {
+      let { deskFromJob } = await importCron();
+
+      expect(deskFromJob(job)).toBeNull();
+    },
+  );
+});
+
+describe("unreachable scheduler", () => {
+  it("reports a failed connection as a CronError", async () => {
+    let { CronError, enableCron } = await importCron();
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    await expect(enableCron({ cronId: "1" })).rejects.toBeInstanceOf(CronError);
+  });
+
+  it("reports an answer that is not JSON as a CronError", async () => {
+    let { CronError, getCronDetails } = await importCron();
+    fetchMock.mockResolvedValue(new Response("<html>oops</html>"));
+
+    await expect(getCronDetails({ cronId: "1" })).rejects.toBeInstanceOf(
+      CronError,
+    );
+  });
+
+  it("counts a job that is already gone as deleted", async () => {
+    let { deleteCron } = await importCron();
+    fetchMock.mockResolvedValue(new Response("{}", { status: 404 }));
+
+    await expect(deleteCron({ cronId: "1" })).resolves.toBeUndefined();
+  });
+});
