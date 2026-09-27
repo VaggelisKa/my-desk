@@ -190,11 +190,9 @@ test.describe("an employee with a desk", () => {
 
     await expectToast(page, "Weekly booking set up");
     await expect(page.getByText("Active", { exact: true })).toBeVisible();
-    await expect(page.getByRole("img", { name: "Mon, booked" })).toBeVisible();
-    await expect(page.getByRole("img", { name: "Thu, booked" })).toBeVisible();
-    await expect(
-      page.getByRole("img", { name: "Tue, not booked" }),
-    ).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "Mon" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Thu" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Tue" })).not.toBeChecked();
     await expect(db.user("emp001")).resolves.toMatchObject({
       autoReservationsCronId: expect.any(String),
     });
@@ -224,9 +222,9 @@ test.describe("an employee with a desk", () => {
   }) => {
     await db.setCronId("bob", "777");
 
-    for (let intent of ["DISABLE", "ENABLE", "DELETE"]) {
+    for (let intent of ["DISABLE", "ENABLE", "DELETE", "CHANGE_DAYS"]) {
       let response = await page.request.post("/bookings/recurring", {
-        form: { intent, cronId: "777" },
+        form: { intent, cronId: "777", day: "monday" },
       });
       // Alice has no weekly booking of her own to change.
       expect(response.status()).toBe(404);
@@ -280,7 +278,46 @@ test.describe("an employee with a desk", () => {
     let jobId = (await db.user("emp001"))?.autoReservationsCronId;
     expect(jobId).toEqual(expect.any(String));
     await page.goto("/bookings/recurring");
-    await expect(page.getByRole("img", { name: "Mon, booked" })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "Mon" })).toBeChecked();
+  });
+
+  test("changes the days of her weekly booking in place", async ({
+    page,
+    db,
+    cronJobOrg,
+  }) => {
+    await gotoHydrated(page, "/bookings/recurring");
+    await page.getByRole("checkbox", { name: "Mon" }).check();
+    await page.getByRole("button", { name: "Set up weekly booking" }).click();
+    await expectToast(page, "Weekly booking set up");
+    let jobId = (await db.user("emp001"))?.autoReservationsCronId;
+
+    let save = page.getByRole("button", { name: "Save days" });
+    // Nothing to save until the days differ from what is set.
+    await expect(save).toBeDisabled();
+    await page.getByRole("checkbox", { name: "Mon" }).uncheck();
+    await expect(
+      page.getByRole("button", { name: "Pick your days" }),
+    ).toBeDisabled();
+    await page.getByRole("checkbox", { name: "Wed" }).check();
+    await page.getByRole("checkbox", { name: "Fri" }).check();
+    await save.click();
+
+    await expectToast(page, "Weekly booking updated");
+    await expect(save).toBeDisabled();
+    await page.reload();
+    await expect(page.getByRole("checkbox", { name: "Mon" })).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Wed" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Fri" })).toBeChecked();
+    await expect(page.getByText("Active", { exact: true })).toBeVisible();
+    // Same job, changed in place: never removed and set up again.
+    await expect(db.user("emp001")).resolves.toMatchObject({
+      autoReservationsCronId: jobId,
+    });
+    let calls = (await cronJobOrg.calls()).map((c) => c.method);
+    expect(calls.filter((m) => m === "PUT")).toHaveLength(1);
+    expect(calls).not.toContain("DELETE");
+    expect(calls).toContain("PATCH");
   });
 });
 

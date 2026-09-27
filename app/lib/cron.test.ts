@@ -113,6 +113,44 @@ describe("job toggling", () => {
     });
   });
 
+  it("points a job at new days in place, keeping it and its schedule", async () => {
+    let { changeCronDays, daysFromJob } = await importCron();
+
+    await changeCronDays({
+      cronId: "99",
+      deskId: "7",
+      userId: "user-1",
+      days: ["tuesday", "friday"],
+    });
+
+    let request = lastRequest();
+    expect(request).toMatchObject({
+      url: "https://api.cron-job.org/jobs/99",
+      method: "PATCH",
+    });
+    // Only the callback changes: enabled and schedule stay as they were.
+    expect(Object.keys(request.body.job)).toEqual(["url"]);
+    let callbackUrl = new URL(request.body.job.url);
+    expect(callbackUrl.searchParams.get("deskId")).toBe("7");
+    expect(callbackUrl.searchParams.get("userId")).toBe("user-1");
+    expect(callbackUrl.searchParams.get("cronPassword")).toBe("secret");
+    expect(daysFromJob(request.body.job)).toEqual(["tuesday", "friday"]);
+  });
+
+  it("throws instead of reporting new days cron-job.org did not save", async () => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 500 }));
+    let cron = await importCron();
+
+    await expect(
+      cron.changeCronDays({
+        cronId: "99",
+        deskId: "7",
+        userId: "user-1",
+        days: ["monday"],
+      }),
+    ).rejects.toBeInstanceOf(cron.CronError);
+  });
+
   it("deletes a job by id", async () => {
     let { deleteCron } = await importCron();
 

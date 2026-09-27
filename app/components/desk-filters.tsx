@@ -179,30 +179,16 @@ export function DayStrip({
   today?: string;
   className?: string;
 }) {
-  let [currentParams] = useSearchParams();
-  let { pathname } = useLocation();
-  let navigation = useNavigation();
-  // Follow a day or week you just picked straight away, so the highlight
-  // slides while the desks load instead of after.
-  let searchParams =
-    navigation.location?.pathname === pathname
-      ? new URLSearchParams(navigation.location.search)
-      : currentParams;
+  let searchParams = usePendingSearchParams();
   let today = todayParam ? parseDate(todayParam) : new Date();
   // A missing or malformed param means today (the coming Monday on a
   // weekend), like the route.
   let selectedParam = normalizeDay(searchParams.get("selected-day"));
   let selected = selectedParam ? parseDate(selectedParam) : defaultDay(today);
-
-  // Weeks start on Sunday, so on a Saturday "this week" is already over.
-  // Count from Sunday instead, so the weekend works like Sunday does: the
-  // strip shows the coming week and the arrow reaches the one after.
-  let weekFrom = today.getDay() === 6 ? addDays(today, 1) : today;
-  let thisWeek = workdaysOfWeek(weekFrom, 0);
-  let nextWeek = workdaysOfWeek(weekFrom, 1);
-  // Compared by calendar day: the strip's dates are midnight, `selected` is not.
-  let inNextWeek = isAfter(startOfDay(selected), thisWeek[4].date);
-  let days = inNextWeek ? nextWeek : thisWeek;
+  let { days, inNextWeek, otherWeekDay, thisWeekIsOver } = stripWeeks(
+    today,
+    selected,
+  );
   let selectedKey = formatDate(selected);
   let todayKey = formatDate(today);
 
@@ -212,12 +198,6 @@ export function DayStrip({
 
     return `?${params}`;
   }
-
-  // Going forward lands on next Monday, going back on this Friday, so the
-  // pick sits next to the week you came from. Once this week is over there is
-  // nothing to go back to, so Friday is never in the past here.
-  let otherWeekDay = inNextWeek ? thisWeek[4].date : nextWeek[0].date;
-  let thisWeekIsOver = isAfter(startOfDay(today), thisWeek[4].date);
 
   let canGoBack = inNextWeek && !thisWeekIsOver;
 
@@ -243,20 +223,7 @@ export function DayStrip({
       </WeekArrow>
 
       <div className="relative isolate grid w-full grid-cols-5 gap-1 sm:inline-flex sm:w-auto sm:gap-0.5 sm:rounded-full sm:border sm:border-line sm:bg-paper-muted sm:p-[3px]">
-        {position && (
-          <span
-            aria-hidden
-            className={cn(
-              "absolute left-0 top-0 rounded-lg bg-ink sm:rounded-full",
-              animate && cn("transition-[transform,width,height]", DAY_EASE),
-            )}
-            style={{
-              width: position.width,
-              height: position.height,
-              transform: `translate(${position.left}px, ${position.top}px)`,
-            }}
-          />
-        )}
+        {position && <DayHighlight position={position} animate={animate} />}
         {days.map(({ day, date }) => {
           let key = formatDate(date);
           return (
@@ -281,27 +248,107 @@ export function DayStrip({
       </WeekArrow>
 
       {!(inNextWeek && thisWeekIsOver) && (
-        <Link
+        <PhoneWeekLink
           to={linkTo(otherWeekDay)}
-          preventScrollReset
-          className={cn(
-            "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:hidden",
-            focusRing,
-          )}
-        >
-          {inNextWeek ? (
-            <>
-              <span aria-hidden="true">← </span>
-              {isWeekend(today) ? "Upcoming week" : "This week"}
-            </>
-          ) : (
-            <>
-              Next week<span aria-hidden="true"> →</span>
-            </>
-          )}
-        </Link>
+          back={inNextWeek}
+          onWeekend={isWeekend(today)}
+        />
       )}
     </nav>
+  );
+}
+
+/**
+ * The search params, or the ones being navigated to. Following a day or week
+ * you just picked straight away lets the highlight slide while the desks
+ * load instead of after.
+ */
+function usePendingSearchParams() {
+  let [currentParams] = useSearchParams();
+  let { pathname } = useLocation();
+  let navigation = useNavigation();
+
+  return navigation.location?.pathname === pathname
+    ? new URLSearchParams(navigation.location.search)
+    : currentParams;
+}
+
+/** Which week the strip shows, and where the week links lead. */
+function stripWeeks(today: Date, selected: Date) {
+  // Weeks start on Sunday, so on a Saturday "this week" is already over.
+  // Count from Sunday instead, so the weekend works like Sunday does: the
+  // strip shows the coming week and the arrow reaches the one after.
+  let weekFrom = today.getDay() === 6 ? addDays(today, 1) : today;
+  let thisWeek = workdaysOfWeek(weekFrom, 0);
+  let nextWeek = workdaysOfWeek(weekFrom, 1);
+  // Compared by calendar day: the strip's dates are midnight, `selected` is not.
+  let inNextWeek = isAfter(startOfDay(selected), thisWeek[4].date);
+
+  return {
+    days: inNextWeek ? nextWeek : thisWeek,
+    inNextWeek,
+    // Going forward lands on next Monday, going back on this Friday, so the
+    // pick sits next to the week you came from. Once this week is over
+    // there is nothing to go back to, so Friday is never in the past here.
+    otherWeekDay: inNextWeek ? thisWeek[4].date : nextWeek[0].date,
+    thisWeekIsOver: isAfter(startOfDay(today), thisWeek[4].date),
+  };
+}
+
+/** The pill that slides behind the selected day. */
+function DayHighlight({
+  position,
+  animate,
+}: {
+  position: { width: number; height: number; left: number; top: number };
+  animate: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute left-0 top-0 rounded-lg bg-ink sm:rounded-full",
+        animate && cn("transition-[transform,width,height]", DAY_EASE),
+      )}
+      style={{
+        width: position.width,
+        height: position.height,
+        transform: `translate(${position.left}px, ${position.top}px)`,
+      }}
+    />
+  );
+}
+
+/** "Next week →" or "← This week" under the strip, phones only. */
+function PhoneWeekLink({
+  to,
+  back,
+  onWeekend,
+}: {
+  to: string;
+  back: boolean;
+  onWeekend: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      preventScrollReset
+      className={cn(
+        "inline-flex min-h-11 items-center rounded-sm text-[13px] font-semibold text-ink-muted hover:text-ink sm:hidden",
+        focusRing,
+      )}
+    >
+      {back ? (
+        <>
+          <span aria-hidden="true">← </span>
+          {onWeekend ? "Upcoming week" : "This week"}
+        </>
+      ) : (
+        <>
+          Next week<span aria-hidden="true"> →</span>
+        </>
+      )}
+    </Link>
   );
 }
 

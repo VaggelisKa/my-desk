@@ -159,3 +159,29 @@ test.describe("text fields are at least 16px so phones don't zoom", () => {
     });
   });
 });
+
+test.describe("haptic tick on dock taps", () => {
+  let hapticSwitch = (page: import("@playwright/test").Page) =>
+    page.locator('nav[aria-label="Main"] input[switch]');
+
+  test.describe("on a touch screen", () => {
+    test.use({ hasTouch: true, isMobile: true });
+
+    test("the other tabs carry a switch to tap, and a tap still navigates", async ({
+      page,
+    }) => {
+      await gotoHydrated(page, "/");
+      // Every tab but the current one.
+      await expect(hapticSwitch(page)).toHaveCount(2);
+      await expect(hapticSwitch(page).first()).toBeVisible();
+
+      await page.getByRole("link", { name: "Bookings" }).last().tap();
+      await expect(page).toHaveURL("/bookings");
+    });
+  });
+
+  test("with a mouse the tabs stay plain links", async ({ page }) => {
+    await gotoHydrated(page, "/");
+    await expect(hapticSwitch(page).first()).toBeHidden();
+  });
+});
