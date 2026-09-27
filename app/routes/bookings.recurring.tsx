@@ -93,7 +93,8 @@ export default function RecurringBookingsPage({
         </h2>
         <p className="max-w-[52ch] text-pretty text-sm leading-relaxed text-ink-muted">
           Book your own desk every week without thinking about it. It runs every
-          Sunday at 10:00 and books the week ahead.
+          Sunday at 10:00 and books the week ahead. If you already have a
+          booking that week, it leaves the week as you set it.
         </p>
       </div>
 

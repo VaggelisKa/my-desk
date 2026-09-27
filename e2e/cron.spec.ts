@@ -99,6 +99,57 @@ test.describe("the weekly booking callback", () => {
     );
   });
 
+  test("leaves a week alone that already has a booking of theirs", async ({
+    page,
+    db,
+  }) => {
+    // She planned the week by hand: only Tuesday, and on another desk.
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.unclaimed.id,
+      day: "tuesday",
+    });
+
+    let response = await page.request.get(
+      callback({
+        cronPassword: password,
+        deskId: String(desks.alice.id),
+        userId: users.alice.id,
+        day: ["monday", "tuesday", "wednesday"],
+      }),
+    );
+
+    expect(response.status()).toBe(200);
+    await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
+  });
+
+  test("books a week that only has next week's bookings", async ({
+    page,
+    db,
+  }) => {
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "monday",
+      weekOffset: 1,
+    });
+
+    let response = await page.request.get(
+      callback({
+        cronPassword: password,
+        deskId: String(desks.alice.id),
+        userId: users.alice.id,
+        day: "wednesday",
+      }),
+    );
+
+    expect(response.status()).toBe(200);
+    let stored = await db.reservationsForDesk(desks.alice.id);
+    expect(stored.map(({ date }) => date).sort()).toEqual(
+      [bookingDay("wednesday").date, bookingDay("monday", 1).date].sort(),
+    );
+  });
+
   test("removes the job once the desk is no longer theirs", async ({
     page,
     db,

@@ -1,5 +1,5 @@
 import { nextDay, startOfDay } from "date-fns";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import { bookingRow } from "~/lib/bookings.server";
 import {
@@ -211,7 +211,7 @@ export async function changeRecurring(
 
 /**
  * A weekly job's Sunday run: books `job.deskId` for the picked days of the
- * week ahead. False when the desk is no longer the person's, after removing
+ * week ahead, unless the person already has a booking that week. False when the desk is no longer the person's, after removing
  * the job if it is left over.
  */
 export async function runWeeklyBooking(job: {
@@ -244,8 +244,27 @@ export async function runWeeklyBooking(job: {
 
   // The job runs on Sundays, so the week ahead: Monday to Friday after the
   // office's today, by full date (week numbers restart around New Year).
+  let week = workdaysOfWeek(officeNow());
+
+  // Any booking of theirs that week means they already planned it by hand,
+  // for example removing a day they don't need: leave the week as it is.
+  let planned = await db.query.reservations.findFirst({
+    columns: { date: true },
+    where: and(
+      eq(reservations.userId, job.userId),
+      inArray(
+        reservations.date,
+        week.map(({ date }) => formatDate(date)),
+      ),
+    ),
+  });
+
+  if (planned) {
+    return true;
+  }
+
   let wanted = new Set(job.days);
-  let formattedData = workdaysOfWeek(officeNow())
+  let formattedData = week
     .filter(({ day }) => wanted.has(day))
     .map(({ date }) => bookingRow(job.deskId, job.userId, date));
 
