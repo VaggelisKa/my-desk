@@ -5,26 +5,16 @@ describe("tapHaptic", () => {
   it("vibrates briefly where the Vibration API exists", () => {
     let vibrate = vi.fn(() => true);
     vi.stubGlobal("navigator", { ...navigator, vibrate });
-    let click = vi.spyOn(HTMLLabelElement.prototype, "click");
 
     tapHaptic();
 
     expect(vibrate).toHaveBeenCalledWith(10);
-    expect(click).not.toHaveBeenCalled();
   });
 
-  it("toggles a hidden switch elsewhere and leaves nothing behind", () => {
+  it("does nothing where it doesn't", () => {
     vi.stubGlobal("navigator", { ...navigator, vibrate: undefined });
-    let toggled: boolean[] = [];
-    document.addEventListener("change", (event) => {
-      let input = event.target as HTMLInputElement;
-      toggled.push(input.hasAttribute("switch") && input.checked);
-    });
 
-    tapHaptic();
-
-    expect(toggled).toEqual([true]);
-    expect(document.querySelector("input[switch]")).toBeNull();
+    expect(() => tapHaptic()).not.toThrow();
   });
 
   it("never throws", () => {

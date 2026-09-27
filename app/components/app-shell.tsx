@@ -16,6 +16,7 @@ import { Link, useLocation, useNavigation } from "react-router";
 import { activeTab, PAGE_COLUMN, type Tab } from "~/lib/app-shell";
 import { tapHaptic } from "~/lib/haptics";
 import { cn, deskLabel } from "~/lib/utils";
+import { HapticSwitch } from "./haptic-switch";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
 // The app chrome: a 52px
@@ -266,6 +267,7 @@ export function Dock({ user }: { user: ShellUser }) {
                 )}
               />
               <DockLabel>{tab.label}</DockLabel>
+              {!isActive && <HapticSwitch />}
             </Link>
           );
         })}
