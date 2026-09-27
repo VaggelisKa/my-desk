@@ -41,6 +41,71 @@ let faceClasses: Record<DeskTileState, string> = {
   mine: "border-moss-edge bg-moss text-white shadow-[0_6px_0_var(--edge)] [--edge:var(--moss-edge)]",
 };
 
+/** "Desk 1.1.2 by the window, taken, Anna is sitting here". */
+function describe(
+  label: string,
+  place: string | undefined,
+  status: string,
+  sitter: string | null | undefined,
+) {
+  return [
+    place ? `Desk ${label} ${place}` : `Desk ${label}`,
+    status.toLowerCase(),
+    sitter ? `${sitter} is sitting here` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+/** The chair: above the desk in the first row, below it in the second. */
+function Chair({ row, faded }: { row: number; faded: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "absolute left-1/2 -ml-[11px] h-2.5 w-[22px] rounded-b-md rounded-t border-[1.5px] border-ink bg-paper-muted",
+        row === 1 ? "-top-3.5" : "top-full mt-2.5",
+        faded && "opacity-35",
+      )}
+    />
+  );
+}
+
+/** The desk's top, coloured by its state. */
+function TileFace({
+  state,
+  unclaimed,
+  dimmed,
+  children,
+}: {
+  state: DeskTileState;
+  unclaimed: boolean;
+  dimmed: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "absolute inset-0 flex flex-col items-center justify-center gap-px rounded border-[1.5px] px-1.5 transition-[transform,box-shadow] duration-150 motion-reduce:transition-none",
+        "[--edge:var(--ink)]",
+        // Lift on hover, and outline when focused or while its sheet is open.
+        "group-enabled:group-hover:-translate-y-0.5 group-enabled:group-hover:shadow-[0_8px_0_var(--edge)]",
+        "group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-moss",
+        "group-aria-expanded:outline group-aria-expanded:outline-2 group-aria-expanded:outline-offset-[3px] group-aria-expanded:outline-moss",
+        faceClasses[state],
+        state === "free" &&
+          unclaimed &&
+          "border-line shadow-[0_6px_0_var(--line)]",
+        dimmed &&
+          "border-dashed border-dim bg-transparent text-ink-muted shadow-none",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
   (
     {
@@ -60,13 +125,6 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
     let unclaimed = !name;
     let status = dimmed ? "Filtered out" : stateWords[state];
     let descriptionId = React.useId();
-    let description = [
-      place ? `Desk ${label} ${place}` : `Desk ${label}`,
-      status.toLowerCase(),
-      sitter ? `${sitter} is sitting here` : null,
-    ]
-      .filter(Boolean)
-      .join(", ");
 
     return (
       <button
@@ -85,35 +143,12 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
         {...rest}
       >
         <span id={descriptionId} className="sr-only">
-          {description}
+          {describe(label, place, status, sitter)}
         </span>
 
-        <span
-          aria-hidden="true"
-          className={cn(
-            "absolute left-1/2 -ml-[11px] h-2.5 w-[22px] rounded-b-md rounded-t border-[1.5px] border-ink bg-paper-muted",
-            row === 1 ? "-top-3.5" : "top-full mt-2.5",
-            (dimmed || unclaimed) && "opacity-35",
-          )}
-        />
+        <Chair row={row} faded={dimmed || unclaimed} />
 
-        <span
-          aria-hidden="true"
-          className={cn(
-            "absolute inset-0 flex flex-col items-center justify-center gap-px rounded border-[1.5px] px-1.5 transition-[transform,box-shadow] duration-150 motion-reduce:transition-none",
-            "[--edge:var(--ink)]",
-            // Lift on hover, and outline when focused or while its sheet is open.
-            "group-enabled:group-hover:-translate-y-0.5 group-enabled:group-hover:shadow-[0_8px_0_var(--edge)]",
-            "group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-[3px] group-focus-visible:outline-moss",
-            "group-aria-expanded:outline group-aria-expanded:outline-2 group-aria-expanded:outline-offset-[3px] group-aria-expanded:outline-moss",
-            faceClasses[state],
-            state === "free" &&
-              unclaimed &&
-              "border-line shadow-[0_6px_0_var(--line)]",
-            dimmed &&
-              "border-dashed border-dim bg-transparent text-ink-muted shadow-none",
-          )}
-        >
+        <TileFace state={state} unclaimed={unclaimed} dimmed={dimmed}>
           <span
             className={cn(
               "max-w-full truncate text-[11.5px] font-bold capitalize leading-[1.1] sm:text-[12.5px]",
@@ -132,7 +167,7 @@ export let DeskTile = React.forwardRef<HTMLButtonElement, DeskTileProps>(
           >
             ({status})
           </span>
-        </span>
+        </TileFace>
       </button>
     );
   },

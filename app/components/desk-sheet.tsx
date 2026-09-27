@@ -1,7 +1,7 @@
 import { Sheet } from "@silk-hq/components";
 import { addDays, format, isBefore, isSameDay } from "date-fns";
 import { Check, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "~/components/ui/button";
@@ -46,7 +46,7 @@ type DeskSheetProps = {
   today?: string;
   /** Placement in the floor plan; Silk wraps the tile, so it goes on the wrapper. */
   style?: React.CSSProperties;
-  /** Opens the sheet once the page is interactive, for links to a desk. */
+  /** Opens the sheet straight away, for links to a desk. */
   autoOpen?: boolean;
   onClose?: () => void;
 };
@@ -99,61 +99,20 @@ export function DeskSheet({
   autoOpen = false,
   onClose,
 }: DeskSheetProps) {
-  let [presented, setPresented] = useState(false);
+  // Unset until someone opens or closes the sheet; until then a link decides.
+  let [presented, setPresented] = useState<boolean | null>(null);
   let [picked, setPicked] = useState<string[]>([]);
   let [travelStatus, setTravelStatus] = useState<TravelStatus>("idleOutside");
   // Same breakpoint as the phone dock. Captured when the sheet
   // opens so rotating a phone mid-way does not flip the placement.
   let isNarrow = useMediaQuery("(max-width: 767px)");
   let [isSmallDevice, setIsSmallDevice] = useState(isNarrow);
-  let fetcher = useFetcher();
   let body = useRef<HTMLDivElement>(null);
-  // Office time, as the server checks the 11:00 cutoff, wherever you are.
-  let now = officeNow();
-  let todayDate = parseDate(todayValue ?? formatDate(now));
-  let todaysDay = days[todayDate.getDay()];
-  let isWeekend = todaysDay === "saturday" || todaysDay === "sunday";
-  // Weeks start on Sunday, so on a Saturday "this week" is already over and
-  // the grid starts from the coming one (the day strip does the same).
-  let gridStart = todaysDay === "saturday" ? addDays(todayDate, 1) : todayDate;
-  let isSubmitting = fetcher.state !== "idle";
-
-  // By the full date: week numbers restart around New Year, so "next week"
-  // is not always this week's number plus one.
-  function reservationOn(date: Date) {
-    let value = formatDate(date);
-    return desk.reservations.find((r) => r.date === value);
-  }
-
-  let grid = weekRows(isWeekend).map(({ label, offset }) => ({
-    label,
-    days: workdaysOfWeek(gridStart, offset).map(({ day, date }) => {
-      let reservation = reservationOn(date);
-      let isPast = isBefore(date, todayDate);
-      let isClosed =
-        isPast ||
-        (isSameDay(date, todayDate) && now.getHours() >= LAST_BOOKING_HOUR);
-
-      return {
-        day,
-        date,
-        value: formatDate(date),
-        reservation,
-        isPast,
-        bookable: !!allowedToBook && !reservation && !isClosed,
-      };
-    }),
-  }));
-
-  // Days booked in the meantime (by this sheet or anyone else) drop out of
-  // the pick on their own once the grid revalidates.
-  let bookable = new Set(
-    grid.flatMap(({ days }) =>
-      days.filter((d) => d.bookable).map((d) => d.value),
-    ),
+  let { todayDate, isWeekend, todaysReservation, grid } = bookingGrid(
+    desk,
+    todayValue,
+    !!allowedToBook,
   );
-  let pickedDays = picked.filter((value) => bookable.has(value));
-  let pickedSet = new Set(pickedDays);
 
   function togglePick(value: string) {
     setPicked((current) =>
@@ -162,9 +121,6 @@ export function DeskSheet({
         : [...current, value],
     );
   }
-
-  let todaysReservation = reservationOn(todayDate);
-  let showBookForToday = !isWeekend && !todaysReservation;
 
   function handlePresentedChange(value: boolean) {
     if (value) {
@@ -176,11 +132,9 @@ export function DeskSheet({
     setPresented(value);
   }
 
-  useEffect(() => {
-    if (autoOpen) handlePresentedChange(true);
-    // Only when a link asks for it, not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpen]);
+  // A link can open the sheet too. Once it has been closed it stays shut
+  // straight away, while `onClose` drops the link from the address.
+  let isOpen = presented ?? autoOpen;
 
   return (
     <Sheet.Root
@@ -192,7 +146,7 @@ export function DeskSheet({
       // on the page and make it flicker.
       forComponent={isSmallDevice ? "closest" : undefined}
       sheetRole="dialog"
-      presented={presented}
+      presented={isOpen}
       onPresentedChange={handlePresentedChange}
       style={style}
     >
@@ -231,21 +185,7 @@ export function DeskSheet({
           >
             <div className="desk-sheet-card">
               {/* Kept out of the scrolling body so it stays put on long content. */}
-              {isSmallDevice ? (
-                <Sheet.Handle
-                  className="desk-sheet-handle"
-                  action="dismiss"
-                  aria-label="Close"
-                />
-              ) : (
-                <Sheet.Trigger
-                  action="dismiss"
-                  aria-label="Close"
-                  className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-paper-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
-                >
-                  <X aria-hidden="true" className="h-4 w-4" />
-                </Sheet.Trigger>
-              )}
+              <CloseControl isSmallDevice={isSmallDevice} />
 
               <div
                 ref={body}
@@ -268,69 +208,19 @@ export function DeskSheet({
                   userId={userId}
                 />
 
-                <fetcher.Form
-                  method="POST"
-                  action="/?index"
-                  className="flex flex-col gap-6"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    let form = event.currentTarget;
-                    // The button turns disabled while it books and the days
-                    // it booked stop being checkboxes, so focus would drop
-                    // out of the sheet; keep it in the sheet instead.
-                    let hadFocus = form.contains(document.activeElement);
-                    void fetcher.submit(form).then(() => {
-                      if (hadFocus) rescueFocus(body.current);
-                    });
-                  }}
-                >
-                  <input type="hidden" name="deskId" value={desk.id} />
-
-                  <fieldset className="grid gap-3">
-                    <legend className="mb-3 flex w-full justify-between text-xs text-ink-muted">
-                      <span>
-                        {allowedToBook ? "Book days" : "Next two weeks"}
-                      </span>
-                      {allowedToBook && bookable.size > 0 && (
-                        <span aria-hidden="true">Tap to pick</span>
-                      )}
-                    </legend>
-
-                    <div
-                      aria-hidden="true"
-                      className="grid grid-cols-[80px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
-                    >
-                      <span />
-                      {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
-                        <span key={d}>{d}</span>
-                      ))}
-                    </div>
-
-                    <DayGrid
-                      grid={grid}
-                      picked={pickedSet}
-                      onToggle={togglePick}
-                      selectedDay={selectedDay}
-                      userId={userId}
-                    />
-
-                    <DayLegend />
-                  </fieldset>
-
-                  {allowedToBook
-                    ? bookable.size > 0 && (
-                        <BookButton
-                          count={pickedDays.length}
-                          isSubmitting={isSubmitting}
-                        />
-                      )
-                    : showBookForToday && (
-                        <BookTodayButton
-                          today={formatDate(todayDate)}
-                          isSubmitting={isSubmitting}
-                        />
-                      )}
-                </fetcher.Form>
+                <BookingForm
+                  deskId={desk.id}
+                  grid={grid}
+                  picked={picked}
+                  onToggle={togglePick}
+                  allowedToBook={!!allowedToBook}
+                  // Anyone else can take a free desk for today.
+                  showBookForToday={!isWeekend && !todaysReservation}
+                  today={formatDate(todayDate)}
+                  selectedDay={selectedDay}
+                  userId={userId}
+                  body={body}
+                />
               </div>
             </div>
           </Sheet.Content>
@@ -353,6 +243,180 @@ type GridRow = {
     bookable: boolean;
   }[];
 };
+
+/**
+ * The next two weeks for the sheet. `today` comes from the loader when there
+ * is one; the time of day is the office's, as the server checks the 11:00
+ * cutoff, wherever you are.
+ */
+function bookingGrid(
+  desk: DeskSheetProps["desk"],
+  today: string | undefined,
+  allowedToBook: boolean,
+) {
+  let now = officeNow();
+  let todayDate = parseDate(today ?? formatDate(now));
+  let todaysDay = days[todayDate.getDay()];
+  let isWeekend = todaysDay === "saturday" || todaysDay === "sunday";
+  // Weeks start on Sunday, so on a Saturday "this week" is already over and
+  // the grid starts from the coming one (the day strip does the same).
+  let gridStart = todaysDay === "saturday" ? addDays(todayDate, 1) : todayDate;
+
+  // By the full date: week numbers restart around New Year, so "next week"
+  // is not always this week's number plus one.
+  function reservationOn(date: Date) {
+    let value = formatDate(date);
+    return desk.reservations.find((r) => r.date === value);
+  }
+
+  let grid: GridRow[] = weekRows(isWeekend).map(({ label, offset }) => ({
+    label,
+    days: workdaysOfWeek(gridStart, offset).map(({ day, date }) => {
+      let reservation = reservationOn(date);
+      let isPast = isBefore(date, todayDate);
+      let isClosed =
+        isPast ||
+        (isSameDay(date, todayDate) && now.getHours() >= LAST_BOOKING_HOUR);
+
+      return {
+        day,
+        date,
+        value: formatDate(date),
+        reservation,
+        isPast,
+        bookable: allowedToBook && !reservation && !isClosed,
+      };
+    }),
+  }));
+
+  return {
+    todayDate,
+    isWeekend,
+    todaysReservation: reservationOn(todayDate),
+    grid,
+  };
+}
+
+/** The drag handle on phones, a round close button on larger screens. */
+function CloseControl({ isSmallDevice }: { isSmallDevice: boolean }) {
+  if (isSmallDevice) {
+    return (
+      <Sheet.Handle
+        className="desk-sheet-handle"
+        action="dismiss"
+        aria-label="Close"
+      />
+    );
+  }
+
+  return (
+    <Sheet.Trigger
+      action="dismiss"
+      aria-label="Close"
+      className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-paper-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2"
+    >
+      <X aria-hidden="true" className="h-4 w-4" />
+    </Sheet.Trigger>
+  );
+}
+
+/**
+ * The two-week grid and the button under it. The owner picks free days and
+ * books them together; anyone else can take a free desk for today.
+ */
+function BookingForm({
+  deskId,
+  grid,
+  picked,
+  onToggle,
+  allowedToBook,
+  showBookForToday,
+  today,
+  selectedDay,
+  userId,
+  body,
+}: {
+  deskId: number;
+  grid: GridRow[];
+  picked: string[];
+  onToggle: (value: string) => void;
+  allowedToBook: boolean;
+  showBookForToday: boolean;
+  /** Today in `dd.MM.yyyy`. */
+  today: string;
+  selectedDay?: string;
+  userId?: string;
+  body: React.RefObject<HTMLDivElement | null>;
+}) {
+  let fetcher = useFetcher();
+  let isSubmitting = fetcher.state !== "idle";
+  // Days booked in the meantime (by this sheet or anyone else) drop out of
+  // the pick on their own once the grid revalidates.
+  let bookable = new Set(
+    grid.flatMap(({ days }) =>
+      days.filter((d) => d.bookable).map((d) => d.value),
+    ),
+  );
+  let pickedDays = picked.filter((value) => bookable.has(value));
+
+  return (
+    <fetcher.Form
+      method="POST"
+      action="/?index"
+      className="flex flex-col gap-6"
+      onSubmit={(event) => {
+        event.preventDefault();
+        let form = event.currentTarget;
+        // The button turns disabled while it books and the days
+        // it booked stop being checkboxes, so focus would drop
+        // out of the sheet; keep it in the sheet instead.
+        let hadFocus = form.contains(document.activeElement);
+        void fetcher.submit(form).then(() => {
+          if (hadFocus) rescueFocus(body.current);
+        });
+      }}
+    >
+      <input type="hidden" name="deskId" value={deskId} />
+
+      <fieldset className="grid gap-3">
+        <legend className="mb-3 flex w-full justify-between text-xs text-ink-muted">
+          <span>{allowedToBook ? "Book days" : "Next two weeks"}</span>
+          {allowedToBook && bookable.size > 0 && (
+            <span aria-hidden="true">Tap to pick</span>
+          )}
+        </legend>
+
+        <div
+          aria-hidden="true"
+          className="grid grid-cols-[80px_repeat(5,1fr)] gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-muted"
+        >
+          <span />
+          {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
+            <span key={d}>{d}</span>
+          ))}
+        </div>
+
+        <DayGrid
+          grid={grid}
+          picked={new Set(pickedDays)}
+          onToggle={onToggle}
+          selectedDay={selectedDay}
+          userId={userId}
+        />
+
+        <DayLegend />
+      </fieldset>
+
+      {allowedToBook
+        ? bookable.size > 0 && (
+            <BookButton count={pickedDays.length} isSubmitting={isSubmitting} />
+          )
+        : showBookForToday && (
+            <BookTodayButton today={today} isSubmitting={isSubmitting} />
+          )}
+    </fetcher.Form>
+  );
+}
 
 /** Who the desk belongs to and who sits at it today. */
 function DeskDetails({

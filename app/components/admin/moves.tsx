@@ -1,9 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
-import {
-  fullName,
-  type Index,
-  useAdminFetcher,
-} from "~/components/admin/shared";
+import { fullName } from "~/components/admin/helpers";
+import { type Index, useAdminFetcher } from "~/components/admin/shared";
 import { ConfirmStep } from "~/components/admin/sheets";
 import { Button } from "~/components/ui/button";
 import type { AdminDesk, AdminPerson } from "~/lib/admin.server";
