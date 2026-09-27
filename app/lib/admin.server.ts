@@ -173,25 +173,30 @@ async function stopRecurring(userId: string) {
  * Takes desks away from their owner: they lose them, and so do the days they
  * booked on them after today. Today stays, since they may already be sitting
  * there. Only while the desks are still theirs, in case someone else moved
- * them meanwhile. Run in one batch with the rest of a move.
+ * them meanwhile. Pass the transaction when it is part of a move.
  */
-function releaseDesks(deskIds: number[], ownerId: string) {
-  return [
-    db
-      .update(desks)
-      .set({ userId: null })
-      .where(and(inArray(desks.id, deskIds), eq(desks.userId, ownerId))),
-    db
-      .delete(reservations)
-      .where(
-        and(
-          inArray(reservations.deskId, deskIds),
-          eq(reservations.userId, ownerId),
-          gt(reservations.dateTimestamp, todayStart()),
-        ),
+async function releaseDesks(
+  deskIds: number[],
+  ownerId: string,
+  tx: Pick<typeof db, "update" | "delete"> = db,
+) {
+  await tx
+    .update(desks)
+    .set({ userId: null })
+    .where(and(inArray(desks.id, deskIds), eq(desks.userId, ownerId)));
+  await tx
+    .delete(reservations)
+    .where(
+      and(
+        inArray(reservations.deskId, deskIds),
+        eq(reservations.userId, ownerId),
+        gt(reservations.dateTimestamp, todayStart()),
       ),
-  ] as const;
+    );
 }
+
+/** Thrown inside a move's transaction to undo it when the desk changed meanwhile. */
+class DeskChanged extends Error {}
 
 /** Said when a desk moved but the scheduler could not be reached to stop a weekly job. */
 let stopLater =
@@ -238,24 +243,31 @@ export async function handleAdminAction(request: Request) {
       }
 
       // The new owner gives up any desk they had, so nobody ends up with two.
-      // One batch, so a failure halfway leaves nobody without a desk.
+      // One transaction, so if someone else took the desk meanwhile the whole
+      // move is undone and nobody loses a desk or a booking.
       let previousDesks = await db.query.desks.findMany({
         where: and(eq(desks.userId, newOwner.id), ne(desks.id, deskId)),
         columns: { id: true },
       });
       let previousIds = previousDesks.map((previous) => previous.id);
-      let results = await db.batch([
-        ...(previousIds.length ? releaseDesks(previousIds, newOwner.id) : []),
-        ...(desk.userId ? releaseDesks([deskId], desk.userId) : []),
-        // Only if nobody else took the desk since it was read.
-        db
-          .update(desks)
-          .set({ userId: newOwner.id })
-          .where(and(eq(desks.id, deskId), isNull(desks.userId)))
-          .returning({ id: desks.id }),
-      ] as unknown as Parameters<typeof db.batch>[0]);
 
-      if ((results.at(-1) as unknown[]).length === 0) {
+      try {
+        await db.transaction(async (tx) => {
+          if (desk.userId) await releaseDesks([deskId], desk.userId, tx);
+          let claimed = await tx
+            .update(desks)
+            .set({ userId: newOwner.id })
+            .where(and(eq(desks.id, deskId), isNull(desks.userId)))
+            .returning({ id: desks.id });
+
+          if (claimed.length === 0) throw new DeskChanged();
+          if (previousIds.length) {
+            await releaseDesks(previousIds, newOwner.id, tx);
+          }
+        });
+      } catch (error) {
+        if (!(error instanceof DeskChanged)) throw error;
+
         return dataWithError(
           null,
           {
@@ -293,13 +305,15 @@ export async function handleAdminAction(request: Request) {
       }
       let message = `${capitalize(deskName(desk))} is unclaimed now`;
 
-      if (!desk.userId) {
+      let ownerId = desk.userId;
+
+      if (!ownerId) {
         return dataWithSuccess(done, { message });
       }
 
-      await db.batch(releaseDesks([deskId], desk.userId));
+      await db.transaction((tx) => releaseDesks([deskId], ownerId, tx));
 
-      return (await stopRecurring(desk.userId))
+      return (await stopRecurring(ownerId))
         ? dataWithSuccess(done, { message })
         : dataWithError(done, { message, description: stopLater });
     }

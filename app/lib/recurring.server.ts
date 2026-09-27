@@ -1,5 +1,5 @@
 import { nextDay, startOfDay } from "date-fns";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import { bookingRow } from "~/lib/bookings.server";
 import {
@@ -138,10 +138,25 @@ export async function changeRecurring(
       }
 
       let { jobId } = await addCron(parsedInput.data);
-      await db
+      // Only if no other request stored a job meanwhile; if one did, this
+      // job is the extra one and goes again.
+      let stored = await db
         .update(users)
         .set({ autoReservationsCronId: String(jobId) })
-        .where(eq(users.id, user.userId));
+        .where(
+          and(eq(users.id, user.userId), isNull(users.autoReservationsCronId)),
+        )
+        .returning({ id: users.id });
+
+      if (stored.length === 0) {
+        await deleteCron({ cronId: String(jobId) });
+
+        return dataWithError(
+          null,
+          { message: "Weekly booking is already set up" },
+          { status: 409 },
+        );
+      }
 
       return dataWithSuccess(null, {
         message: "Weekly booking set up",
