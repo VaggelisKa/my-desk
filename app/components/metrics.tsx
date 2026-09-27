@@ -19,6 +19,7 @@ import {
   type MetricRow,
   type Period,
 } from "~/lib/metrics";
+import { officeNow } from "~/lib/dates";
 import { cn, enterAt } from "~/lib/utils";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
@@ -419,7 +420,7 @@ export function Metrics({
   rows: MetricRow[];
   deskCount: number;
 }) {
-  let s = summarise(rows);
+  let s = summarise(rows, officeNow());
 
   return (
     <div className="flex w-full flex-col gap-8 font-display text-ink">
