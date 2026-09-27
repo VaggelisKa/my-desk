@@ -36,7 +36,7 @@ export function NavigationProgress() {
     >
       <div
         className={cn(
-          "h-full bg-primary transition-[width,opacity] ease-out",
+          "h-full bg-moss transition-[width,opacity] ease-out",
           isNavigating
             ? "w-[85%] opacity-100 duration-[3000ms]"
             : "w-full opacity-0 duration-300",

@@ -2,62 +2,128 @@ import { authFile, expect, expectToast, test } from "./fixtures";
 import { gotoHydrated } from "./pages/hydration";
 import { bookingDay, desks, users } from "./support/db";
 
+// The clock is pinned to a Monday morning, so Monday is "today" and every
+// other weekday of the week is after today.
+
 test.describe("as an admin", () => {
   test.use({ storageState: authFile("admin") });
 
-  test("can open the edit page from any desk", async ({
-    page,
-    desksPage,
-    deskEditPage,
-  }) => {
+  test("finds the Admin tab beside Metrics", async ({ page, desksPage }) => {
     await desksPage.goto();
 
-    let dialog = await desksPage.openDesk(users.bob.firstName);
-    await dialog.editDeskLink.click();
+    await desksPage.tab("Admin").click();
 
-    await expect(page).toHaveURL(`/desks/${desks.bob.id}/edit`);
-    await expect(deskEditPage.assignedUserInput).toHaveValue(users.bob.id);
+    await expect(page).toHaveURL("/admin");
+    await expect(page.getByRole("heading", { name: "Admin" })).toBeVisible();
   });
 
-  test("assigns an unclaimed desk to a user", async ({
+  test("switches between Desks, People and Bookings without asking the server", async ({
+    page,
+    adminPage,
+  }) => {
+    await adminPage.goto();
+    await adminPage.deskRow("2.1.1").waitFor();
+
+    // The three lists share the data the tab already has, so a switch that
+    // waited on the server would never finish here.
+    await page.route("**/*.data*", () => new Promise(() => {}));
+
+    await adminPage.segment("People").click();
+    await expect(page).toHaveURL("/admin/people");
+    await expect(adminPage.personRow("Gary Guest")).toBeVisible();
+
+    await adminPage.segment("Bookings").click();
+    await expect(page).toHaveURL("/admin/bookings");
+
+    await adminPage.segment("Desks").click();
+    await expect(page).toHaveURL("/admin");
+    await expect(adminPage.deskRow("2.1.1")).toBeVisible();
+  });
+
+  test("gives an unclaimed desk to someone", async ({
     page,
     db,
+    adminPage,
     desksPage,
-    deskEditPage,
   }) => {
-    await deskEditPage.goto(desks.unclaimed.id);
-    await expect(deskEditPage.assignedUserInput).toBeEmpty();
+    await adminPage.goto();
 
-    await deskEditPage.assignTo(users.guest.id.toUpperCase());
+    let owner = await adminPage.act(
+      adminPage.deskRow("2.1.1"),
+      "Give to someone",
+    );
+    await expect(owner.title).toHaveText("Give to someone");
+    await owner.pick("gary", /^Gary Guest/i);
+    await expect(owner.root).toContainText("Gary gets desk 2.1.1");
+    await owner.button("Move desk to Gary").click();
 
-    await expect(page).toHaveURL("/");
-    await expectToast(page, "Desk updated successfully!");
-    await expect(desksPage.desk(users.guest.firstName)).toBeVisible();
-    await expect(desksPage.desk("Unclaimed")).toHaveCount(0);
+    await expectToast(page, "Moved desk 2.1.1 to Gary");
     await expect(db.desk(desks.unclaimed.id)).resolves.toMatchObject({
       userId: users.guest.id,
     });
+
+    await desksPage.goto();
+    await expect(desksPage.desk(users.guest.firstName)).toBeVisible();
   });
 
-  test("reassigns an owned desk and cancels the previous owner's automatic reservations", async ({
+  test("moves a desk to someone who already has one, and says what changes first", async ({
     page,
     db,
     cronJobOrg,
-    desksPage,
-    deskEditPage,
+    adminPage,
   }) => {
     await db.setCronId("bob", "4242");
-
-    await deskEditPage.goto(desks.bob.id);
-    await deskEditPage.assignTo(users.guest.id);
-
-    await expect(page).toHaveURL("/");
-    await expectToast(page, "Desk updated successfully!");
-    await expect(desksPage.desk(users.guest.firstName)).toBeVisible();
-    await expect(desksPage.desk(users.bob.firstName)).toHaveCount(0);
-    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
-      userId: users.guest.id,
+    // Bob sits at his desk today and has booked it ahead.
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "monday",
     });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "tuesday",
+    });
+    // Alice booked her own desk ahead, which she is about to give up.
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "wednesday",
+    });
+
+    await adminPage.goto();
+    let owner = await adminPage.act(adminPage.deskRow("1.1.2"), "Change owner");
+    await owner.pick("alice", /^Alice Andersen/i);
+
+    await expect(owner.root).toContainText(
+      "Bob loses desk 1.1.2 and 1 booked day on it after today. Their weekly booking stops.",
+    );
+    await expect(owner.root).toContainText(
+      "Alice's desk 1.1.1 becomes unclaimed. 1 booked day on it after today is cancelled.",
+    );
+    await owner.button("Move desk to Alice").click();
+
+    await expectToast(page, "Moved desk 1.1.2 to Alice");
+    await expect(owner.root).toHaveCount(0);
+    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
+      userId: users.alice.id,
+    });
+    // Nobody ends up with two desks.
+    await expect(db.desk(desks.alice.id)).resolves.toMatchObject({
+      userId: null,
+    });
+    // Today stays, the days after it go.
+    await expect(db.reservation(desks.bob.id, "monday")).resolves.toMatchObject(
+      {
+        userId: users.bob.id,
+      },
+    );
+    await expect(
+      db.reservation(desks.bob.id, "tuesday"),
+    ).resolves.toBeUndefined();
+    await expect(
+      db.reservation(desks.alice.id, "wednesday"),
+    ).resolves.toBeUndefined();
     await expect(db.user(users.bob.id)).resolves.toMatchObject({
       autoReservationsCronId: null,
     });
@@ -66,40 +132,114 @@ test.describe("as an admin", () => {
     ]);
   });
 
-  test("unassigns a desk and cancels the owner's automatic reservations", async ({
+  test("sorts the desks table by a column", async ({ page, db, adminPage }) => {
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "wednesday",
+    });
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    await adminPage.goto();
+    let manage = page
+      .getByRole("main")
+      .getByRole("button", { name: /^Manage desk / });
+    await expect(manage.first()).toHaveAccessibleName("Manage desk 1.1.1");
+
+    let booked = page.getByRole("columnheader", { name: "Booked" });
+    await booked.getByRole("button").click();
+
+    // Most booked first on the first tap.
+    await expect(booked).toHaveAttribute("aria-sort", "descending");
+    await expect(manage.first()).toHaveAccessibleName("Manage desk 1.1.2");
+    await expect(manage.nth(1)).toHaveAccessibleName("Manage desk 1.1.1");
+
+    await booked.getByRole("button").click();
+    await expect(booked).toHaveAttribute("aria-sort", "ascending");
+    await expect(manage.last()).toHaveAccessibleName("Manage desk 1.1.2");
+  });
+
+  test("unassigns a desk from its menu", async ({
     page,
     db,
     cronJobOrg,
-    desksPage,
-    deskEditPage,
+    adminPage,
   }) => {
     await db.setCronId("bob", "4242");
 
-    await deskEditPage.goto(desks.bob.id);
-    await expect(deskEditPage.assignedUserInput).toHaveValue(users.bob.id);
-    await deskEditPage.unassign();
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "thursday",
+    });
 
-    await expect(page).toHaveURL("/");
-    await expectToast(page, "Desk updated successfully!");
-    await expect(desksPage.desk(users.bob.firstName)).toHaveCount(0);
-    // Bob's desk joins the one that was already unclaimed.
-    await expect(desksPage.desk("Unclaimed")).toHaveCount(2);
+    await adminPage.goto();
+    // It says what else goes before it runs.
+    let sheet = await adminPage.act(
+      adminPage.deskRow("1.1.2"),
+      "Unassign desk",
+    );
+    await expect(sheet.root).toContainText(
+      "Bob loses desk 1.1.2 and 1 booked day on it after today. Their weekly booking stops.",
+    );
+    await sheet.button("Unassign desk").click();
+
+    await expectToast(page, "Desk 1.1.2 is unclaimed now");
+    await expect(
+      db.reservation(desks.bob.id, "thursday"),
+    ).resolves.toBeUndefined();
     await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
       userId: null,
     });
-    await expect(db.user(users.bob.id)).resolves.toMatchObject({
-      autoReservationsCronId: null,
-    });
     await expect(cronJobOrg.calls()).resolves.toEqual([
       { method: "DELETE", path: "/jobs/4242" },
     ]);
   });
 
-  test("deletes another user's reservation", async ({
-    page,
-    db,
-    deskEditPage,
-  }) => {
+  test("clears a whole day", async ({ page, db, adminPage }) => {
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "guest",
+      deskId: desks.unclaimed.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "wednesday",
+    });
+
+    await adminPage.goto("bookings");
+    let tuesday = adminPage.day(bookingDay("tuesday").label);
+    await expect(tuesday.getByRole("button", { name: /^Cancel / })).toHaveCount(
+      2,
+    );
+
+    await tuesday.getByRole("button", { name: "Clear day" }).click();
+    await tuesday.getByRole("button", { name: "Clear 2 bookings" }).click();
+
+    await expectToast(page, "Cleared 2 bookings");
+    await expect(tuesday).toHaveCount(0);
+    await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
+    await expect(
+      db.reservation(desks.bob.id, "wednesday"),
+    ).resolves.toBeDefined();
+  });
+
+  test("cancels one booking", async ({ page, db, adminPage }) => {
     await db.addReservation({
       user: "guest",
       deskId: desks.alice.id,
@@ -111,21 +251,171 @@ test.describe("as an admin", () => {
       day: "wednesday",
     });
 
-    await deskEditPage.goto(desks.alice.id);
-    let tuesday = bookingDay("tuesday").date;
-    await expect(deskEditPage.reservations.rows).toHaveCount(2);
-    await expect(deskEditPage.reservations.row(tuesday)).toContainText(
-      "Gary Guest",
-    );
+    await adminPage.goto("bookings");
+    await page
+      .getByRole("button", {
+        name: `Cancel gary guest's booking on ${bookingDay("tuesday").label}, desk 1.1.1`,
+      })
+      .click();
 
-    await deskEditPage.reservations.delete(tuesday);
-
-    await expectToast(page, "Reservation deleted!");
-    await expect(deskEditPage.reservations.rows).toHaveCount(1);
-    await expect(deskEditPage.reservations.row(tuesday)).toHaveCount(0);
+    await expectToast(page, "Booking cancelled");
     await expect(
       db.reservation(desks.alice.id, "tuesday"),
     ).resolves.toBeUndefined();
+    await expect(
+      db.reservation(desks.alice.id, "wednesday"),
+    ).resolves.toBeDefined();
+  });
+
+  test("clears everything a person booked", async ({ page, db, adminPage }) => {
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "thursday",
+    });
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "thursday",
+    });
+
+    await adminPage.goto("people");
+    let upcoming = await adminPage.act(
+      adminPage.personRow("Bob Berg"),
+      "Upcoming bookings",
+    );
+    await expect(upcoming.bookings).toHaveCount(2);
+    await upcoming.confirm("Clear all", "Clear 2 bookings");
+
+    await expectToast(page, "Cleared 2 bookings");
+    await expect(db.reservationsForDesk(desks.bob.id)).resolves.toEqual([]);
+    await expect(
+      db.reservation(desks.alice.id, "thursday"),
+    ).resolves.toBeDefined();
+  });
+
+  test("stops someone's weekly booking and keeps the days it booked", async ({
+    page,
+    db,
+    cronJobOrg,
+    adminPage,
+  }) => {
+    await db.setCronId("bob", "3131");
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "thursday",
+    });
+
+    await adminPage.goto("people");
+    // A quick action: it runs straight from the menu.
+    await adminPage.quickAction(
+      adminPage.personRow("Bob Berg"),
+      "Stop weekly booking",
+    );
+
+    await expectToast(page, "Recurring booking stopped");
+    await expect(db.user(users.bob.id)).resolves.toMatchObject({
+      autoReservationsCronId: null,
+    });
+    await expect(
+      db.reservation(desks.bob.id, "thursday"),
+    ).resolves.toBeDefined();
+    expect(await cronJobOrg.calls()).toContainEqual({
+      method: "DELETE",
+      path: "/jobs/3131",
+    });
+  });
+
+  test("keeps a weekly booking the scheduler could not stop", async ({
+    page,
+    db,
+  }) => {
+    await db.setCronId("bob", "down-2");
+
+    let response = await page.request.post("/admin", {
+      form: { intent: "stop-recurring", userId: users.bob.id },
+    });
+
+    expect(response.status()).toBe(502);
+    // Still saved on him, so it can be stopped once the scheduler is back.
+    await expect(db.user(users.bob.id)).resolves.toMatchObject({
+      autoReservationsCronId: "down-2",
+    });
+  });
+
+  test("cancels only the booking of the person the row showed", async ({
+    page,
+    db,
+  }) => {
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    // A row from before Alice booked, when Bob had the day.
+    let response = await page.request.post("/admin", {
+      form: {
+        intent: "cancel",
+        deskId: String(desks.alice.id),
+        date: bookingDay("tuesday").date,
+        userId: users.bob.id,
+      },
+    });
+
+    expect(response.status()).toBe(404);
+    await expect(
+      db.reservation(desks.alice.id, "tuesday"),
+    ).resolves.toBeDefined();
+  });
+
+  test("keeps the rename open when the name is turned down", async ({
+    page,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+    let name = await adminPage.act(
+      adminPage.personRow("Alice Andersen"),
+      "Rename",
+    );
+    await name.root.getByLabel("First name").fill("   ");
+    await name.button("Save name").click();
+
+    await expectToast(page, "First and last name are both needed");
+    await expect(name.root.getByLabel("First name")).toBeVisible();
+  });
+
+  test("renames someone and makes them an admin", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+    let name = await adminPage.act(
+      adminPage.personRow("Alice Andersen"),
+      "Rename",
+    );
+    await name.root.getByLabel("First name").fill("Alicia");
+    await name.button("Save name").click();
+    await expectToast(page, "Saved Alicia Andersen");
+    await expect(name.root).toHaveCount(0);
+
+    await adminPage.quickAction(
+      adminPage.personRow("Alicia Andersen"),
+      "Make admin",
+    );
+    await expectToast(page, "Alicia is an admin now");
+
+    await expect(db.user(users.alice.id)).resolves.toMatchObject({
+      firstName: "Alicia",
+      role: "admin",
+    });
   });
 
   test("edits another user's profile", async ({ page, db }) => {
@@ -133,10 +423,13 @@ test.describe("as an admin", () => {
 
     await page.getByLabel("First name").fill("Alicia");
     await page.getByLabel("Last name").fill("Anders");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("button", { name: "Save changes" }).click();
 
-    await expect(page).toHaveURL("/");
-    await expectToast(page, `User ${users.alice.id} updated successfully`);
+    await expect(page).toHaveURL(`/users/edit/${users.alice.id}`);
+    await expectToast(page, "Saved Alicia Anders's profile");
+    await expect(
+      page.getByRole("heading", { name: "Alicia's profile" }),
+    ).toBeVisible();
     await expect(db.user(users.alice.id)).resolves.toMatchObject({
       firstName: "Alicia",
       lastName: "Anders",
@@ -144,41 +437,105 @@ test.describe("as an admin", () => {
   });
 });
 
-// The UI hides these actions from regular users; the direct requests make
-// sure the server enforces the same rules.
+test.describe("as an admin on a phone", () => {
+  test.use({
+    storageState: authFile("admin"),
+    viewport: { width: 390, height: 800 },
+  });
+
+  test("finds a person in the list and manages them from a sheet", async ({
+    page,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+    // Phones get a plain list instead of the table.
+    await expect(page.getByRole("table")).toBeHidden();
+
+    await adminPage.search.fill("berg");
+    let rows = page.getByRole("main").getByRole("listitem");
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText("Bob Berg");
+    await expect(rows).toContainText("emp002 · Desk 1.1.2");
+
+    let sheet = await adminPage.open(rows.getByRole("button"));
+    await expect(sheet.title).toContainText("Bob Berg");
+    await expect(sheet.button(/^Upcoming/)).toContainText("None");
+
+    let upcoming = await sheet.openPage("Upcoming");
+    await expect(upcoming.button("Clear all")).toHaveCount(0);
+    await expect(upcoming.root).toContainText("Bob has nothing booked");
+  });
+
+  test("unassigns a desk from its sheet", async ({ page, db, adminPage }) => {
+    await adminPage.goto();
+
+    let sheet = await adminPage.open(
+      page.getByRole("main").getByRole("button", { name: /1\.1\.2/ }),
+    );
+    let confirm = await sheet.openPage("Unassign desk");
+    await expect(confirm.root).toContainText("Bob loses desk 1.1.2.");
+    await confirm.button("Unassign desk").click();
+
+    await expectToast(page, "Desk 1.1.2 is unclaimed now");
+    await expect(sheet.button(/^Owner/)).toContainText("Nobody");
+    await expect(sheet.button("Unassign desk")).toHaveCount(0);
+    await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
+      userId: null,
+    });
+  });
+});
+
+// The UI hides the tab from regular users; the direct requests make sure the
+// server enforces the same rules.
 test.describe("as a regular user", () => {
   test.use({ storageState: authFile("alice") });
 
-  test("does not see admin actions on desks", async ({ desksPage }) => {
+  test("has no Admin tab", async ({ desksPage }) => {
     await desksPage.goto();
 
-    let dialog = await desksPage.openDesk(users.bob.firstName);
-
-    await expect(dialog.title).toBeVisible();
-    await expect(dialog.editDeskLink).toHaveCount(0);
+    await expect(desksPage.tab("Metrics")).toBeVisible();
+    await expect(desksPage.tab("Admin")).toHaveCount(0);
   });
 
-  test("is sent back when opening an admin page", async ({
-    page,
-    deskEditPage,
-  }) => {
-    await deskEditPage.goto(desks.bob.id);
+  test("is sent back when opening the Admin tab", async ({ page }) => {
+    await page.goto("/admin");
 
     await expect(page).toHaveURL("/");
     await expectToast(page, "Unauthorized!");
   });
 
-  test("cannot reassign a desk", async ({ page, db }) => {
-    let response = await page.request.put(`/desks/${desks.bob.id}/edit`, {
-      form: { "user-id": users.alice.id },
-      maxRedirects: 0,
+  test("cannot reassign a desk or clear a day", async ({ page, db }) => {
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "tuesday",
     });
 
-    expect(response.status()).toBe(302);
-    expect(response.headers()["location"]).toBe("/");
+    let forms: Record<string, string>[] = [
+      {
+        intent: "reassign",
+        deskId: String(desks.bob.id),
+        userId: users.alice.id,
+      },
+      { intent: "clear-day", date: bookingDay("tuesday").date },
+    ];
+
+    for (let form of forms) {
+      let response = await page.request.post("/admin", {
+        form,
+        maxRedirects: 0,
+      });
+
+      expect(response.status()).toBe(302);
+      expect(response.headers()["location"]).toBe("/");
+    }
+
     await expect(db.desk(desks.bob.id)).resolves.toMatchObject({
       userId: users.bob.id,
     });
+    await expect(
+      db.reservation(desks.bob.id, "tuesday"),
+    ).resolves.toBeDefined();
   });
 
   test("cannot delete another user's reservation", async ({ page, db }) => {
@@ -189,7 +546,7 @@ test.describe("as a regular user", () => {
     });
 
     // Even when the form claims to be the reservation's owner.
-    let response = await page.request.delete("/reservations", {
+    let response = await page.request.delete("/bookings?index", {
       form: {
         "reservation-date": bookingDay("tuesday").date,
         "reservation-user-id": users.guest.id,
@@ -231,10 +588,17 @@ test.describe("as a regular user", () => {
   test("can edit their own profile", async ({ page, db }) => {
     await gotoHydrated(page, `/users/edit/${users.alice.id}`);
 
-    await page.getByLabel("First name").fill("Ali");
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    let save = page.getByRole("button", { name: "Save changes" });
+    await expect(save).toBeDisabled();
 
-    await expectToast(page, `User ${users.alice.id} updated successfully`);
+    await page.getByLabel("First name").fill("Ali");
+    await save.click();
+
+    await expectToast(page, "Profile saved");
+    await expect(
+      page.getByRole("main").getByText("Ali Andersen"),
+    ).toBeVisible();
+    await expect(save).toBeDisabled();
     await expect(db.user(users.alice.id)).resolves.toMatchObject({
       firstName: "Ali",
     });

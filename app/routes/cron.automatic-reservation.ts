@@ -1,10 +1,5 @@
-import { format, getWeek } from "date-fns";
-import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { deleteCron } from "~/lib/cron";
-import { db } from "~/lib/db/drizzle.server";
-import { reservations, users } from "~/lib/db/schema";
-import { getDateByWeekAndDay } from "~/lib/utils";
+import { runWeeklyBooking } from "~/lib/recurring.server";
 import type { Route } from "./+types/cron.automatic-reservation";
 
 const automaticReservationsQueryArgsSchema = z.object({
@@ -16,13 +11,10 @@ const automaticReservationsQueryArgsSchema = z.object({
 export async function loader({ url }: Route.LoaderArgs) {
   let cronPassword = url.searchParams.get("cronPassword");
 
-  console.log("search params => ", url.searchParams);
-
   if (!cronPassword || cronPassword !== process.env.CRON_PASSWORD) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let week = getWeek(new Date());
   let days = url.searchParams.getAll("day");
   let deskId = Number(url.searchParams.get("deskId"));
   let userId = url.searchParams.get("userId");
@@ -37,37 +29,11 @@ export async function loader({ url }: Route.LoaderArgs) {
     return new Response("Invalid input", { status: 400 });
   }
 
-  let userInDb = await db.query.users.findFirst({
-    where: eq(users.id, parsedInputs.data.userId),
-    with: {
-      desk: {
-        columns: {
-          id: true,
-        },
-      },
-    },
-  });
+  let booked = await runWeeklyBooking(parsedInputs.data);
 
-  if (!userInDb?.desk || userInDb.desk.id !== parsedInputs.data.deskId) {
-    await deleteCron({ cronId: userInDb?.autoReservationsCronId ?? "" });
-    await db
-      .update(users)
-      .set({ autoReservationsCronId: null })
-      .where(eq(users.id, parsedInputs.data.userId));
-
+  if (!booked) {
     return new Response("Desk does not match user's desk", { status: 401 });
   }
-
-  let formattedData = parsedInputs.data.days.map((day) => ({
-    day,
-    week,
-    deskId: parsedInputs.data!.deskId,
-    userId: parsedInputs.data!.userId,
-    date: format(getDateByWeekAndDay(day, week), "dd.MM.yyyy"),
-    dateTimestamp: sql`(${getDateByWeekAndDay(day, week).getTime()})`,
-  }));
-
-  await db.insert(reservations).values(formattedData).onConflictDoNothing();
 
   return new Response(
     "Automatic reservation interval has executed successfully!",

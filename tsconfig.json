@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.ts", "**/*.tsx", "app/components/desk-selection-modal.tsx"],
+  "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["@react-router/node", "vite/client"],
