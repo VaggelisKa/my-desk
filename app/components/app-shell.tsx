@@ -14,6 +14,7 @@ import {
 } from "react";
 import { Link, useLocation, useNavigation } from "react-router";
 import { activeTab, PAGE_COLUMN, type Tab } from "~/lib/app-shell";
+import { tapHaptic } from "~/lib/haptics";
 import { cn, deskLabel } from "~/lib/utils";
 import { SLIDE, useSlidingHighlight } from "./sliding-highlight";
 
@@ -245,7 +246,10 @@ export function Dock({ user }: { user: ShellUser }) {
               to={tab.to}
               prefetch={tab.prefetch}
               aria-current={isActive ? "page" : undefined}
-              onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
+              onClick={(event) => {
+                if (!isActive) tapHaptic();
+                scrollToTopIfActive(isActive && pathname === tab.to)(event);
+              }}
               style={{ width: itemWidth }}
               className={cn(
                 DOCK_ITEM.className,
