@@ -4,12 +4,8 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Fragment, useId, useRef, useState, type ReactNode } from "react";
 import { useFetcher } from "react-router";
 import { useMediaQuery } from "usehooks-ts";
-import {
-  focusRing,
-  listClass,
-  rowClass,
-  useAdminFetcher,
-} from "~/components/admin/shared";
+import { focusRing, rowClass } from "~/components/admin/helpers";
+import { listClass, useAdminFetcher } from "~/components/admin/shared";
 import { Button } from "~/components/ui/button";
 import { rescueFocus } from "~/lib/focus";
 import { cn } from "~/lib/utils";

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useFetcher, useOutletContext } from "react-router";
+import { focusRing } from "~/components/admin/helpers";
 import { SegmentSwitch } from "~/components/segment-switch";
 import type {
   AdminActionData,
@@ -15,7 +16,7 @@ import type {
   AdminPerson,
 } from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
-import { cn, plural } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 
 // The Admin tab (design option B): a sliding Desks · People · Bookings switch
 // over searchable lists. Every row opens a sheet where the work happens, so
@@ -53,13 +54,6 @@ export function AdminHeader() {
   );
 }
 
-export let focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2";
-
-export function fullName(person: { firstName: string; lastName: string }) {
-  return `${person.firstName} ${person.lastName}`.trim();
-}
-
 /** Lookups every list and sheet shares. */
 export function useIndex(data: AdminData) {
   return useMemo(() => {
@@ -90,14 +84,6 @@ export function useIndex(data: AdminData) {
 }
 
 export type Index = ReturnType<typeof useIndex>;
-
-export function matches(
-  query: string,
-  ...values: (string | null | undefined)[]
-) {
-  let q = query.trim().toLowerCase();
-  return !q || values.some((value) => value?.toLowerCase().includes(q));
-}
 
 export function SearchField({
   id,
@@ -144,11 +130,6 @@ export function SearchField({
 export let listClass =
   "flex flex-col overflow-hidden rounded-xl border border-line bg-paper";
 
-export let rowClass = cn(
-  "flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-paper-muted sm:px-5",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss",
-);
-
 export let groupHeading =
   "flex flex-wrap items-baseline justify-between gap-2 px-1 text-xs font-semibold uppercase tracking-[0.06em] text-ink-muted";
 
@@ -168,11 +149,6 @@ export let tableRow =
 
 export let stretched =
   "after:absolute after:inset-0 after:content-[''] focus-visible:outline-none";
-
-export let rowButton = cn(
-  "inline-flex h-8 items-center rounded-lg px-2.5 text-[13px] font-semibold text-ink-muted hover:text-ink",
-  focusRing,
-);
 
 type SortDir = "asc" | "desc";
 
@@ -333,8 +309,4 @@ export function Badge({ children }: { children: ReactNode }) {
       {children}
     </span>
   );
-}
-
-export function bookedDays(count: number) {
-  return count ? plural(count, "day") : "None";
 }

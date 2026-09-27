@@ -144,7 +144,7 @@ jobs:
       - name: List findings
         run: npm run doctor
 
-      # The score comes from React Doctor's API; fail unless it is above 80.
+      # The score comes from React Doctor's API; fail unless it is above 90.
       - name: Check the score
         run: |
           npx react-doctor . -y --json --json-out react-doctor.json
@@ -153,7 +153,7 @@ jobs:
             const raw = report.projects?.[0]?.score;
             const score = typeof raw === "number" ? raw : raw?.score;
             console.log(`React Doctor score: ${score ?? "unavailable"}`);
-            if (typeof score !== "number" || score <= 80) process.exit(1);
+            if (typeof score !== "number" || score <= 90) process.exit(1);
           '
 
   build:
