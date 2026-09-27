@@ -177,7 +177,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
         </div>
       )}
 
-      {batch.selecting && <SelectionBar batch={batch} />}
+      {batch.selecting && <SelectionBar batch={batch} confirm />}
     </div>
   );
 }

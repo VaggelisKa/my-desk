@@ -7,7 +7,7 @@ import { bookingKey, cn, plural } from "~/lib/utils";
 // Removing several bookings at once (design option A). "Select" beside the
 // heading puts a list in select mode: rows get a check, the row's own remove
 // button goes away, and a dark bar takes the dock's place with Cancel, the
-// count and a red Remove that asks once more before it removes anything.
+// count and a red Remove (in Admin it asks once more before removing).
 
 let focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2";
@@ -178,9 +178,17 @@ export function RowCheck({
 
 /**
  * The bar select mode shows: on phones in the dock's place (the dock hides
- * while it is up), on larger screens floating at the bottom.
+ * while it is up), on larger screens floating at the bottom. With `confirm`,
+ * Remove asks once more before anything goes; without it (your own
+ * bookings), Remove removes straight away.
  */
-export function SelectionBar({ batch }: { batch: BatchSelect }) {
+export function SelectionBar({
+  batch,
+  confirm = false,
+}: {
+  batch: BatchSelect;
+  confirm?: boolean;
+}) {
   let [asking, setAsking] = useState(false);
   let questionId = useId();
   // Set when Keep closes the question, so Remove gets focus back.
@@ -206,13 +214,28 @@ export function SelectionBar({ batch }: { batch: BatchSelect }) {
         <div
           role="region"
           aria-label="Selected bookings"
-          className="enter flex w-full max-w-[420px] flex-col gap-2 rounded-[28px] bg-[rgb(31_42_46/0.88)] p-[5px] text-white shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150"
+          className="enter flex w-full max-w-[420px] flex-col rounded-[28px] bg-[rgb(31_42_46/0.88)] p-[5px] text-white shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150"
         >
-          {confirming && (
-            <p id={questionId} className="px-4 pt-3 text-[15px] font-semibold">
-              Remove {plural(count, "booking")}? This can't be undone.
-            </p>
-          )}
+          {/* The question opens above the buttons (and closes again) by
+              growing its row, rather than popping in. */}
+          <div
+            aria-hidden={!confirming}
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+              confirming
+                ? "grid-rows-[1fr] opacity-100"
+                : "grid-rows-[0fr] opacity-0",
+            )}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <p
+                id={questionId}
+                className="px-4 pb-2 pt-3 text-[15px] font-semibold"
+              >
+                Remove {plural(count, "booking")}? This can't be undone.
+              </p>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -226,13 +249,21 @@ export function SelectionBar({ batch }: { batch: BatchSelect }) {
               }}
               className="h-11 rounded-full px-4 text-[15px] font-semibold text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss-soft"
             >
-              {confirming ? "Keep" : "Cancel"}
+              <span key={String(confirming)} className="swap block">
+                {confirming ? "Keep" : "Cancel"}
+              </span>
             </button>
             <span
               aria-live="polite"
               className="flex-1 text-center text-[15px] font-semibold"
             >
-              {confirming ? "" : count ? `${count} selected` : "Pick bookings"}
+              <span key={String(confirming)} className="swap block">
+                {confirming
+                  ? ""
+                  : count
+                    ? `${count} selected`
+                    : "Pick bookings"}
+              </span>
             </span>
             {confirming ? (
               <button
@@ -244,17 +275,21 @@ export function SelectionBar({ batch }: { batch: BatchSelect }) {
                 aria-describedby={questionId}
                 className="hover:bg-danger/90 h-11 rounded-full bg-danger px-5 text-[15px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:opacity-60"
               >
-                {busy ? "Removing..." : `Remove ${count}`}
+                <span className="swap block">
+                  {busy ? "Removing..." : `Remove ${count}`}
+                </span>
               </button>
             ) : (
               <button
                 ref={focusOnReturn}
                 type="button"
-                disabled={count === 0}
-                onClick={() => setAsking(true)}
+                disabled={count === 0 || busy}
+                onClick={confirm ? () => setAsking(true) : batch.remove}
                 className="hover:bg-danger/90 h-11 rounded-full bg-danger px-5 text-[15px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:bg-white/10 disabled:text-white/50"
               >
-                Remove
+                <span className="swap block">
+                  {busy ? "Removing..." : "Remove"}
+                </span>
               </button>
             )}
           </div>

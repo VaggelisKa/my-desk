@@ -257,6 +257,11 @@ test.describe("as an admin", () => {
 
     let bar = page.getByRole("region", { name: "Selected bookings" });
     await expect(bar).toContainText("3 selected");
+    // Keep backs out of the question without removing anything.
+    await bar.getByRole("button", { name: "Remove", exact: true }).click();
+    await bar.getByRole("button", { name: "Keep" }).click();
+    await expect(bar).toContainText("3 selected");
+
     await bar.getByRole("button", { name: "Remove", exact: true }).click();
     await expect(bar).toContainText("Remove 3 bookings? This can't be undone.");
     await bar.getByRole("button", { name: "Remove 3" }).click();

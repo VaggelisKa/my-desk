@@ -93,13 +93,8 @@ test.describe("an employee with a desk", () => {
       .check();
     await expect(bar).toContainText("2 selected");
 
-    // Keep backs out of the question without removing anything.
+    // Your own bookings go straight away, without a question.
     await bar.getByRole("button", { name: "Remove", exact: true }).click();
-    await bar.getByRole("button", { name: "Keep" }).click();
-    await expect(bar).toContainText("2 selected");
-
-    await bar.getByRole("button", { name: "Remove", exact: true }).click();
-    await bar.getByRole("button", { name: "Remove 2" }).click();
 
     await expectToast(page, "Removed 2 bookings");
     await expect(bar).toHaveCount(0);
