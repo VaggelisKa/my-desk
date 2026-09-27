@@ -267,6 +267,43 @@ test.describe("as an admin", () => {
     ).resolves.toBeDefined();
   });
 
+  test("only removes the picked bookings the search still shows", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "tuesday",
+    });
+
+    await adminPage.goto("bookings");
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    await page.getByRole("button", { name: "Select all" }).click();
+
+    let bar = page.getByRole("region", { name: "Selected bookings" });
+    await expect(bar).toContainText("2 selected");
+
+    await adminPage.search.fill("bob");
+    await expect(bar).toContainText("1 selected");
+    await bar.getByRole("button", { name: "Remove", exact: true }).click();
+    await bar.getByRole("button", { name: "Remove 1" }).click();
+
+    await expectToast(page, "Removed 1 booking");
+    await expect(
+      db.reservation(desks.bob.id, "tuesday"),
+    ).resolves.toBeUndefined();
+    await expect(
+      db.reservation(desks.alice.id, "tuesday"),
+    ).resolves.toBeDefined();
+  });
+
   test("cancels one booking", async ({ page, db, adminPage }) => {
     await db.addReservation({
       user: "guest",

@@ -54,7 +54,9 @@ export function BookingsByDay({ data }: { data: AdminData }) {
     );
   });
   let batch = useBatchSelect({
-    bookings: data.bookings,
+    // Only what the search shows counts, so a row filtered out is never
+    // removed unseen.
+    bookings: matching,
     action: "/admin",
     intent: "cancel-many",
   });
