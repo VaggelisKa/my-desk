@@ -255,21 +255,20 @@ function anyOf(picked: Picked) {
 }
 
 /**
- * Deletes the picked bookings, a chunk per statement, all in one
- * transaction. Returns how many there were.
+ * Deletes the picked bookings, a chunk per statement, all in one batch (so
+ * all or none go). Returns how many there were.
  */
 export async function deletePicked(picked: Picked) {
-  return db.transaction(async (tx) => {
-    let count = 0;
-    for (let start = 0; start < picked.length; start += CHUNK) {
-      let deleted = await tx
+  let [first, ...rest] = Array.from(
+    { length: Math.ceil(picked.length / CHUNK) },
+    (_, i) =>
+      db
         .delete(reservations)
-        .where(anyOf(picked.slice(start, start + CHUNK)))
-        .returning({ deskId: reservations.deskId });
-      count += deleted.length;
-    }
-    return count;
-  });
+        .where(anyOf(picked.slice(i * CHUNK, (i + 1) * CHUNK)))
+        .returning({ deskId: reservations.deskId }),
+  );
+  let results = await db.batch([first, ...rest]);
+  return results.reduce((count, deleted) => count + deleted.length, 0);
 }
 
 /**
