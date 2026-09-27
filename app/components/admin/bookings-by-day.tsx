@@ -18,6 +18,14 @@ import {
   useIndex,
 } from "~/components/admin/shared";
 import { ConfirmAction } from "~/components/admin/sheets";
+import {
+  type BatchSelect,
+  RowCheck,
+  SelectButton,
+  SelectGroupButton,
+  SelectionBar,
+  useBatchSelect,
+} from "~/components/batch-select";
 import { DeskChip } from "~/components/desk-chip";
 import type { AdminBooking } from "~/lib/admin.server";
 import { parseDate } from "~/lib/dates";
@@ -35,7 +43,7 @@ function dayHeading(date: Date, today: Date) {
 export function BookingsByDay({ data }: { data: AdminData }) {
   let index = useIndex(data);
   let [query, setQuery] = useState("");
-  let shown = data.bookings.filter((booking) => {
+  let matching = data.bookings.filter((booking) => {
     let person = index.people.get(booking.userId);
     let desk = index.desks.get(booking.deskId);
     return matches(
@@ -45,17 +53,38 @@ export function BookingsByDay({ data }: { data: AdminData }) {
       desk && deskLabel(desk),
     );
   });
+  let batch = useBatchSelect({
+    bookings: data.bookings,
+    action: "/admin",
+    intent: "cancel-many",
+  });
+  let shown = matching.filter((booking) => !batch.isRemoving(booking));
   let days = [...new Set(shown.map((b) => b.date))];
+  // Picking a whole day covers what "Clear day" did, so there is one way.
+  let selectDay = (date: string, label: string) =>
+    batch.selecting && (
+      <SelectGroupButton
+        batch={batch}
+        group={shown.filter((b) => b.date === date)}
+        noun="day"
+        label={label}
+      />
+    );
 
   return (
     <div className="flex flex-col gap-6">
-      <SearchField
-        id="admin-bookings-search"
-        label="Search person or desk"
-        value={query}
-        onChange={setQuery}
-        results={plural(shown.length, "booking")}
-      />
+      <div className="flex items-center gap-4">
+        <div className="min-w-0 flex-1">
+          <SearchField
+            id="admin-bookings-search"
+            label="Search person or desk"
+            value={query}
+            onChange={setQuery}
+            results={plural(shown.length, "booking")}
+          />
+        </div>
+        <SelectButton batch={batch} all={shown} />
+      </div>
 
       {data.bookings.length === 0 ? (
         <NothingFound>Nothing is booked from today on.</NothingFound>
@@ -65,7 +94,9 @@ export function BookingsByDay({ data }: { data: AdminData }) {
 
       {days.map((date) => {
         let dayBookings = shown.filter((b) => b.date === date);
-        let all = data.bookings.filter((b) => b.date === date).length;
+        let all = data.bookings.filter(
+          (b) => b.date === date && !batch.isRemoving(b),
+        ).length;
         let label = dayHeading(parseDate(date), index.today);
 
         return (
@@ -82,12 +113,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                   {plural(all, "booking")}
                 </span>
               </h2>
-              <ConfirmAction
-                label="Clear day"
-                question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
-                confirmLabel={`Clear ${plural(all, "booking")}`}
-                fields={{ intent: "clear-day", date }}
-              />
+              {selectDay(date, label)}
             </div>
             <ul className={listClass}>
               {dayBookings.map((booking) => (
@@ -96,6 +122,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                   booking={booking}
                   index={index}
                   show="both"
+                  batch={batch}
                 />
               ))}
             </ul>
@@ -108,15 +135,18 @@ export function BookingsByDay({ data }: { data: AdminData }) {
           <table className="w-full text-sm">
             <thead className="sr-only">
               <tr>
+                {batch.selecting && <th>Selected</th>}
                 <th>Desk</th>
                 <th>Person</th>
                 <th>Kind</th>
-                <th>Actions</th>
+                {!batch.selecting && <th>Actions</th>}
               </tr>
             </thead>
             {days.map((date, i) => {
               let dayBookings = shown.filter((b) => b.date === date);
-              let all = data.bookings.filter((b) => b.date === date).length;
+              let all = data.bookings.filter(
+                (b) => b.date === date && !batch.isRemoving(b),
+              ).length;
               let label = dayHeading(parseDate(date), index.today);
 
               return (
@@ -139,12 +169,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                             {plural(all, "booking")}
                           </span>
                         </span>
-                        <ConfirmAction
-                          label="Clear day"
-                          question={`Cancel all ${plural(all, "booking")} on ${format(parseDate(date), "EEEE d MMM")}?`}
-                          confirmLabel={`Clear ${plural(all, "booking")}`}
-                          fields={{ intent: "clear-day", date }}
-                        />
+                        {selectDay(date, label)}
                       </div>
                     </th>
                   </tr>
@@ -153,6 +178,7 @@ export function BookingsByDay({ data }: { data: AdminData }) {
                       key={`${booking.deskId}-${booking.date}`}
                       booking={booking}
                       index={index}
+                      batch={batch}
                     />
                   ))}
                 </tbody>
@@ -161,6 +187,8 @@ export function BookingsByDay({ data }: { data: AdminData }) {
           </table>
         </div>
       )}
+
+      {batch.selecting && <SelectionBar batch={batch} />}
     </div>
   );
 }
@@ -168,9 +196,11 @@ export function BookingsByDay({ data }: { data: AdminData }) {
 function BookingTableRow({
   booking,
   index,
+  batch,
 }: {
   booking: AdminBooking;
   index: Index;
+  batch: BatchSelect;
 }) {
   let fetcher = useFetcher();
   let person = index.people.get(booking.userId);
@@ -186,7 +216,21 @@ function BookingTableRow({
   }
 
   return (
-    <tr className="border-t border-line hover:bg-paper-muted">
+    <tr
+      className={cn(
+        "relative border-t border-line hover:bg-paper-muted",
+        batch.isSelected(booking) && "bg-moss-soft/30 hover:bg-moss-soft/40",
+      )}
+    >
+      {batch.selecting && (
+        <td className="w-px py-0 pl-2 pr-0">
+          <RowCheck
+            checked={batch.isSelected(booking)}
+            onChange={() => batch.toggle(booking)}
+            label={`${name}, ${when}, desk ${label}`}
+          />
+        </td>
+      )}
       <td className={cn(td, "w-px")}>
         <DeskChip label={label} tone={borrowed ? "taken" : "mine"} />
         <span className="sr-only">{label}</span>
@@ -198,28 +242,30 @@ function BookingTableRow({
       <td className={cn(td, "text-ink-muted")}>
         {borrowed ? "Borrowed" : "Own desk"}
       </td>
-      <td className={cn(td, "w-px pr-2")}>
-        <fetcher.Form
-          method="post"
-          action="/admin"
-          onSubmit={(event) =>
-            focusNeighbour(event.currentTarget, "[data-cancel-booking]")
-          }
-        >
-          <input type="hidden" name="intent" value="cancel" />
-          <input type="hidden" name="deskId" value={booking.deskId} />
-          <input type="hidden" name="date" value={booking.date} />
-          <input type="hidden" name="userId" value={booking.userId} />
-          <button
-            type="submit"
-            data-cancel-booking
-            aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
-            className={cn(rowButton, "hover:text-danger")}
+      {!batch.selecting && (
+        <td className={cn(td, "w-px pr-2")}>
+          <fetcher.Form
+            method="post"
+            action="/admin"
+            onSubmit={(event) =>
+              focusNeighbour(event.currentTarget, "[data-cancel-booking]")
+            }
           >
-            Cancel
-          </button>
-        </fetcher.Form>
-      </td>
+            <input type="hidden" name="intent" value="cancel" />
+            <input type="hidden" name="deskId" value={booking.deskId} />
+            <input type="hidden" name="date" value={booking.date} />
+            <input type="hidden" name="userId" value={booking.userId} />
+            <button
+              type="submit"
+              data-cancel-booking
+              aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
+              className={cn(rowButton, "hover:text-danger")}
+            >
+              Cancel
+            </button>
+          </fetcher.Form>
+        </td>
+      )}
     </tr>
   );
 }
@@ -229,10 +275,13 @@ function BookingRow({
   booking,
   index,
   show,
+  batch,
 }: {
   booking: AdminBooking;
   index: Index;
   show: "person" | "desk" | "both";
+  /** Admin › Bookings' select mode; sheets have none. */
+  batch?: BatchSelect;
 }) {
   let fetcher = useFetcher();
   let person = index.people.get(booking.userId);
@@ -251,7 +300,20 @@ function BookingRow({
   let { title, detail } = bookingRowText({ show, when, name, label, borrowed });
 
   return (
-    <li className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0 sm:px-5">
+    <li
+      className={cn(
+        "relative flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0 sm:px-5",
+        batch?.selecting && "py-1.5 pl-1.5 sm:pl-2.5",
+        batch?.isSelected(booking) && "bg-moss-soft/30",
+      )}
+    >
+      {batch?.selecting && (
+        <RowCheck
+          checked={batch.isSelected(booking)}
+          onChange={() => batch.toggle(booking)}
+          label={`${name}, ${when}, desk ${label}`}
+        />
+      )}
       {show === "both" && (
         <DeskChip label={label} tone={borrowed ? "taken" : "mine"} />
       )}
@@ -271,36 +333,38 @@ function BookingRow({
           {detail}
         </span>
       </div>
-      <fetcher.Form
-        method="post"
-        action="/admin"
-        onSubmit={(event) =>
-          focusNeighbour(
-            event.currentTarget,
-            "[data-cancel-booking]",
-            event.currentTarget.closest<HTMLElement>("[data-sheet-step]"),
-          )
-        }
-      >
-        <input type="hidden" name="intent" value="cancel" />
-        <input type="hidden" name="deskId" value={booking.deskId} />
-        <input type="hidden" name="date" value={booking.date} />
-        <input type="hidden" name="userId" value={booking.userId} />
-        <button
-          type="submit"
-          data-cancel-booking
-          aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
-          className={cn(
-            "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
-            focusRing,
-          )}
+      {!batch?.selecting && (
+        <fetcher.Form
+          method="post"
+          action="/admin"
+          onSubmit={(event) =>
+            focusNeighbour(
+              event.currentTarget,
+              "[data-cancel-booking]",
+              event.currentTarget.closest<HTMLElement>("[data-sheet-step]"),
+            )
+          }
         >
-          <X aria-hidden="true" className="size-[18px] sm:hidden" />
-          <span aria-hidden="true" className="hidden sm:inline">
-            Cancel
-          </span>
-        </button>
-      </fetcher.Form>
+          <input type="hidden" name="intent" value="cancel" />
+          <input type="hidden" name="deskId" value={booking.deskId} />
+          <input type="hidden" name="date" value={booking.date} />
+          <input type="hidden" name="userId" value={booking.userId} />
+          <button
+            type="submit"
+            data-cancel-booking
+            aria-label={`Cancel ${name}'s booking on ${when}, desk ${label}`}
+            className={cn(
+              "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
+              focusRing,
+            )}
+          >
+            <X aria-hidden="true" className="size-[18px] sm:hidden" />
+            <span aria-hidden="true" className="hidden sm:inline">
+              Cancel
+            </span>
+          </button>
+        </fetcher.Form>
+      )}
     </li>
   );
 }

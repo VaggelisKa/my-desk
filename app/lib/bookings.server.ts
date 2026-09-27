@@ -1,5 +1,5 @@
 import { format, getWeek, isValid, isWeekend } from "date-fns";
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte, or } from "drizzle-orm";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import type { Booking } from "~/components/bookings";
 import {
@@ -12,6 +12,7 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema";
+import { plural } from "~/lib/utils";
 
 /** A booking of `deskId` by `userId` on `date`, as the table stores it. */
 export function bookingRow(deskId: number, userId: string, date: Date) {
@@ -202,4 +203,77 @@ export async function removeBooking(
   }
 
   return dataWithSuccess(null, { message: "Booking removed" });
+}
+
+/** The most bookings one form may name; more than anyone has upcoming. */
+let MAX_PICKED = 200;
+
+/**
+ * The bookings a form names in its `booking` fields (see `bookingKey`),
+ * without repeats, or null when there are none or too many.
+ */
+export function pickedBookings(formData: FormData) {
+  let picked = new Map<
+    string,
+    { deskId: number; date: string; userId: string }
+  >();
+
+  for (let value of formData.getAll("booking")) {
+    let [deskId, date, userId] = String(value).split("@");
+    let id = Number(deskId);
+    if (!Number.isInteger(id) || id <= 0 || !date || !userId) continue;
+    picked.set(`${id}@${date}@${userId}`, { deskId: id, date, userId });
+  }
+
+  return picked.size > 0 && picked.size <= MAX_PICKED
+    ? [...picked.values()]
+    : null;
+}
+
+/** Matches any of the picked bookings, each by desk, day and person. */
+export function anyOf(picked: NonNullable<ReturnType<typeof pickedBookings>>) {
+  return or(
+    ...picked.map((booking) =>
+      and(
+        eq(reservations.deskId, booking.deskId),
+        eq(reservations.date, booking.date),
+        eq(reservations.userId, booking.userId),
+      ),
+    ),
+  );
+}
+
+/**
+ * Removes several of `userId`'s own bookings at once. Bookings the form
+ * names for anyone else are left alone, whoever is asking.
+ */
+export async function removeBookings(userId: string, formData: FormData) {
+  let picked = pickedBookings(formData)?.filter(
+    (booking) => booking.userId === userId,
+  );
+
+  if (!picked?.length) {
+    return dataWithError(
+      null,
+      { message: "No bookings picked" },
+      { status: 400 },
+    );
+  }
+
+  let deleted = await db
+    .delete(reservations)
+    .where(and(eq(reservations.userId, userId), anyOf(picked)))
+    .returning({ deskId: reservations.deskId });
+
+  if (!deleted.length) {
+    return dataWithError(
+      null,
+      { message: "Bookings not found" },
+      { status: 404 },
+    );
+  }
+
+  return dataWithSuccess(null, {
+    message: `Removed ${plural(deleted.length, "booking")}`,
+  });
 }

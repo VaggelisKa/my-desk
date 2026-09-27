@@ -205,7 +205,11 @@ test.describe("as an admin", () => {
     ]);
   });
 
-  test("clears a whole day", async ({ page, db, adminPage }) => {
+  test("removes a whole day and a booking from another day at once", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
     await db.addReservation({
       user: "alice",
       deskId: desks.alice.id,
@@ -221,6 +225,11 @@ test.describe("as an admin", () => {
       deskId: desks.bob.id,
       day: "wednesday",
     });
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "thursday",
+    });
 
     await adminPage.goto("bookings");
     let tuesday = adminPage.day(bookingDay("tuesday").label);
@@ -228,14 +237,33 @@ test.describe("as an admin", () => {
       2,
     );
 
-    await tuesday.getByRole("button", { name: "Clear day" }).click();
-    await tuesday.getByRole("button", { name: "Clear 2 bookings" }).click();
+    await page.getByRole("button", { name: "Select", exact: true }).click();
+    // Select mode swaps each row's Cancel for a check.
+    await expect(
+      page.getByRole("button", { name: /^Cancel .+'s booking/ }),
+    ).toHaveCount(0);
+    await tuesday.getByRole("button", { name: /^Select / }).click();
+    await page
+      .getByRole("checkbox", {
+        name: `Bob Berg, ${bookingDay("wednesday").label}, desk 1.1.2`,
+      })
+      .check();
 
-    await expectToast(page, "Cleared 2 bookings");
+    let bar = page.getByRole("region", { name: "Selected bookings" });
+    await expect(bar).toContainText("3 selected");
+    await bar.getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(bar).toContainText("Remove 3 bookings? This can't be undone.");
+    await bar.getByRole("button", { name: "Remove 3" }).click();
+
+    await expectToast(page, "Removed 3 bookings");
+    await expect(bar).toHaveCount(0);
     await expect(tuesday).toHaveCount(0);
     await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
     await expect(
       db.reservation(desks.bob.id, "wednesday"),
+    ).resolves.toBeUndefined();
+    await expect(
+      db.reservation(desks.bob.id, "thursday"),
     ).resolves.toBeDefined();
   });
 
@@ -504,7 +532,7 @@ test.describe("as a regular user", () => {
     await expectToast(page, "Unauthorized!");
   });
 
-  test("cannot reassign a desk or clear a day", async ({ page, db }) => {
+  test("cannot reassign a desk or cancel bookings", async ({ page, db }) => {
     await db.addReservation({
       user: "bob",
       deskId: desks.bob.id,
@@ -517,7 +545,10 @@ test.describe("as a regular user", () => {
         deskId: String(desks.bob.id),
         userId: users.alice.id,
       },
-      { intent: "clear-day", date: bookingDay("tuesday").date },
+      {
+        intent: "cancel-many",
+        booking: `${desks.bob.id}@${bookingDay("tuesday").date}@${users.bob.id}`,
+      },
     ];
 
     for (let form of forms) {

@@ -299,3 +299,8 @@ html[data-touch] .group:focus-visible * {
 [tabindex="-1"]:focus {
   outline: none;
 }
+
+/* Select mode's bar takes the phone dock's place while it is up. */
+body:has([data-selection-bar]) .app-dock {
+  display: none;
+}

@@ -6,7 +6,16 @@ import {
   startOfWeek,
 } from "date-fns";
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useFetcher } from "react-router";
+import {
+  type BatchSelect,
+  RowCheck,
+  SelectButton,
+  SelectGroupButton,
+  SelectionBar,
+  useBatchSelect,
+} from "~/components/batch-select";
 import { DeskChip } from "~/components/desk-chip";
 import { SegmentSwitch } from "~/components/segment-switch";
 import { parseDate } from "~/lib/dates";
@@ -28,13 +37,26 @@ export type OwnDesk = {
 let focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss focus-visible:ring-offset-2";
 
-export function BookingsHeader({ desk }: { desk: OwnDesk | null }) {
+/** Beside the heading, where a segment can put an action of its own. */
+export type HeadingSlot = HTMLElement | null;
+
+export function BookingsHeader({
+  desk,
+  slotRef,
+}: {
+  desk: OwnDesk | null;
+  /** Where Upcoming puts "Select"; skeletons leave it out. */
+  slotRef?: (node: HTMLElement | null) => void;
+}) {
   return (
     <header className="flex flex-col gap-5">
       {/* No actions that jump to another tab: booking happens on Desks. */}
-      <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
-        Bookings
-      </h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
+          Bookings
+        </h1>
+        <div ref={slotRef} className="contents" />
+      </div>
 
       {/* Recurring only makes sense with a desk of your own to repeat. */}
       {desk && <SegmentSwitch label="Bookings" segments={SEGMENTS} />}
@@ -107,16 +129,26 @@ function relativeDay(date: Date, today: Date) {
 export function BookingList({
   bookings,
   today,
+  slot,
 }: {
   bookings: Booking[];
   /** Today in `dd.MM.yyyy`, from the loader so server and client agree. */
   today: string;
+  /** Beside the heading, where "Select" goes. */
+  slot: HeadingSlot;
 }) {
   let todayDate = parseDate(today);
+  let batch = useBatchSelect({
+    bookings,
+    action: "/bookings?index",
+    intent: "remove-many",
+  });
+  let shown = bookings.filter((booking) => !batch.isRemoving(booking));
 
   return (
     <div className="flex flex-col gap-8">
-      {groupByWeek(bookings, todayDate).map((week, index) => (
+      {slot && createPortal(<SelectButton batch={batch} all={shown} />, slot)}
+      {groupByWeek(shown, todayDate).map((week, index) => (
         <section
           key={week.key}
           aria-labelledby={`week-${week.key}`}
@@ -131,6 +163,16 @@ export function BookingList({
             <span className="font-medium normal-case tracking-normal text-ink-muted">
               {week.range}
             </span>
+            {batch.selecting && (
+              <span className="ml-auto">
+                <SelectGroupButton
+                  batch={batch}
+                  group={week.bookings}
+                  noun="week"
+                  label={week.label.toLowerCase()}
+                />
+              </span>
+            )}
           </h2>
           <ul className="flex flex-col overflow-hidden rounded-xl border border-line bg-paper">
             {week.bookings.map((booking) => (
@@ -138,16 +180,26 @@ export function BookingList({
                 key={`${booking.deskId}-${booking.date}`}
                 booking={booking}
                 today={todayDate}
+                batch={batch}
               />
             ))}
           </ul>
         </section>
       ))}
+      {batch.selecting && <SelectionBar batch={batch} />}
     </div>
   );
 }
 
-function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
+function BookingRow({
+  booking,
+  today,
+  batch,
+}: {
+  booking: Booking;
+  today: Date;
+  batch: BatchSelect;
+}) {
   let fetcher = useFetcher();
   let date = parseDate(booking.date);
   let isToday = differenceInCalendarDays(date, today) === 0;
@@ -175,9 +227,20 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
     <li
       data-date={booking.date}
       className={cn(
-        "grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line px-4 py-3.5 last:border-b-0 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:gap-x-5 sm:px-5",
+        "relative grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line px-4 py-3.5 last:border-b-0 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:gap-x-5 sm:px-5",
+        // In select mode the check leads and the remove button goes.
+        batch.selecting &&
+          "grid-cols-[40px_64px_minmax(0,1fr)] py-2 pl-1.5 sm:grid-cols-[40px_88px_minmax(0,1fr)] sm:pl-2.5",
+        batch.isSelected(booking) && "bg-moss-soft/30",
       )}
     >
+      {batch.selecting && (
+        <RowCheck
+          checked={batch.isSelected(booking)}
+          onChange={() => batch.toggle(booking)}
+          label={`${format(date, "EEE d MMM")}, desk ${label}`}
+        />
+      )}
       <div className="flex flex-col gap-0.5">
         <span className="text-[15px] font-bold leading-tight">
           {format(date, "EEE d")}
@@ -209,34 +272,36 @@ function BookingRow({ booking, today }: { booking: Booking; today: Date }) {
         </div>
       </div>
 
-      <fetcher.Form
-        method="DELETE"
-        action="/bookings?index"
-        // The row hides as soon as this submits; keep keyboard focus on
-        // the list instead of losing it to the page.
-        onSubmit={(event) =>
-          focusNeighbour(event.currentTarget, "[data-remove-booking]")
-        }
-      >
-        <input type="hidden" name="reservation-date" value={booking.date} />
-        <input type="hidden" name="reservation-day" value={booking.day} />
-        <input type="hidden" name="desk-id" value={booking.deskId} />
-        <button
-          type="submit"
-          data-remove-booking
-          aria-label={`Remove ${format(date, "EEE d MMM")}, desk ${label}`}
-          className={cn(
-            "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
-            focusRing,
-          )}
+      {!batch.selecting && (
+        <fetcher.Form
+          method="DELETE"
+          action="/bookings?index"
+          // The row hides as soon as this submits; keep keyboard focus on
+          // the list instead of losing it to the page.
+          onSubmit={(event) =>
+            focusNeighbour(event.currentTarget, "[data-remove-booking]")
+          }
         >
-          {/* A quiet cross on phones, where the row has no room for a word. */}
-          <X aria-hidden="true" className="size-[18px] sm:hidden" />
-          <span aria-hidden="true" className="hidden sm:inline">
-            Remove
-          </span>
-        </button>
-      </fetcher.Form>
+          <input type="hidden" name="reservation-date" value={booking.date} />
+          <input type="hidden" name="reservation-day" value={booking.day} />
+          <input type="hidden" name="desk-id" value={booking.deskId} />
+          <button
+            type="submit"
+            data-remove-booking
+            aria-label={`Remove ${format(date, "EEE d MMM")}, desk ${label}`}
+            className={cn(
+              "-mr-1.5 inline-grid size-10 place-items-center rounded-lg text-[13px] font-semibold text-ink-muted transition-colors hover:bg-paper-muted hover:text-danger sm:mr-0 sm:inline-flex sm:h-9 sm:w-auto sm:px-3",
+              focusRing,
+            )}
+          >
+            {/* A quiet cross on phones, where the row has no room for a word. */}
+            <X aria-hidden="true" className="size-[18px] sm:hidden" />
+            <span aria-hidden="true" className="hidden sm:inline">
+              Remove
+            </span>
+          </button>
+        </fetcher.Form>
+      )}
     </li>
   );
 }

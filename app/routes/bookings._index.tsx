@@ -1,7 +1,15 @@
-import { data, useRouteLoaderData } from "react-router";
-import { BookingList, EmptyBookings } from "~/components/bookings";
+import { data, useOutletContext, useRouteLoaderData } from "react-router";
+import {
+  BookingList,
+  EmptyBookings,
+  type HeadingSlot,
+} from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
-import { listUpcomingBookings, removeBooking } from "~/lib/bookings.server";
+import {
+  listUpcomingBookings,
+  removeBooking,
+  removeBookings,
+} from "~/lib/bookings.server";
 import { formatDate, officeNow } from "~/lib/dates";
 import type { Route } from "./+types/bookings._index";
 import type { loader as bookingsLoader } from "./bookings";
@@ -28,16 +36,21 @@ export async function action({ request }: Route.ActionArgs) {
     return data(null, { status: 405 });
   }
 
-  return removeBooking(user, await request.formData());
+  let formData = await request.formData();
+
+  return formData.get("intent") === "remove-many"
+    ? removeBookings(user.userId, formData)
+    : removeBooking(user, formData);
 }
 
 export default function UpcomingBookingsPage({
   loaderData: { bookings, today },
 }: Route.ComponentProps) {
   let desk = useRouteLoaderData<typeof bookingsLoader>("routes/bookings")?.desk;
+  let slot = useOutletContext<HeadingSlot>();
 
   return bookings.length ? (
-    <BookingList bookings={bookings} today={today} />
+    <BookingList bookings={bookings} today={today} slot={slot} />
   ) : (
     <EmptyBookings desk={desk ?? null} />
   );

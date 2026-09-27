@@ -11,8 +11,9 @@ import {
 } from "drizzle-orm";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireAuthCookie } from "~/cookies.server";
+import { anyOf, pickedBookings } from "~/lib/bookings.server";
 import { CronError, deleteCron } from "~/lib/cron";
-import { normalizeDay, todayStart } from "~/lib/dates";
+import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
 import { capitalize, deskLabel, plural } from "~/lib/utils";
@@ -346,21 +347,41 @@ export async function handleAdminAction(request: Request) {
       return dataWithSuccess(done, { message: "Booking cancelled" });
     }
 
-    case "clear-desk":
-    case "clear-person":
-    case "clear-day": {
-      let day = normalizeDay(field(formData, "date"));
+    case "cancel-many": {
+      let picked = pickedBookings(formData);
 
-      if (intent === "clear-day" && !day) {
-        return dataWithError(null, { message: "Invalid day" }, { status: 400 });
+      if (!picked) {
+        return dataWithError(
+          null,
+          { message: "No bookings picked" },
+          { status: 400 },
+        );
       }
 
+      let deleted = await db
+        .delete(reservations)
+        .where(anyOf(picked))
+        .returning({ deskId: reservations.deskId });
+
+      if (!deleted.length) {
+        return dataWithError(
+          null,
+          { message: "Bookings not found" },
+          { status: 404 },
+        );
+      }
+
+      return dataWithSuccess(done, {
+        message: `Removed ${plural(deleted.length, "booking")}`,
+      });
+    }
+
+    case "clear-desk":
+    case "clear-person": {
       let where =
         intent === "clear-desk"
           ? eq(reservations.deskId, Number(field(formData, "deskId")))
-          : intent === "clear-person"
-            ? eq(reservations.userId, field(formData, "userId"))
-            : eq(reservations.date, day!);
+          : eq(reservations.userId, field(formData, "userId"));
 
       let deleted = await db
         .delete(reservations)
