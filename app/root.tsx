@@ -60,7 +60,9 @@ export let links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: archivo700 },
   { rel: "stylesheet", href: silkStyles },
   { rel: "stylesheet", href: stylesheet },
-  { rel: "icon", href: "/favicon.png" },
+  // Crisp at any size; the PNG is for browsers without SVG favicons.
+  { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+  { rel: "icon", type: "image/png", sizes: "96x96", href: "/favicon.png" },
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
   ...iconSizes.map((size) => ({
     rel: "apple-touch-icon",
