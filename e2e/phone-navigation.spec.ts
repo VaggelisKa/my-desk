@@ -61,6 +61,26 @@ test("a tapped tab shows up straight away and fills in once its data arrives", a
   await expect.poll(scrollTop).toBe(250);
 });
 
+test("a role an admin gave you shows once a tab refreshes", async ({
+  page,
+  db,
+}) => {
+  // Bookings is loaded into the tab cache in the background.
+  let warmed = page.waitForResponse(/\/bookings\.data\?.*warm/);
+  await gotoHydrated(page, "/");
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
+  await page.clock.fastForward(1_000);
+  await warmed;
+
+  await db.setRole("alice", "admin");
+  await page.clock.fastForward(6_000);
+  await page.getByRole("link", { name: "Bookings" }).last().click();
+  await expect(page).toHaveURL("/bookings");
+
+  await expect(page.getByRole("link", { name: "Admin" }).last()).toBeVisible();
+});
+
 test("the dock tucks into icons while scrolling down and opens again on the way up", async ({
   page,
 }) => {

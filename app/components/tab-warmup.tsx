@@ -115,15 +115,18 @@ function WarmLoader({ href, onDone }: { href: string; onDone: () => void }) {
 
 /**
  * Shows a tab's refreshed data once its background refresh lands. The
- * revalidation finds the new entry in the tab cache, so it asks the server
- * for nothing.
+ * revalidation finds the new entry in the tab cache, so the tab asks the
+ * server for nothing. The shell loads again alongside it, since tab taps skip
+ * it: that is how a new name, role or desk set by an admin shows up.
  */
 export function useShowBackgroundRefresh() {
   let { revalidate } = useRevalidator();
   let { pathname } = useLocation();
   let showRefresh = useEffectEvent(() => {
     // Off the tabs (the profile page) there is nothing cached on screen.
-    if (activeTab(pathname)) void revalidate();
+    if (!activeTab(pathname)) return;
+    markShellStale();
+    void revalidate();
   });
 
   useEffect(() => onRefresh(() => showRefresh()), []);

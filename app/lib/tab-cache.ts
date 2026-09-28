@@ -197,17 +197,22 @@ export function onRefresh(listener: () => void) {
   };
 }
 
-/** Has the root loader run again on the next move (see `takeShellStale`). */
+/** Has the root loader run again on the next move (see `isShellStale`). */
 export function markShellStale() {
   shellStale = true;
 }
 
 /**
- * Whether a tab's loader failed or redirected since the last check, so the
- * root loader has to run again. Reading it resets it.
+ * Whether the root loader has to run again: a tab's loader failed or
+ * redirected, a background refresh landed, or the app was away a while.
+ * Reading it changes nothing, since React Router also asks the root's
+ * `shouldRevalidate` when it only renders a prefetch link; the root's
+ * `clientLoader` resets it once it really loads.
  */
-export function takeShellStale() {
-  let stale = shellStale;
+export function isShellStale() {
+  return shellStale;
+}
+
+export function markShellFresh() {
   shellStale = false;
-  return stale;
 }

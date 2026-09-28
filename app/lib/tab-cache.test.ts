@@ -6,9 +6,10 @@ import {
   clearTabCache,
   FRESH_FOR,
   isMutation,
+  isShellStale,
+  markShellFresh,
   MAX_AGE,
   onRefresh,
-  takeShellStale,
 } from "./tab-cache";
 
 let tap = () => new Request("http://x/bookings");
@@ -29,7 +30,7 @@ let redirect = () => new Response(null, { status: 302 });
 beforeEach(() => {
   vi.useFakeTimers();
   clearTabCache();
-  takeShellStale();
+  markShellFresh();
 });
 
 afterEach(() => {
@@ -117,7 +118,7 @@ describe("cached", () => {
         throw redirect();
       }),
     ).rejects.toBeInstanceOf(Response);
-    expect(takeShellStale()).toBe(true);
+    expect(isShellStale()).toBe(true);
     stop();
   });
 
@@ -169,8 +170,9 @@ describe("cached", () => {
       }),
     ).rejects.toBeInstanceOf(Response);
 
-    expect(takeShellStale()).toBe(true);
-    expect(takeShellStale()).toBe(false);
+    // Asking again (a prefetch link does) keeps it until the shell loads.
+    expect(isShellStale()).toBe(true);
+    expect(isShellStale()).toBe(true);
   });
 
   it("never lets the warm-up fail or redirect", async () => {
@@ -199,7 +201,7 @@ describe("cached", () => {
     });
 
     await expect(load).rejects.toThrow("aborted");
-    expect(takeShellStale()).toBe(false);
+    expect(isShellStale()).toBe(false);
   });
 
   it("keeps a bounded number of entries", async () => {

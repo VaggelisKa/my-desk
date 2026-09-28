@@ -34,7 +34,12 @@ import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { activeTab, PAGE_COLUMN } from "~/lib/app-shell";
-import { clearTabCache, isMutation, takeShellStale } from "~/lib/tab-cache";
+import {
+  clearTabCache,
+  isMutation,
+  isShellStale,
+  markShellFresh,
+} from "~/lib/tab-cache";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -105,6 +110,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   return data({ user: shellUser, toast }, { headers });
 }
 
+// Marks the shell fresh once it really reloads (see `isShellStale`). Only runs
+// on revalidation, never on the first load (no `hydrate`).
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  markShellFresh();
+  return serverLoader();
+}
+
 // Toasts are flashed through this loader. React Router skips revalidation after
 // an action responds with a 4xx/5xx, which would swallow every error toast.
 //
@@ -113,10 +125,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 // shows data from before the change. A GET form (the Desks filters) changes
 // nothing, so it keeps the cache.
 //
-// Moving between tabs, or a tab refreshing itself, changes nothing the shell
-// shows, so it skips this loader and the tab's cached data lands on tap. When
-// a tab's loader redirected or failed (a signed-out session, a lost admin role
-// with its toast), the shell loads again.
+// Moving between tabs changes nothing the shell shows, so it skips this loader
+// and the tab's cached data lands on tap. The shell loads again when a tab's
+// loader redirected or failed (a signed-out session, a lost admin role with
+// its toast), and in the background along with each tab refresh, so a name,
+// role or desk changed by an admin shows up.
 export function shouldRevalidate({
   actionStatus,
   nextUrl,
@@ -131,7 +144,7 @@ export function shouldRevalidate({
       : defaultShouldRevalidate;
   }
 
-  if (takeShellStale()) {
+  if (isShellStale()) {
     return true;
   }
 
