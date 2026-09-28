@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { AddPerson } from "~/components/admin/add-person";
 import { BookingSection } from "~/components/admin/bookings-by-day";
 import {
   bookedDays,
@@ -78,13 +79,18 @@ export function PeopleList({ data }: { data: AdminData }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <SearchField
-        id="admin-people-search"
-        label="Search name, ID or desk"
-        value={query}
-        onChange={setQuery}
-        results={`${shown.length} ${shown.length === 1 ? "person" : "people"}`}
-      />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <SearchField
+            id="admin-people-search"
+            label="Search name, ID or desk"
+            value={query}
+            onChange={setQuery}
+            results={`${shown.length} ${shown.length === 1 ? "person" : "people"}`}
+          />
+        </div>
+        <AddPerson data={data} />
+      </div>
 
       {shown.length === 0 ? (
         <NothingFound>Nobody matches “{query.trim()}”.</NothingFound>

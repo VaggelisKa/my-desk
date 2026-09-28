@@ -346,11 +346,13 @@ export function AdminSheet({
   title: string;
   titleClassName?: string;
   description: string;
-  rows: (open: (sub: Sub) => void) => ReactNode;
-  page: (sub: Sub, close: () => void) => Page;
+  /** The sheet's own content. `close` closes the whole sheet. */
+  rows: (open: (sub: Sub) => void, close: () => void) => ReactNode;
+  /** The pages its rows open, if any. */
+  page?: (sub: Sub, close: () => void) => Page;
   menu?: { label: string; actions: Action[] };
 }) {
-  if (menu) {
+  if (menu && page) {
     return (
       <ActionsMenu
         trigger={trigger}
@@ -484,8 +486,10 @@ function StackedAdminSheet({
   title: string;
   titleClassName?: string;
   description: string;
-  rows: (open: (sub: Sub) => void) => ReactNode;
-  page: (sub: Sub, close: () => void) => Page;
+  /** The sheet's own content. `close` closes the whole sheet. */
+  rows: (open: (sub: Sub) => void, close: () => void) => ReactNode;
+  /** The pages its rows open, if any. */
+  page?: (sub: Sub, close: () => void) => Page;
 }) {
   let [presented, setPresented] = useState(false);
   let [sub, setSub] = useState<Sub | null>(null);
@@ -507,7 +511,7 @@ function StackedAdminSheet({
     setSubPresented(true);
   }
 
-  let current = sub && page(sub, () => setSubPresented(false));
+  let current = sub && page ? page(sub, () => setSubPresented(false)) : null;
 
   return (
     <Sheet.Root
@@ -544,7 +548,7 @@ function StackedAdminSheet({
               {description}
             </Sheet.Description>
           </div>
-          {rows(open)}
+          {rows(open, () => present(false))}
         </div>
 
         <PageSheet

@@ -102,9 +102,7 @@ test.describe("registration", () => {
       lastName: "Id",
     });
 
-    await expect(
-      page.getByText("Employee number must be 6 characters"),
-    ).toBeVisible();
+    await expect(page.getByText("User ID must be 6 characters")).toBeVisible();
     await expect(db.user("abc")).resolves.toBeUndefined();
   });
 
