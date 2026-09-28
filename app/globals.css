@@ -33,6 +33,10 @@
      page would lurch by a share of the scroll offset every time a sheet
      opened. Desktop keeps window scrolling (and scroll restoration). */
   .app-outlet {
+    /* The containing block for anything absolutely positioned inside the
+       page (like the sr-only chart table), so on phones it scrolls and clips
+       with the outlet instead of stretching the window underneath it. */
+    position: relative;
     min-height: 100dvh;
     /* clip rather than hidden, so the sticky masthead still sticks to the
        window on desktop. */

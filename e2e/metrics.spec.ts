@@ -1,4 +1,4 @@
-import { format, subMonths } from "date-fns";
+import { format, subDays, subMonths } from "date-fns";
 import * as schema from "../app/lib/db/schema";
 import { authFile, expect, test } from "./fixtures";
 import { gotoHydrated } from "./pages/hydration";
@@ -68,4 +68,48 @@ test("shows this month against last month, the busiest day and the bars", async 
     "aria-pressed",
     "true",
   );
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 664 } });
+
+  // The page scrolls inside `.app-outlet`; nothing in it may make the window
+  // itself scrollable, or the whole page slides up past the dock.
+  test("switching the chart to months leaves the window unscrollable", async ({
+    page,
+    db,
+  }) => {
+    await db.db.insert(schema.bookingMetrics).values(
+      Array.from({ length: 180 }, (_, i) => {
+        let day = subDays(NOW, i);
+        return {
+          metricDate: format(day, "dd.MM.yyyy"),
+          totalBookings: 30,
+          totalGuestBookings: 3,
+          participation_percentage: 50,
+          createdAt: day,
+        };
+      }),
+    );
+
+    await gotoHydrated(page, "/metrics");
+    let outlet = page.locator(".app-outlet");
+    let windowOverflow = () =>
+      page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight,
+      );
+    await page.locator(".recharts-surface").waitFor();
+    await expect.poll(windowOverflow).toBe(0);
+
+    await outlet.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await page
+      .getByRole("group", { name: "Group bookings by" })
+      .getByRole("button", { name: "Months" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Month by month" }),
+    ).toBeVisible();
+    await outlet.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await expect.poll(windowOverflow).toBe(0);
+  });
 });

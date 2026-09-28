@@ -269,32 +269,36 @@ function ChartTable({
   data: ReturnType<typeof bookingsBy>;
   period: Period;
 }) {
+  // sr-only goes on a wrapper: a table grows to fit its rows whatever height
+  // it is given, so on the table itself it would not shrink to 1px.
   return (
-    <table className="sr-only">
-      <caption>
-        {period === "weeks" ? "Bookings each week" : "Bookings each month"}
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">{period === "weeks" ? "Week of" : "Month"}</th>
-          <th scope="col">At their own desk</th>
-          <th scope="col">Guests on a borrowed desk</th>
-          <th scope="col">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((row) => (
-          <tr key={row.start}>
-            <th scope="row">
-              {format(row.start, period === "weeks" ? "d MMMM" : "MMMM yyyy")}
-            </th>
-            <td>{row.own}</td>
-            <td>{row.guests}</td>
-            <td>{row.total}</td>
+    <div className="sr-only">
+      <table>
+        <caption>
+          {period === "weeks" ? "Bookings each week" : "Bookings each month"}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">{period === "weeks" ? "Week of" : "Month"}</th>
+            <th scope="col">At their own desk</th>
+            <th scope="col">Guests on a borrowed desk</th>
+            <th scope="col">Total</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map((row) => (
+            <tr key={row.start}>
+              <th scope="row">
+                {format(row.start, period === "weeks" ? "d MMMM" : "MMMM yyyy")}
+              </th>
+              <td>{row.own}</td>
+              <td>{row.guests}</td>
+              <td>{row.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

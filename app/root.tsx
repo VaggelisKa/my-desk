@@ -306,7 +306,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="min-h-screen bg-ink">
+      {/* dvh, not vh: on iOS Safari 100vh is the height with the toolbars
+          hidden, which left the phone page (scrolled inside .app-outlet)
+          with a window that could still scroll that far, showing this dark
+          body under the page. */}
+      <body className="min-h-dvh bg-ink">
         <NavigationProgress />
         <SheetStack.Root>
           <SheetStack.Outlet
