@@ -180,6 +180,16 @@
   .admin-sheet-right .admin-sheet-body {
     padding: 22px 24px 24px;
   }
+  /* The Add person sheet on phones (Silk's "sheet with keyboard"): nearly
+     the full height, so its header stays in view above the keyboard while
+     the fields scroll under it. */
+  .keyboard-sheet-content {
+    height: calc(100svh - max(env(safe-area-inset-top, 0px), 12px));
+  }
+  .keyboard-sheet-scroll {
+    flex: 1;
+    min-height: 0;
+  }
   .desk-sheet-handle {
     display: block;
     width: 40px;
