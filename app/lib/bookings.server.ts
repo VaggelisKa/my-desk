@@ -120,6 +120,10 @@ export async function bookDesk(userId: string, formData: FormData) {
     );
   }
 
+  // Counted in the stored form: date-fns also reads "1.2.2026", which would
+  // never match a stored "01.02.2026" and so slip past the limit.
+  let picked = [...new Set(days.map((date) => formatDate(date)))];
+
   try {
     // One transaction, so two bookings sent at once cannot both slip under
     // the limit.
@@ -130,18 +134,20 @@ export async function bookDesk(userId: string, formData: FormData) {
         .where(
           and(
             eq(reservations.userId, userId),
-            inArray(reservations.date, dates),
+            inArray(reservations.date, picked),
           ),
         );
       let full = fullDays(
         booked.flatMap(({ date }) => (date ? [date] : [])),
-        dates,
+        picked,
       );
       if (full.length) throw new DaysFull(full.map((date) => parseDate(date)));
 
       await tx
         .insert(reservations)
-        .values(days.map((date) => bookingRow(deskId, userId, date)));
+        .values(
+          picked.map((date) => bookingRow(deskId, userId, parseDate(date))),
+        );
     });
   } catch (error) {
     if (error instanceof DaysFull) {

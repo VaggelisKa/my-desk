@@ -1,4 +1,4 @@
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import { formatDate, parseDate } from "../app/lib/dates";
 import { authFile, expect, expectToast, test } from "./fixtures";
 import { bookingDay, desks, users } from "./support/db";
@@ -178,4 +178,23 @@ test("a desk sits at its place in the block even when the block has gaps", async
     blockBox!.x + (blockBox!.width * 2) / 3 - 10,
   );
   expect(tileBox!.y).toBeGreaterThan(blockBox!.y + blockBox!.height / 2 - 10);
+});
+
+test("a date written without leading zeros still counts toward two desks a day", async ({
+  page,
+  db,
+}) => {
+  let today = parseDate(bookingDay("monday").date);
+  let book = (deskId: number, date: string) =>
+    page.request.post("/?index", {
+      form: { deskId: String(deskId), date },
+    });
+
+  expect((await book(desks.bob.id, formatDate(today))).ok()).toBe(true);
+  expect((await book(desks.unclaimed.id, formatDate(today))).ok()).toBe(true);
+
+  let third = await book(desks.alice.id, format(today, "d.M.yyyy"));
+
+  expect(third.status()).toBe(409);
+  await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
 });
