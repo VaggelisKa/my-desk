@@ -578,6 +578,15 @@ test.describe("as an admin", () => {
       lastName: "Anders",
     });
   });
+
+  test("sees a not found page for a profile nobody has", async ({ page }) => {
+    let opened = await page.goto("/users/edit/zzz999");
+
+    expect(opened?.status()).toBe(404);
+    await expect(
+      page.getByText("There is no one with this user ID."),
+    ).toBeVisible();
+  });
 });
 
 test.describe("as an admin on a phone", () => {
@@ -743,7 +752,8 @@ test.describe("as a regular user", () => {
   });
 
   test("cannot edit another user's profile", async ({ page, db }) => {
-    await page.goto(`/users/edit/${users.bob.id}`);
+    let opened = await page.goto(`/users/edit/${users.bob.id}`);
+    expect(opened?.status()).toBe(403);
 
     await expect(
       page.getByText("You are not allowed to edit this information"),
@@ -759,7 +769,7 @@ test.describe("as a regular user", () => {
       maxRedirects: 0,
     });
 
-    expect(response.ok()).toBe(false);
+    expect(response.status()).toBe(403);
     await expect(db.user(users.bob.id)).resolves.toMatchObject({
       firstName: users.bob.firstName,
       lastName: users.bob.lastName,

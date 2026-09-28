@@ -16,11 +16,10 @@ export async function loader({ url }: Route.LoaderArgs) {
       .delete(reservations)
       .where(lt(reservations.dateTimestamp, todayStart()));
 
-    return new Response("Subscriptions cleaned up", { status: 200 });
-  } catch (error: any) {
-    return new Response(
-      error?.message || "Error while cleaning up subscriptions",
-      { status: 500 },
-    );
+    return new Response("Past bookings cleaned up", { status: 200 });
+  } catch (error) {
+    // The details go to the logs, not to whoever called.
+    console.error(error);
+    return new Response("Could not clean up past bookings", { status: 500 });
   }
 }

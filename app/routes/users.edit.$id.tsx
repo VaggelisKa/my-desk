@@ -1,10 +1,18 @@
 import { eq } from "drizzle-orm";
+import { data } from "react-router";
 import { dataWithError, redirectWithSuccess } from "remix-toast";
 import { ProfilePage } from "~/components/profile";
 import { requireAuthCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
 import type { Route } from "./+types/users.edit.$id";
+
+// Error responses, so the error page says why and the status is right,
+// instead of a 500.
+let notFound = () =>
+  data("There is no one with this user ID.", { status: 404 });
+let notAllowed = () =>
+  data("You are not allowed to edit this information", { status: 403 });
 
 export let meta: Route.MetaFunction = () => [{ title: "Profile" }];
 
@@ -13,11 +21,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   let paramsUserId = params?.id?.toLowerCase();
 
   if (!paramsUserId) {
-    throw new Error("User id is required");
+    throw notFound();
   }
 
   if (userId !== paramsUserId && role !== "admin") {
-    throw new Error("You are not allowed to edit this information");
+    throw notAllowed();
   }
 
   let [userFromDb, desk] = await Promise.all([
@@ -26,7 +34,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   ]);
 
   if (!userFromDb) {
-    throw new Error("User not found");
+    throw notFound();
   }
 
   return {
@@ -49,11 +57,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   let userId = params.id?.toLowerCase();
 
   if (!userId) {
-    throw new Error("User id is required");
+    throw notFound();
   }
 
   if (userId !== sessionUserId && role !== "admin") {
-    throw new Error("You are not allowed to edit this information");
+    throw notAllowed();
   }
 
   let formData = await request.formData();

@@ -195,9 +195,13 @@ function useOutletScrollRestoration(
   }, [location, navigationType, outlet]);
 }
 
-/** What to say on the error page: a missing page, or the error's message. */
+/**
+ * What to say on the error page: the message a route threw with its status,
+ * a missing page, or the error's message.
+ */
 function errorMessage(error: unknown) {
   if (isRouteErrorResponse(error)) {
+    if (typeof error.data === "string" && error.data) return error.data;
     return error.status === 404
       ? "There is no page at this address."
       : error.statusText || undefined;
