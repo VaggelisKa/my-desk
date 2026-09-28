@@ -22,6 +22,7 @@ import {
   parseDate,
 } from "~/lib/dates";
 import { loadDesks } from "~/lib/desks.server";
+import { cacheKey, cached } from "~/lib/tab-cache";
 import { cn, deskLabel, deskPlacement, enterAt } from "~/lib/utils";
 import type { Route } from "./+types/_index";
 
@@ -73,11 +74,21 @@ export function shouldRevalidate({
 // Client navigations and revalidations (filter changes, reservation fetchers)
 // await the query so `useNavigation` and fetchers stay pending until the
 // refreshed grid is actually available. The initial document load still
-// streams, because `clientLoader.hydrate` is off by default.
-export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  let data = await serverLoader();
+// streams, because `clientLoader.hydrate` is off by default. Coming back to
+// a day you have seen shows it at once and refreshes it behind the scenes.
+export function clientLoader({
+  serverLoader,
+  request,
+}: Route.ClientLoaderArgs) {
+  return cached(
+    cacheKey("routes/_index", request),
+    request.signal,
+    async () => {
+      let data = await serverLoader();
 
-  return { ...data, desks: await data.desks };
+      return { ...data, desks: await data.desks };
+    },
+  );
 }
 
 type Desks = Awaited<ReturnType<typeof loadDesks>>;

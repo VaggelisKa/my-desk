@@ -1,6 +1,7 @@
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import { BookingsHeader } from "~/components/bookings";
 import { requireAuthCookie } from "~/cookies.server";
+import { cached } from "~/lib/tab-cache";
 import type { Route } from "./+types/bookings";
 
 // The Bookings tab: Upcoming (/bookings) and Recurring
@@ -13,13 +14,26 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { desk };
 }
 
+// The same for Upcoming and Recurring, so one entry serves both.
+export function clientLoader({
+  serverLoader,
+  request,
+}: Route.ClientLoaderArgs) {
+  return cached("routes/bookings", request.signal, () => serverLoader());
+}
+
 // Your desk only changes when an admin reassigns it, not on anything done on
-// these pages, so switching segments does not refetch it.
+// these pages, so switching segments does not refetch it. A revalidation of
+// the same page still runs, so a background refresh can show newer data.
 export function shouldRevalidate({
   formMethod,
+  currentUrl,
+  nextUrl,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  return formMethod ? defaultShouldRevalidate : false;
+  return formMethod || currentUrl.href === nextUrl.href
+    ? defaultShouldRevalidate
+    : false;
 }
 
 export default function BookingsLayout({

@@ -7,6 +7,7 @@ import { requireAuthCookie } from "~/cookies.server";
 import { parseDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks } from "~/lib/db/schema";
+import { cacheKey, cached } from "~/lib/tab-cache";
 import type { Route } from "./+types/metrics";
 
 export let meta: Route.MetaFunction = () => [{ title: "Metrics" }];
@@ -42,11 +43,21 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 // Client navigations await the query so the navigation stays pending until the
-// data is available; the initial document load still streams.
-export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  let data = await serverLoader();
+// data is available; the initial document load still streams. Coming back
+// shows the last numbers at once and refreshes them behind the scenes.
+export function clientLoader({
+  serverLoader,
+  request,
+}: Route.ClientLoaderArgs) {
+  return cached(
+    cacheKey("routes/metrics", request),
+    request.signal,
+    async () => {
+      let data = await serverLoader();
 
-  return { metrics: await data.metrics };
+      return { metrics: await data.metrics };
+    },
+  );
 }
 
 export default function MetricsPage({ loaderData }: Route.ComponentProps) {

@@ -24,10 +24,12 @@ import { AppMenu, Dock, Masthead } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { TabPending, usePendingTab } from "~/components/tab-pending";
+import { useShowBackgroundRefresh, WarmTabs } from "~/components/tab-warmup";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { activeTab, PAGE_COLUMN } from "~/lib/app-shell";
+import { clearTabCache, takeShellStale } from "~/lib/tab-cache";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -100,25 +102,34 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 // Toasts are flashed through this loader. React Router skips revalidation after
 // an action responds with a 4xx/5xx, which would swallow every error toast.
-// Switching between the Admin tab's Desks, People and Bookings needs nothing
-// new from the server (the tab's lists share one loader), so it skips this one
-// too and the switch lands on tap.
+//
+// This runs after every submission (a booking, an admin change, signing out)
+// and before anything reloads, so it also empties the tab cache there: no tab
+// shows data from before the change.
+//
+// Moving between tabs, or a tab refreshing itself, changes nothing the shell
+// shows, so it skips this loader and the tab's cached data lands on tap. When
+// a tab's loader redirected or failed (a signed-out session, a lost admin role
+// with its toast), the shell loads again.
 export function shouldRevalidate({
   actionStatus,
-  currentUrl,
   nextUrl,
   formMethod,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  if (actionStatus !== undefined && actionStatus >= 400) {
+  if (formMethod) {
+    clearTabCache();
+
+    return actionStatus !== undefined && actionStatus >= 400
+      ? true
+      : defaultShouldRevalidate;
+  }
+
+  if (takeShellStale()) {
     return true;
   }
 
-  if (
-    !formMethod &&
-    activeTab(currentUrl.pathname) === "admin" &&
-    activeTab(nextUrl.pathname) === "admin"
-  ) {
+  if (activeTab(nextUrl.pathname)) {
     return false;
   }
 
@@ -274,6 +285,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useOutletScrollRestoration(outlet, pendingTab !== undefined);
   useTouchFocusRings();
+  useShowBackgroundRefresh();
 
   useEffect(() => {
     if (!data?.toast) {
@@ -371,6 +383,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <>
             <Dock user={user} />
             <AppMenu user={user} />
+            {!error && <WarmTabs user={user} />}
           </>
         )}
 

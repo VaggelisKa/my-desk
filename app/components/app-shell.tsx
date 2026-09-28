@@ -44,35 +44,19 @@ let Desk = createLucideIcon("desk", [
   ["path", { d: "M20 14v7", key: "right-leg" }],
 ]);
 
+// Every tab link prefetches with `render`. Since each tab has a clientLoader,
+// that preloads only the tab's code (which Safari does too) and no data: the
+// tab cache (see tab-warmup.tsx) loads the data instead.
 let TABS: {
   id: Tab;
   label: string;
   to: string;
   icon: LucideIcon;
-  prefetch: "none" | "intent" | "render";
 }[] = [
-  { id: "desks", label: "Desks", to: "/", icon: Desk, prefetch: "none" },
-  {
-    id: "bookings",
-    label: "Bookings",
-    to: "/bookings",
-    icon: CalendarDays,
-    prefetch: "render",
-  },
-  {
-    id: "metrics",
-    label: "Metrics",
-    to: "/metrics",
-    icon: ChartLine,
-    prefetch: "intent",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    to: "/admin",
-    icon: ShieldCheck,
-    prefetch: "intent",
-  },
+  { id: "desks", label: "Desks", to: "/", icon: Desk },
+  { id: "bookings", label: "Bookings", to: "/bookings", icon: CalendarDays },
+  { id: "metrics", label: "Metrics", to: "/metrics", icon: ChartLine },
+  { id: "admin", label: "Admin", to: "/admin", icon: ShieldCheck },
 ];
 
 /** Admin is only there for admins; the route checks the role as well. */
@@ -168,7 +152,7 @@ export function Masthead({ user }: { user: ShellUser }) {
                 key={tab.id}
                 ref={itemRef(tab.id)}
                 to={tab.to}
-                prefetch={tab.prefetch}
+                prefetch="render"
                 aria-current={isActive ? "page" : undefined}
                 onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
                 className={cn(
@@ -245,7 +229,7 @@ export function Dock({ user }: { user: ShellUser }) {
             <Link
               key={tab.id}
               to={tab.to}
-              prefetch={tab.prefetch}
+              prefetch="render"
               aria-current={isActive ? "page" : undefined}
               onClick={(event) => {
                 if (!isActive) tapHaptic();
