@@ -346,13 +346,11 @@ export function AdminSheet({
   title: string;
   titleClassName?: string;
   description: string;
-  /** The sheet's own content. `close` closes the whole sheet. */
-  rows: (open: (sub: Sub) => void, close: () => void) => ReactNode;
-  /** The pages its rows open, if any. */
-  page?: (sub: Sub, close: () => void) => Page;
+  rows: (open: (sub: Sub) => void) => ReactNode;
+  page: (sub: Sub, close: () => void) => Page;
   menu?: { label: string; actions: Action[] };
 }) {
-  if (menu && page) {
+  if (menu) {
     return (
       <ActionsMenu
         trigger={trigger}
@@ -486,10 +484,8 @@ function StackedAdminSheet({
   title: string;
   titleClassName?: string;
   description: string;
-  /** The sheet's own content. `close` closes the whole sheet. */
-  rows: (open: (sub: Sub) => void, close: () => void) => ReactNode;
-  /** The pages its rows open, if any. */
-  page?: (sub: Sub, close: () => void) => Page;
+  rows: (open: (sub: Sub) => void) => ReactNode;
+  page: (sub: Sub, close: () => void) => Page;
 }) {
   let [presented, setPresented] = useState(false);
   let [sub, setSub] = useState<Sub | null>(null);
@@ -511,7 +507,7 @@ function StackedAdminSheet({
     setSubPresented(true);
   }
 
-  let current = sub && page ? page(sub, () => setSubPresented(false)) : null;
+  let current = sub && page(sub, () => setSubPresented(false));
 
   return (
     <Sheet.Root
@@ -548,7 +544,7 @@ function StackedAdminSheet({
               {description}
             </Sheet.Description>
           </div>
-          {rows(open, () => present(false))}
+          {rows(open)}
         </div>
 
         <PageSheet
@@ -633,11 +629,11 @@ function PageBody({ page, back }: { page: Page; back?: boolean }) {
 }
 
 /**
- * The floating card both levels share. Every card in the stack is the same
+ * The floating card every admin sheet uses. Every card in the stack is the same
  * size, so the one underneath shows as an edge above (phones) or beside
  * (larger screens) the one on top.
  */
-function StackedCard({
+export function StackedCard({
   isSmallDevice,
   status,
   onTravelStatusChange,

@@ -632,10 +632,13 @@ test.describe("as an admin on a phone", () => {
     let sheet = await adminPage.open(
       page.getByRole("button", { name: "Add person" }),
     );
+    // The keyboard comes up with the sheet.
+    await expect(sheet.root.getByLabel("User ID")).toBeFocused();
     await sheet.root.getByLabel("User ID").fill("x98765");
     await sheet.root.getByLabel("First name").fill("Xena");
     await sheet.root.getByLabel("Last name").fill("Ek");
-    await sheet.button("Add person").click();
+    // Phones keep Add in the header, above the keyboard.
+    await sheet.button("Add").click();
 
     await expectToast(page, "Added Xena Ek");
     await expect(
