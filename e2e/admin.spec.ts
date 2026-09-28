@@ -467,6 +467,73 @@ test.describe("as an admin", () => {
     await expect(name.root.getByLabel("First name")).toBeVisible();
   });
 
+  test("adds a person with an unclaimed desk", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+
+    let sheet = await adminPage.open(
+      page.getByRole("button", { name: "Add person" }),
+    );
+    await expect(sheet.title).toHaveText("Add person");
+    await sheet.root.getByLabel("User ID").fill("G12345");
+    await sheet.root.getByLabel("First name").fill("Jane");
+    await sheet.root.getByLabel("Last name").fill("Doe");
+    await sheet.root.getByLabel("Desk").selectOption("Desk 2.1.1");
+    await sheet.button("Add person").click();
+
+    await expectToast(page, "Added Jane Doe at desk 2.1.1");
+    await expect(sheet.root).toHaveCount(0);
+    await expect(adminPage.personRow("Jane Doe")).toBeVisible();
+    await expect(db.user("g12345")).resolves.toMatchObject({
+      firstName: "Jane",
+      lastName: "Doe",
+      role: "user",
+    });
+    await expect(db.desk(desks.unclaimed.id)).resolves.toMatchObject({
+      userId: "g12345",
+    });
+  });
+
+  test("says who already has a user ID and keeps the form open", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await adminPage.goto("people");
+
+    let sheet = await adminPage.open(
+      page.getByRole("button", { name: "Add person" }),
+    );
+    // Only unclaimed desks are offered: taking one from someone is a move.
+    await expect(sheet.root.getByLabel("Desk").getByRole("option")).toHaveText([
+      "No desk",
+      "Desk 2.1.1",
+    ]);
+
+    let id = sheet.root.getByLabel("User ID");
+    await id.fill("BOB");
+    await sheet.button("Add person").click();
+    await expect(id).toHaveAccessibleDescription(
+      "User ID must be 6 characters",
+    );
+    await expect(sheet.root).toContainText("First name is required");
+    await expect(id).toBeFocused();
+
+    await id.fill("emp002");
+    await sheet.root.getByLabel("First name").fill("Not");
+    await sheet.root.getByLabel("Last name").fill("Bob");
+    await sheet.button("Add person").click();
+    await expect(id).toHaveAccessibleDescription("Already used by Bob Berg");
+
+    await expect(db.user(users.bob.id)).resolves.toMatchObject({
+      firstName: "Bob",
+      lastName: "Berg",
+    });
+  });
+
   test("renames someone and makes them an admin", async ({
     page,
     db,
@@ -559,6 +626,28 @@ test.describe("as an admin on a phone", () => {
       userId: null,
     });
   });
+  test("adds a person from a sheet", async ({ page, db, adminPage }) => {
+    await adminPage.goto("people");
+
+    let sheet = await adminPage.open(
+      page.getByRole("button", { name: "Add person" }),
+    );
+    await sheet.root.getByLabel("User ID").fill("x98765");
+    await sheet.root.getByLabel("First name").fill("Xena");
+    await sheet.root.getByLabel("Last name").fill("Ek");
+    await sheet.button("Add person").click();
+
+    await expectToast(page, "Added Xena Ek");
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("listitem")
+        .filter({ hasText: "Xena Ek" }),
+    ).toContainText("x98765 · No desk");
+    await expect(db.user("x98765")).resolves.toMatchObject({
+      firstName: "Xena",
+    });
+  });
 });
 
 // The UI hides the tab from regular users; the direct requests make sure the
@@ -580,7 +669,10 @@ test.describe("as a regular user", () => {
     await expectToast(page, "Unauthorized!");
   });
 
-  test("cannot reassign a desk or cancel bookings", async ({ page, db }) => {
+  test("cannot reassign a desk, cancel bookings or add people", async ({
+    page,
+    db,
+  }) => {
     await db.addReservation({
       user: "bob",
       deskId: desks.bob.id,
@@ -596,6 +688,12 @@ test.describe("as a regular user", () => {
       {
         intent: "cancel-many",
         booking: `${desks.bob.id}@${bookingDay("tuesday").date}@${users.bob.id}`,
+      },
+      {
+        intent: "add-person",
+        userId: "sneaky",
+        firstName: "Sneaky",
+        lastName: "Admin",
       },
     ];
 
@@ -615,6 +713,7 @@ test.describe("as a regular user", () => {
     await expect(
       db.reservation(desks.bob.id, "tuesday"),
     ).resolves.toBeDefined();
+    await expect(db.user("sneaky")).resolves.toBeUndefined();
   });
 
   test("cannot delete another user's reservation", async ({ page, db }) => {

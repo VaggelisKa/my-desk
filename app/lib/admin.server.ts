@@ -9,6 +9,7 @@ import {
   isNull,
   ne,
 } from "drizzle-orm";
+import { data } from "react-router";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireAuthCookie } from "~/cookies.server";
 import { deletePicked, pickedBookings } from "~/lib/bookings.server";
@@ -16,6 +17,12 @@ import { CronError, deleteCron } from "~/lib/cron";
 import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
+import {
+  addPerson,
+  checkNewPerson,
+  type NewPersonErrors,
+  personWithId,
+} from "~/lib/people.server";
 import { capitalize, deskLabel, plural } from "~/lib/utils";
 
 // The Admin tab: who owns which desk, who is who, and what is booked. Every
@@ -199,6 +206,9 @@ async function releaseDesks(
 /** Thrown inside a move's transaction to undo it when the desk changed meanwhile. */
 class DeskChanged extends Error {}
 
+/** Thrown inside the add-person transaction when the ID is taken. */
+class IdTaken extends Error {}
+
 /** Said when a desk moved but the scheduler could not be reached to stop a weekly job. */
 let stopLater =
   "The scheduler could not be reached, so the weekly booking stops on its next run instead.";
@@ -206,7 +216,13 @@ let stopLater =
 /** What a successful action returns, so a sheet knows it may close. */
 let done = { ok: true } as const;
 
-export type AdminActionData = typeof done | null;
+/** What the add-person form says is wrong, field by field. */
+export type AddPersonErrors = NewPersonErrors & { deskId?: string };
+
+export type AdminActionData =
+  | typeof done
+  | { ok: false; errors: AddPersonErrors }
+  | null;
 
 function field(formData: FormData, name: string) {
   let value = formData.get(name);
@@ -406,6 +422,81 @@ export async function handleAdminAction(request: Request) {
       }
 
       return dataWithSuccess(done, { message: "Recurring booking stopped" });
+    }
+
+    case "add-person": {
+      let { person, errors } = checkNewPerson({
+        id: field(formData, "userId"),
+        firstName: field(formData, "firstName"),
+        lastName: field(formData, "lastName"),
+      });
+
+      if (errors) {
+        return data({ ok: false as const, errors }, { status: 400 });
+      }
+
+      // A desk is optional, and only an unclaimed one: taking a desk from
+      // someone is a move, with its own confirm.
+      let pickedDesk = field(formData, "deskId");
+      let deskId = pickedDesk ? Number(pickedDesk) : null;
+      let desk =
+        deskId !== null
+          ? await db.query.desks.findFirst({ where: eq(desks.id, deskId) })
+          : undefined;
+
+      if (deskId !== null && !desk) {
+        return data(
+          { ok: false as const, errors: { deskId: "Desk not found" } },
+          { status: 404 },
+        );
+      }
+
+      // One transaction, so a desk someone took meanwhile adds nobody.
+      try {
+        await db.transaction(async (tx) => {
+          if (!(await addPerson(person, tx))) throw new IdTaken();
+          if (deskId === null) return;
+
+          let claimed = await tx
+            .update(desks)
+            .set({ userId: person.id })
+            .where(and(eq(desks.id, deskId), isNull(desks.userId)))
+            .returning({ id: desks.id });
+          if (claimed.length === 0) throw new DeskChanged();
+        });
+      } catch (error) {
+        if (error instanceof IdTaken) {
+          let owner = await personWithId(person.id);
+          return data(
+            {
+              ok: false as const,
+              errors: {
+                id: owner
+                  ? `Already used by ${capitalize(owner.firstName)} ${capitalize(owner.lastName)}`
+                  : "This user ID is already used",
+              },
+            },
+            { status: 409 },
+          );
+        }
+        if (error instanceof DeskChanged) {
+          return data(
+            {
+              ok: false as const,
+              errors: {
+                deskId: "Someone took this desk meanwhile. Pick another.",
+              },
+            },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
+
+      let name = `${capitalize(person.firstName)} ${capitalize(person.lastName)}`;
+      return dataWithSuccess(done, {
+        message: desk ? `Added ${name} at ${deskName(desk)}` : `Added ${name}`,
+      });
     }
 
     case "rename": {

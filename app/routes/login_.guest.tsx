@@ -5,12 +5,14 @@ import {
   AuthField,
   AuthLink,
   AuthSubmit,
-  CODE_LENGTH,
   CodeField,
 } from "~/components/auth-card";
 import { createUserCookie, getAuthenticatedUser } from "~/cookies.server";
-import { db } from "~/lib/db/drizzle.server";
-import { users } from "~/lib/db/schema";
+import {
+  addPerson,
+  checkNewPerson,
+  type NewPersonErrors,
+} from "~/lib/people.server";
 import type { Route } from "./+types/login_.guest";
 
 export let meta: Route.MetaFunction = () => [
@@ -31,53 +33,27 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export async function action({ request }: Route.ActionArgs) {
   let formData = await request.formData();
-  let employeeNumber = String(formData.get("employee-number") ?? "")
-    .trim()
-    .toLowerCase();
-  let firstName = String(formData.get("name") ?? "").trim();
-  let lastName = String(formData.get("last-name") ?? "").trim();
-  let errors: {
-    employeeNumber?: string;
-    firstName?: string;
-    lastName?: string;
-  } = {};
+  let { person, errors } = checkNewPerson({
+    id: String(formData.get("employee-number") ?? ""),
+    firstName: String(formData.get("name") ?? ""),
+    lastName: String(formData.get("last-name") ?? ""),
+  });
 
-  if (!employeeNumber) {
-    errors.employeeNumber = "Employee number is required";
-  } else if (employeeNumber.length !== CODE_LENGTH) {
-    // Sign-in only takes six characters, so a shorter one could never be
-    // used to sign in again.
-    errors.employeeNumber = `Employee number must be ${CODE_LENGTH} characters`;
-  }
-
-  if (!firstName) {
-    errors.firstName = "Name is required";
-  }
-
-  if (!lastName) {
-    errors.lastName = "Last name is required";
-  }
-
-  if (Object.keys(errors).length) {
+  if (errors) {
     return data({ ok: false, errors }, { status: 400 });
   }
 
-  let [newUser] = await db
-    .insert(users)
-    .values({ id: employeeNumber, firstName, lastName })
-    .onConflictDoNothing()
-    .returning({ id: users.id });
-
   // The ID belongs to someone already: registering must never sign in as
   // them.
-  if (!newUser) {
-    errors.employeeNumber =
-      "This user ID is already registered. Sign in instead.";
-    return data({ ok: false, errors }, { status: 409 });
+  if (!(await addPerson(person))) {
+    let taken: NewPersonErrors = {
+      id: "This user ID is already registered. Sign in instead.",
+    };
+    return data({ ok: false, errors: taken }, { status: 409 });
   }
 
   return redirect("/", {
-    headers: { "Set-Cookie": await createUserCookie(newUser.id) },
+    headers: { "Set-Cookie": await createUserCookie(person.id) },
   });
 }
 
@@ -100,7 +76,7 @@ export default function GuestLoginPage({ actionData }: Route.ComponentProps) {
             id="employee-number"
             name="employee-number"
             label="User ID"
-            error={errors?.employeeNumber}
+            error={errors?.id}
             value={employeeNumber}
             onChange={setEmployeeNumber}
             autoFocus
