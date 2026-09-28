@@ -8,8 +8,10 @@ import {
   isMutation,
   isShellStale,
   markShellFresh,
+  markShellStale,
   MAX_AGE,
   onRefresh,
+  shellMarks,
 } from "./tab-cache";
 
 let tap = () => new Request("http://x/bookings");
@@ -212,5 +214,21 @@ describe("cached", () => {
 
     await expect(cached("k0", tap(), load)).resolves.toBe(-1);
     await expect(cached("k39", tap(), load)).resolves.toBe(39);
+  });
+});
+
+describe("shell staleness", () => {
+  it("stays stale until a shell load that started after the mark finishes", () => {
+    markShellStale();
+    let marks = shellMarks();
+    expect(isShellStale()).toBe(true);
+
+    // A mark made while the shell loads outlives that load.
+    markShellStale();
+    markShellFresh(marks);
+    expect(isShellStale()).toBe(true);
+
+    markShellFresh(shellMarks());
+    expect(isShellStale()).toBe(false);
   });
 });

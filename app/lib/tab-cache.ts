@@ -32,7 +32,10 @@ let refreshing = new Set<string>();
 let generation = 0;
 let listeners = new Set<() => void>();
 let refreshListeners = new Set<() => void>();
-let shellStale = false;
+// Times the shell was marked stale, and how many of those a finished shell
+// load has covered.
+let staleMarks = 0;
+let freshUpTo = 0;
 
 /**
  * The cache key for a route's data at `request`'s URL. React Router adds
@@ -152,7 +155,7 @@ async function fetchInto<T>(
   } catch (error) {
     // Redirects and errors (a signed-out session, a lost admin role) come
     // with a toast or a new user, which the shell has to pick up.
-    if (!signal.aborted && startedIn === generation) shellStale = true;
+    if (!signal.aborted && startedIn === generation) markShellStale();
     throw error;
   }
 }
@@ -199,7 +202,7 @@ export function onRefresh(listener: () => void) {
 
 /** Has the root loader run again on the next move (see `isShellStale`). */
 export function markShellStale() {
-  shellStale = true;
+  staleMarks++;
 }
 
 /**
@@ -207,12 +210,22 @@ export function markShellStale() {
  * redirected, a background refresh landed, or the app was away a while.
  * Reading it changes nothing, since React Router also asks the root's
  * `shouldRevalidate` when it only renders a prefetch link; the root's
- * `clientLoader` resets it once it really loads.
+ * `clientLoader` settles it once a load really finishes.
  */
 export function isShellStale() {
-  return shellStale;
+  return staleMarks > freshUpTo;
 }
 
-export function markShellFresh() {
-  shellStale = false;
+/** Where the stale marks stand, taken as the shell starts loading. */
+export function shellMarks() {
+  return staleMarks;
+}
+
+/**
+ * Settles the marks up to `marks` once the shell has loaded. A load that was
+ * cancelled or failed never gets here, and a mark made while it was loading
+ * stays, so the shell loads again on the next move.
+ */
+export function markShellFresh(marks = staleMarks) {
+  freshUpTo = Math.max(freshUpTo, marks);
 }

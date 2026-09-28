@@ -49,7 +49,7 @@ function tabLoaders(user: ShellUser) {
 
 /**
  * Loads every tab into the tab cache once the app has settled, and again
- * after each change empties it, so even the first tap on a tab shows it at
+ * after each change empties it or opens another tab to you, so even the first tap on a tab shows it at
  * once. The fetchers unmount when done, so later submissions do not
  * revalidate them.
  */
@@ -59,16 +59,15 @@ export function WarmTabs({ user }: { user: ShellUser }) {
     cacheGeneration,
     () => 0,
   );
-  let [warmed, setWarmed] = useState<number>();
+  let hrefs = tabLoaders(user);
+  // A new role or desk opens another tab (Admin, Recurring), which warms too.
+  let batch = `${generation} ${hrefs.join(" ")}`;
+  let [warmed, setWarmed] = useState<string>();
 
-  if (warmed === generation) return null;
+  if (warmed === batch) return null;
 
   return (
-    <WarmBatch
-      key={generation}
-      hrefs={tabLoaders(user)}
-      onDone={() => setWarmed(generation)}
-    />
+    <WarmBatch key={batch} hrefs={hrefs} onDone={() => setWarmed(batch)} />
   );
 }
 

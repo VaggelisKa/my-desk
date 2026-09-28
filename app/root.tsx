@@ -39,6 +39,7 @@ import {
   isMutation,
   isShellStale,
   markShellFresh,
+  shellMarks,
 } from "~/lib/tab-cache";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
@@ -113,8 +114,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 // Marks the shell fresh once it really reloads (see `isShellStale`). Only runs
 // on revalidation, never on the first load (no `hydrate`).
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  markShellFresh();
-  return serverLoader();
+  let marks = shellMarks();
+  let data = await serverLoader();
+  markShellFresh(marks);
+  return data;
 }
 
 // Toasts are flashed through this loader. React Router skips revalidation after

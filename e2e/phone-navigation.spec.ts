@@ -79,6 +79,11 @@ test("a role an admin gave you shows once a tab refreshes", async ({
   await expect(page).toHaveURL("/bookings");
 
   await expect(page.getByRole("link", { name: "Admin" }).last()).toBeVisible();
+
+  // The newly opened tab is loaded in the background like the others.
+  let adminWarmed = page.waitForRequest(/\/admin\.data\?.*warm/);
+  await page.clock.fastForward(1_000);
+  await adminWarmed;
 });
 
 test("the dock tucks into icons while scrolling down and opens again on the way up", async ({
