@@ -32,7 +32,7 @@ export function clientLoader({
   serverLoader,
   request,
 }: Route.ClientLoaderArgs) {
-  return cached("routes/admin", request.signal, () => serverLoader());
+  return cached("routes/admin", request, () => serverLoader());
 }
 
 // Switching segments shows the same data, so only a change refetches it. A

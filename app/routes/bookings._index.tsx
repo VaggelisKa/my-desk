@@ -31,10 +31,8 @@ export function clientLoader({
   serverLoader,
   request,
 }: Route.ClientLoaderArgs) {
-  return cached(
-    cacheKey("routes/bookings._index", request),
-    request.signal,
-    () => serverLoader(),
+  return cached(cacheKey("routes/bookings._index", request), request, () =>
+    serverLoader(),
   );
 }
 

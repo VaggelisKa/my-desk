@@ -80,15 +80,11 @@ export function clientLoader({
   serverLoader,
   request,
 }: Route.ClientLoaderArgs) {
-  return cached(
-    cacheKey("routes/_index", request),
-    request.signal,
-    async () => {
-      let data = await serverLoader();
+  return cached(cacheKey("routes/_index", request), request, async () => {
+    let data = await serverLoader();
 
-      return { ...data, desks: await data.desks };
-    },
-  );
+    return { ...data, desks: await data.desks };
+  });
 }
 
 type Desks = Awaited<ReturnType<typeof loadDesks>>;

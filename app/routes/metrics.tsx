@@ -49,15 +49,11 @@ export function clientLoader({
   serverLoader,
   request,
 }: Route.ClientLoaderArgs) {
-  return cached(
-    cacheKey("routes/metrics", request),
-    request.signal,
-    async () => {
-      let data = await serverLoader();
+  return cached(cacheKey("routes/metrics", request), request, async () => {
+    let data = await serverLoader();
 
-      return { metrics: await data.metrics };
-    },
-  );
+    return { metrics: await data.metrics };
+  });
 }
 
 export default function MetricsPage({ loaderData }: Route.ComponentProps) {

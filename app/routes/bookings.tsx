@@ -19,7 +19,7 @@ export function clientLoader({
   serverLoader,
   request,
 }: Route.ClientLoaderArgs) {
-  return cached("routes/bookings", request.signal, () => serverLoader());
+  return cached("routes/bookings", request, () => serverLoader());
 }
 
 // Your desk only changes when an admin reassigns it, not on anything done on

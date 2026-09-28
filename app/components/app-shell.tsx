@@ -45,8 +45,8 @@ let Desk = createLucideIcon("desk", [
 ]);
 
 // Every tab link prefetches with `render`. Since each tab has a clientLoader,
-// that preloads only the tab's code (which Safari does too) and no data: the
-// tab cache (see tab-warmup.tsx) loads the data instead.
+// that preloads only the tab's code and route map (which Safari does too) and
+// no data: the tab cache (see tab-warmup.tsx) loads the data instead.
 let TABS: {
   id: Tab;
   label: string;

@@ -7,31 +7,43 @@ import {
 } from "react";
 import {
   useFetcher,
+  useFetchers,
   useLocation,
   useNavigation,
   useRevalidator,
 } from "react-router";
 import type { ShellUser } from "~/components/app-shell";
 import { activeTab } from "~/lib/app-shell";
-import { cacheGeneration, onRefresh, subscribeToClears } from "~/lib/tab-cache";
+import {
+  cacheGeneration,
+  clearTabCache,
+  isMutation,
+  markShellStale,
+  onRefresh,
+  subscribeToClears,
+  WARM_PARAM,
+} from "~/lib/tab-cache";
 
 /** How long the app has to sit still before the other tabs load. */
 const WARM_AFTER_MS = 800;
 
+/** A break longer than this and the app forgets and reloads what it shows. */
+const LONG_BREAK_MS = 60_000;
+
 /**
  * Every loader a tab tap runs, as fetcher hrefs. A fetcher loads the parent
- * layout without `?index` and the index page with it. Only what this person
- * can open: loaders that would redirect (Admin for non-admins, Recurring
- * without a desk) are left out, since a fetcher follows the redirect.
+ * layout without `?index` and the index page with it. `?warm` keeps a failed
+ * or redirected load out of sight (see `cached`). Admin and Recurring are
+ * only loaded for people who can open them, to save the requests.
  */
 function tabLoaders(user: ShellUser) {
   return [
-    "/?index",
-    "/bookings",
-    "/bookings?index",
-    ...(user.desk ? ["/bookings/recurring"] : []),
-    "/metrics",
-    ...(user.role === "admin" ? ["/admin"] : []),
+    `/?index&${WARM_PARAM}`,
+    `/bookings?${WARM_PARAM}`,
+    `/bookings?index&${WARM_PARAM}`,
+    ...(user.desk ? [`/bookings/recurring?${WARM_PARAM}`] : []),
+    `/metrics?${WARM_PARAM}`,
+    ...(user.role === "admin" ? [`/admin?${WARM_PARAM}`] : []),
   ];
 }
 
@@ -61,7 +73,11 @@ export function WarmTabs({ user }: { user: ShellUser }) {
 }
 
 function WarmBatch({ hrefs, onDone }: { hrefs: string[]; onDone: () => void }) {
-  let idle = useNavigation().state === "idle";
+  // Not while a page loads or a change is saved (fetcher submissions do not
+  // show in the navigation), so the warm-up never slows what you wait for.
+  let navigating = useNavigation().state !== "idle";
+  let saving = useFetchers().some((fetcher) => isMutation(fetcher.formMethod));
+  let idle = !navigating && !saving;
   let [started, setStarted] = useState(false);
   let finished = useRef(new Set<string>());
 
@@ -80,7 +96,7 @@ function WarmBatch({ hrefs, onDone }: { hrefs: string[]; onDone: () => void }) {
       href={href}
       onDone={() => {
         finished.current.add(href);
-        if (finished.current.size === hrefs.length) onDone();
+        if (finished.current.size >= hrefs.length) onDone();
       }}
     />
   ));
@@ -111,4 +127,54 @@ export function useShowBackgroundRefresh() {
   });
 
   useEffect(() => onRefresh(() => showRefresh()), []);
+}
+
+/**
+ * Empties the tab cache the moment a change starts saving. The root
+ * `shouldRevalidate` empties it again before anything reloads; this covers
+ * the actions that throw, which never get there.
+ */
+export function useClearOnSubmit() {
+  let navigation = useNavigation();
+  let fetchers = useFetchers();
+  let saving =
+    isMutation(navigation.formMethod) ||
+    fetchers.some((fetcher) => isMutation(fetcher.formMethod));
+
+  useEffect(() => {
+    if (saving) clearTabCache();
+  }, [saving]);
+}
+
+/**
+ * After a long break (the phone in a pocket, another browser tab signing in
+ * as someone else, the day turning over), forgets every tab and reloads the
+ * page you come back to, shell included, so nothing from before shows as
+ * current.
+ */
+export function useFreshAfterLongBreak() {
+  let { revalidate } = useRevalidator();
+  let reload = useEffectEvent(() => {
+    clearTabCache();
+    markShellStale();
+    void revalidate();
+  });
+
+  useEffect(() => {
+    let hiddenAt: number | undefined;
+    let onChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+      } else if (
+        hiddenAt !== undefined &&
+        Date.now() - hiddenAt > LONG_BREAK_MS
+      ) {
+        hiddenAt = undefined;
+        reload();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
 }

@@ -24,12 +24,17 @@ import { AppMenu, Dock, Masthead } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { TabPending, usePendingTab } from "~/components/tab-pending";
-import { useShowBackgroundRefresh, WarmTabs } from "~/components/tab-warmup";
+import {
+  useClearOnSubmit,
+  useFreshAfterLongBreak,
+  useShowBackgroundRefresh,
+  WarmTabs,
+} from "~/components/tab-warmup";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { activeTab, PAGE_COLUMN } from "~/lib/app-shell";
-import { clearTabCache, takeShellStale } from "~/lib/tab-cache";
+import { clearTabCache, isMutation, takeShellStale } from "~/lib/tab-cache";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -103,9 +108,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 // Toasts are flashed through this loader. React Router skips revalidation after
 // an action responds with a 4xx/5xx, which would swallow every error toast.
 //
-// This runs after every submission (a booking, an admin change, signing out)
-// and before anything reloads, so it also empties the tab cache there: no tab
-// shows data from before the change.
+// This runs after every change (a booking, an admin change, signing out) and
+// before anything reloads, so it also empties the tab cache there: no tab
+// shows data from before the change. A GET form (the Desks filters) changes
+// nothing, so it keeps the cache.
 //
 // Moving between tabs, or a tab refreshing itself, changes nothing the shell
 // shows, so it skips this loader and the tab's cached data lands on tap. When
@@ -117,7 +123,7 @@ export function shouldRevalidate({
   formMethod,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  if (formMethod) {
+  if (isMutation(formMethod)) {
     clearTabCache();
 
     return actionStatus !== undefined && actionStatus >= 400
@@ -286,6 +292,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useOutletScrollRestoration(outlet, pendingTab !== undefined);
   useTouchFocusRings();
   useShowBackgroundRefresh();
+  useClearOnSubmit();
+  useFreshAfterLongBreak();
 
   useEffect(() => {
     if (!data?.toast) {
