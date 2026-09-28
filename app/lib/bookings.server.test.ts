@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/lib/db/drizzle.server", () => ({ db: {} }));
 
-const { pickedBookings } = await import("~/lib/bookings.server");
+const { fullDays, pickedBookings } = await import("~/lib/bookings.server");
 
 function form(...bookings: string[]) {
   let data = new FormData();
@@ -33,5 +33,19 @@ describe("pickedBookings", () => {
     expect(
       pickedBookings(form("x@28.09.2026@u", "1@@u", "1@28.09.2026@")),
     ).toBeNull();
+  });
+});
+
+describe("fullDays", () => {
+  it("is full once someone holds two desks that day", () => {
+    let booked = ["28.09.2026", "28.09.2026", "29.09.2026"];
+    expect(fullDays(booked, ["28.09.2026", "29.09.2026"])).toEqual([
+      "28.09.2026",
+    ]);
+  });
+
+  it("has room on days with fewer bookings", () => {
+    expect(fullDays([], ["28.09.2026"])).toEqual([]);
+    expect(fullDays(["28.09.2026"], ["28.09.2026"])).toEqual([]);
   });
 });

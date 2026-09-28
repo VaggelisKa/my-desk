@@ -54,3 +54,19 @@ test("a guest can reserve an unclaimed desk for today", async ({
     db.reservation(desks.unclaimed.id, "monday"),
   ).resolves.toMatchObject({ userId: users.guest.id });
 });
+
+test("a guest holds two desks for today at most", async ({ page, db }) => {
+  let today = bookingDay("monday").date;
+  let book = (deskId: number) =>
+    page.request.post("/?index", {
+      form: { deskId: String(deskId), date: today },
+    });
+
+  expect((await book(desks.alice.id)).ok()).toBe(true);
+  expect((await book(desks.unclaimed.id)).ok()).toBe(true);
+
+  let third = await book(desks.bob.id);
+
+  expect(third.status()).toBe(409);
+  await expect(db.reservationsForDesk(desks.bob.id)).resolves.toEqual([]);
+});
