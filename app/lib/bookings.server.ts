@@ -1,5 +1,5 @@
 import { format, getWeek, isValid, isWeekend } from "date-fns";
-import { and, asc, eq, gte, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, or } from "drizzle-orm";
 import { dataWithError, dataWithSuccess } from "remix-toast";
 import type { Booking } from "~/components/bookings";
 import {
@@ -31,6 +31,28 @@ let notOwnerError = {
   description:
     "Only the person assigned to a desk can book it ahead. Others can book it for today.",
 };
+
+/**
+ * The most desks one person may hold on the same day: their own plus one
+ * more, for example for a guest who has no account.
+ */
+export let MAX_DESKS_PER_DAY = 2;
+
+/**
+ * Which of the `picked` days (`dd.MM.yyyy`) are already full for someone who
+ * holds a desk on each of the `booked` days (one entry per booking).
+ */
+export function fullDays(booked: string[], picked: string[]) {
+  let held = new Map<string, number>();
+  for (let date of booked) held.set(date, (held.get(date) ?? 0) + 1);
+  return picked.filter((date) => (held.get(date) ?? 0) >= MAX_DESKS_PER_DAY);
+}
+
+class DaysFull extends Error {
+  constructor(readonly days: Date[]) {
+    super("Those days are full");
+  }
+}
 
 // Reservations are unique per desk, day and week.
 function isAlreadyBookedError(error: unknown) {
@@ -99,10 +121,42 @@ export async function bookDesk(userId: string, formData: FormData) {
   }
 
   try {
-    await db
-      .insert(reservations)
-      .values(days.map((date) => bookingRow(deskId, userId, date)));
+    // One transaction, so two bookings sent at once cannot both slip under
+    // the limit.
+    await db.transaction(async (tx) => {
+      let booked = await tx
+        .select({ date: reservations.date })
+        .from(reservations)
+        .where(
+          and(
+            eq(reservations.userId, userId),
+            inArray(reservations.date, dates),
+          ),
+        );
+      let full = fullDays(
+        booked.flatMap(({ date }) => (date ? [date] : [])),
+        dates,
+      );
+      if (full.length) throw new DaysFull(full.map((date) => parseDate(date)));
+
+      await tx
+        .insert(reservations)
+        .values(days.map((date) => bookingRow(deskId, userId, date)));
+    });
   } catch (error) {
+    if (error instanceof DaysFull) {
+      let full = error.days
+        .sort((a, b) => a.getTime() - b.getTime())
+        .map((date) => format(date, "EEE d MMM"));
+      return dataWithError(
+        null,
+        {
+          message: `${MAX_DESKS_PER_DAY} desks a day at most`,
+          description: `You already have ${MAX_DESKS_PER_DAY} desks booked on ${full.join(", ")}.`,
+        },
+        { status: 409 },
+      );
+    }
     if (!isAlreadyBookedError(error)) {
       throw error;
     }
