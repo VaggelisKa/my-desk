@@ -1,7 +1,7 @@
-import archivo400 from "@fontsource/archivo/400.css?url";
-import archivo500 from "@fontsource/archivo/500.css?url";
-import archivo600 from "@fontsource/archivo/600.css?url";
-import archivo700 from "@fontsource/archivo/700.css?url";
+import archivo400 from "@fontsource/archivo/files/archivo-latin-400-normal.woff2?url";
+import archivo500 from "@fontsource/archivo/files/archivo-latin-500-normal.woff2?url";
+import archivo600 from "@fontsource/archivo/files/archivo-latin-600-normal.woff2?url";
+import archivo700 from "@fontsource/archivo/files/archivo-latin-700-normal.woff2?url";
 import { Island, SheetStack } from "@silk-hq/components";
 import silkStyles from "@silk-hq/components/unlayered-styles.css?url";
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
@@ -66,11 +66,21 @@ type DepthFrame = {
   tween: (start: number | string, end: number | string) => string;
 };
 
+// The Latin Archivo files (the fonts themselves are declared in globals.css).
+// Every weight shows on the first screen, so start downloading them alongside
+// the stylesheets rather than once the page has been laid out. Text still
+// shows in the fallback font until they arrive (font-display: swap), just
+// for less time.
+let fonts = [archivo400, archivo500, archivo600, archivo700];
+
 export let links: Route.LinksFunction = () => [
-  { rel: "stylesheet", href: archivo400 },
-  { rel: "stylesheet", href: archivo500 },
-  { rel: "stylesheet", href: archivo600 },
-  { rel: "stylesheet", href: archivo700 },
+  ...fonts.map((href) => ({
+    rel: "preload",
+    as: "font",
+    type: "font/woff2",
+    href,
+    crossOrigin: "anonymous" as const,
+  })),
   { rel: "stylesheet", href: silkStyles },
   { rel: "stylesheet", href: stylesheet },
   // Crisp at any size; the PNG is for browsers without SVG favicons.
