@@ -78,19 +78,22 @@ async function findUser(userId: string) {
 }
 
 /**
- * Lets a query start before the auth check. When the check throws first, the
- * query's promise is dropped, so its failure must not become an unhandled
- * rejection; whoever does await it still gets the error.
+ * Lets a query start before the DB has confirmed the user. When that check
+ * throws first, nobody awaits the query any more, so a failure would be an
+ * unhandled rejection, and silent: log it instead. Whoever does await the
+ * query still gets the error.
  */
 export function early<T>(query: Promise<T>) {
-  query.catch(() => {});
+  query.catch((error: unknown) => {
+    console.error("A query started alongside the sign-in check failed", error);
+  });
   return query;
 }
 
 type RequestAuth = {
   request: Request;
   userId: Promise<string | null>;
-  user: Promise<Awaited<ReturnType<typeof findUser>>>;
+  user?: Promise<Awaited<ReturnType<typeof findUser>>>;
 };
 
 let requestAuth = createContext<RequestAuth | null>(null);
@@ -115,12 +118,7 @@ function authFor({ request, context }: AuthArgs) {
   let auth = reading ? context.get(requestAuth) : null;
 
   if (auth?.request !== request) {
-    let userId = sessionUserId(request);
-    auth = {
-      request,
-      userId,
-      user: early(userId.then((id) => (id ? findUser(id) : null))),
-    };
+    auth = { request, userId: sessionUserId(request) };
     if (reading) context.set(requestAuth, auth);
   }
 
@@ -129,27 +127,41 @@ function authFor({ request, context }: AuthArgs) {
 
 /** The signed-in user, or null. Read from the DB at most once per request. */
 export function getUser(args: AuthArgs) {
-  return authFor(args).user;
+  let auth = authFor(args);
+  auth.user ??= auth.userId.then((id) => (id ? findUser(id) : null));
+
+  return auth.user;
+}
+
+async function signIn() {
+  return redirect("/login", {
+    headers: {
+      "Set-Cookie": await userCookie.serialize("", { maxAge: 0 }),
+    },
+  });
 }
 
 /**
- * The user ID the signed cookie names, known before the DB has confirmed the
- * user still exists. Only for starting a query early: return nothing from it
- * until `requireUser` has passed.
+ * The user ID a validly signed cookie names, checked without the DB, so a
+ * page can start its query alongside `requireUser`. Sends anyone without one
+ * to sign in straight away, so they cost no query at all. Return nothing
+ * from what it starts until `requireUser` has passed: the user may be gone.
  */
-export function claimedUserId(args: AuthArgs) {
-  return authFor(args).userId;
+export async function requireSessionCookie(args: AuthArgs) {
+  let userId = await authFor(args).userId;
+
+  if (!userId) {
+    throw await signIn();
+  }
+
+  return userId;
 }
 
 export async function requireUser(args: AuthArgs) {
   let user = await getUser(args);
 
   if (!user) {
-    throw redirect("/login", {
-      headers: {
-        "Set-Cookie": await userCookie.serialize("", { maxAge: 0 }),
-      },
-    });
+    throw await signIn();
   }
 
   return {

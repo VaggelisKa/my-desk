@@ -2,23 +2,35 @@
 import { createCookie, RouterContextProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findUser, findDesk } = vi.hoisted(() => ({
+/** A query result that also takes drizzle's `.where()` and `.orderBy()`. */
+function query(result: Promise<unknown>) {
+  const chain = Object.assign(result, {
+    where: () => chain,
+    orderBy: () => chain,
+  });
+  return chain;
+}
+const emptyQuery = () => query(Promise.resolve([]));
+const failingQuery = () =>
+  query(Promise.reject(new Error("Test query failed")));
+
+// Every query a page loader makes, apart from the user and the profile's desk.
+const { findUser, findDesk, pageQuery } = vi.hoisted(() => ({
   findUser: vi.fn(),
   findDesk: vi.fn(),
+  pageQuery: vi.fn(),
 }));
-vi.mock("./lib/db/drizzle.server", () => {
-  const failing = () => Promise.reject(new Error("Test query failed"));
-  return {
-    db: {
-      select: () => ({ from: failing }),
-      $count: failing,
-      query: {
-        users: { findFirst: findUser },
-        desks: { findFirst: findDesk },
-      },
+vi.mock("./lib/db/drizzle.server", () => ({
+  db: {
+    select: () => ({ from: pageQuery }),
+    $count: pageQuery,
+    query: {
+      users: { findFirst: findUser, findMany: pageQuery },
+      desks: { findFirst: findDesk, findMany: pageQuery },
+      reservations: { findMany: pageQuery },
     },
-  };
-});
+  },
+}));
 
 const testSecret = "test-only-session-secret-with-32-characters";
 const databaseUser = {
@@ -52,6 +64,7 @@ beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", testSecret);
   findUser.mockReset().mockResolvedValue({ ...databaseUser });
   findDesk.mockReset().mockResolvedValue(undefined);
+  pageQuery.mockReset().mockImplementation(emptyQuery);
 });
 
 afterEach(() => {
@@ -368,78 +381,157 @@ describe("one user read per request", () => {
     expect(findUser).toHaveBeenCalledTimes(2);
   });
 
-  it("names the cookie's user before the DB answers, and only a signed one", async () => {
-    const { createUserCookie, claimedUserId } = await import(
+  it("names a signed cookie's user without the DB, and sends anyone else to sign in", async () => {
+    const { createUserCookie, requireSessionCookie } = await import(
       "./cookies.server"
     );
     expect(
-      await claimedUserId(argsWithCookie(await createUserCookie("u00001"))),
+      await requireSessionCookie(
+        argsWithCookie(await createUserCookie("u00001")),
+      ),
     ).toBe("u00001");
     const forged = await createCookie("user").serialize({
       userId: "u00001",
       expiresAt: Date.now() + 60_000,
     });
-    expect(await claimedUserId(argsWithCookie(forged))).toBeNull();
+    const thrown = await requireSessionCookie(argsWithCookie(forged)).catch(
+      (error: unknown) => error,
+    );
+    expect(thrown).toBeInstanceOf(Response);
+    if (!(thrown instanceof Response))
+      throw new Error("Expected login redirect");
+    expect(thrown.headers.get("Location")).toBe("/login");
+    expect(thrown.headers.get("Set-Cookie")).toContain("Max-Age=0");
+    expect(findUser).not.toHaveBeenCalled();
   });
 
-  it("early() keeps a dropped query's failure for whoever awaits it", async () => {
+  it("early() logs a dropped query's failure and keeps it for whoever awaits it", async () => {
     const { early } = await import("./cookies.server");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = early(Promise.reject(new Error("Test query failed")));
     await new Promise((resolve) => setTimeout(resolve));
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("sign-in check"),
+      expect.objectContaining({ message: "Test query failed" }),
+    );
     await expect(failing).rejects.toThrow("Test query failed");
   });
 });
 
+/** Runs a page loader and hands back what it threw, which must be a Response. */
+async function thrownBy(loader: () => Promise<unknown>) {
+  const thrown = await loader().then(
+    (result) => ({ returned: result }),
+    (error: unknown) => error,
+  );
+  expect(thrown).toBeInstanceOf(Response);
+  if (!(thrown instanceof Response)) throw new Error("Expected a Response");
+  return thrown;
+}
+
+const pages = {
+  "/": () => import("./routes/_index"),
+  "/metrics": () => import("./routes/metrics"),
+  "/admin": () => import("./routes/admin"),
+  "/bookings": () => import("./routes/bookings._index"),
+  "/users/edit/u00002": () => import("./routes/users.edit.$id"),
+};
+
 describe("page loaders start their query alongside the guard", () => {
+  it.each(
+    Object.keys(pages).flatMap((path) => [
+      [path, "no cookie"],
+      [path, "a garbage cookie"],
+      [path, "a forged cookie"],
+    ]),
+  )("%s with %s redirects to sign in without any query", async (path, kind) => {
+    const cookie =
+      kind === "no cookie"
+        ? ""
+        : kind === "a garbage cookie"
+          ? "user=not-base64"
+          : await createCookie("user").serialize({
+              userId: "u00001",
+              expiresAt: Date.now() + 60_000,
+            });
+    const { loader } = await pages[path as keyof typeof pages]();
+    const args = { ...argsWithCookie(cookie, path), params: { id: "u00002" } };
+    const response = await thrownBy(() => loader(args));
+
+    expect(response.headers.get("Location")).toBe("/login");
+    expect(pageQuery).not.toHaveBeenCalled();
+    expect(findDesk).not.toHaveBeenCalled();
+    expect(findUser).not.toHaveBeenCalled();
+  });
+
+  it.each(["/", "/metrics", "/bookings"] as const)(
+    "%s with a signed cookie for a deleted user redirects and returns nothing",
+    async (path) => {
+      const { createUserCookie } = await import("./cookies.server");
+      const { loader } = await pages[path]();
+      findUser.mockResolvedValue(undefined);
+      const args = argsWithCookie(await createUserCookie("u00001"), path);
+      const response = await thrownBy(() => loader(args));
+
+      expect(response.headers.get("Location")).toBe("/login");
+      // It did start, alongside the check.
+      expect(pageQuery).toHaveBeenCalled();
+    },
+  );
+
+  it("a failing early query while the guard redirects is logged, not unhandled", async () => {
+    const { createUserCookie } = await import("./cookies.server");
+    const { loader } = await import("./routes/metrics");
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    findUser.mockResolvedValue(undefined);
+    pageQuery.mockImplementation(failingQuery);
+    const args = argsWithCookie(await createUserCookie("u00001"), "/metrics");
+
+    try {
+      const response = await thrownBy(() => loader(args));
+      expect(response.headers.get("Location")).toBe("/login");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("sign-in check"),
+        expect.objectContaining({ message: "Test query failed" }),
+      );
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
+  });
+
   it("the admin loader still sends a non-admin away with its toast", async () => {
     const { loader } = await import("./routes/admin");
     const { createUserCookie } = await import("./cookies.server");
     const args = argsWithCookie(await createUserCookie("u00001"), "/admin");
-    // The admin lists' query fails here (the mock has no findMany): the
-    // redirect still wins, and the dropped failure is not unhandled.
-    const response = await loader(args).catch((thrown: unknown) => thrown);
-    expect(response).toBeInstanceOf(Response);
-    if (!(response instanceof Response))
-      throw new Error("Expected unauthorized redirect");
+    const response = await thrownBy(() => loader(args));
+
     expect(response.headers.get("Location")).toBe("/");
     expect(response.headers.get("Set-Cookie")).toContain("toast-session");
     expect(findUser).toHaveBeenCalledOnce();
   });
 
-  it("the metrics loader sends a signed-out visitor to sign in", async () => {
-    // Its query fails here too; the redirect still wins.
-    const { loader } = await import("./routes/metrics");
-    const response = await loader(argsWithCookie("", "/metrics")).catch(
-      (thrown: unknown) => thrown,
-    );
-    expect(response).toBeInstanceOf(Response);
-    if (!(response instanceof Response))
-      throw new Error("Expected login redirect");
-    expect(response.headers.get("Location")).toBe("/login");
-  });
-
   it.each([
-    ["someone else's profile to a non-admin", "user", "u00002", 403],
-    ["a missing person to an admin", "admin", "u00002", 404],
-  ])(
-    "the profile loader refuses %s",
-    async (_label, role, profileId, status) => {
-      const { loader } = await import("./routes/users.edit.$id");
-      const { createUserCookie } = await import("./cookies.server");
-      findUser.mockImplementation(async ({ with: withDesk }) =>
-        withDesk ? { ...databaseUser, role } : undefined,
-      );
-      const args = {
-        ...argsWithCookie(
-          await createUserCookie("u00001"),
-          `/users/edit/${profileId}`,
-        ),
-        params: { id: profileId },
-      };
-      const thrown = await loader(args).catch((error: unknown) => error);
-      expect(thrown).toMatchObject({ init: { status } });
-    },
-  );
+    ["someone else's profile to a non-admin", "user", 403],
+    ["a missing person to an admin", "admin", 404],
+  ])("the profile loader refuses %s", async (_label, role, status) => {
+    const { loader } = await import("./routes/users.edit.$id");
+    const { createUserCookie } = await import("./cookies.server");
+    findUser.mockImplementation(async ({ with: withDesk }) =>
+      withDesk ? { ...databaseUser, role } : undefined,
+    );
+    const args = {
+      ...argsWithCookie(await createUserCookie("u00001"), "/users/edit/u00002"),
+      params: { id: "u00002" },
+    };
+    const thrown = await loader(args).catch((error: unknown) => error);
+    expect(thrown).toMatchObject({ init: { status } });
+    // Someone else's profile is only read once the role allows it.
+    expect(findDesk).toHaveBeenCalledTimes(role === "admin" ? 1 : 0);
+  });
 
   it("the profile loader shows your own profile", async () => {
     const { loader } = await import("./routes/users.edit.$id");

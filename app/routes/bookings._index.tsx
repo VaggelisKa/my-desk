@@ -1,6 +1,6 @@
 import { data, useRouteLoaderData } from "react-router";
 import { BookingList, EmptyBookings } from "~/components/bookings";
-import { claimedUserId, early, requireUser } from "~/cookies.server";
+import { early, requireSessionCookie, requireUser } from "~/cookies.server";
 import {
   listUpcomingBookings,
   removeBooking,
@@ -18,11 +18,11 @@ export let meta: Route.MetaFunction = () => [
 ];
 
 export async function loader(args: Route.LoaderArgs) {
-  // The cookie already names who is asking, so their bookings load alongside
-  // the check that they still exist, and go out only once that passed.
-  let bookings = early(
-    claimedUserId(args).then((id) => (id ? listUpcomingBookings(id) : [])),
-  );
+  // The signed cookie already names who is asking, so their bookings load
+  // alongside the check that they still exist, and go out only once that
+  // passed.
+  let claimed = await requireSessionCookie(args);
+  let bookings = early(listUpcomingBookings(claimed));
   await requireUser(args);
 
   return {

@@ -12,7 +12,7 @@ import { DeskTile, type DeskTileState } from "~/components/desk-tile";
 import { ErrorCard } from "~/components/error-card";
 import { DesksSkeleton, Legend } from "~/components/tab-pending";
 import { Wall } from "~/components/wall";
-import { early, requireUser } from "~/cookies.server";
+import { early, requireSessionCookie, requireUser } from "~/cookies.server";
 import { bookDesk } from "~/lib/bookings.server";
 import {
   defaultDay,
@@ -43,8 +43,9 @@ export async function loader(args: Route.LoaderArgs) {
     formatDate(defaultDay(now));
 
   // Not awaited on purpose: the shell streams immediately and the desk grid
-  // fills in once the query resolves. It needs nobody's row, so it starts
-  // alongside the sign-in check, and goes out only once that passed.
+  // fills in once the query resolves. For a signed cookie it starts alongside
+  // the check that the user still exists, and goes out only once that passed.
+  await requireSessionCookie(args);
   let desks = early(
     loadDesks({
       showFree: url.searchParams.get("show-free"),

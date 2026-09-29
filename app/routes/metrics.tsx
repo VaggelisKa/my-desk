@@ -3,7 +3,7 @@ import { Await } from "react-router";
 import { ErrorCard } from "~/components/error-card";
 import { Metrics } from "~/components/metrics";
 import { MetricsSkeleton } from "~/components/metrics-skeleton";
-import { early, requireUser } from "~/cookies.server";
+import { early, requireSessionCookie, requireUser } from "~/cookies.server";
 import { parseDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks } from "~/lib/db/schema";
@@ -36,8 +36,9 @@ async function loadPage() {
 
 export async function loader(args: Route.LoaderArgs) {
   // Not awaited on purpose: the shell streams immediately and the page fills
-  // in once the query resolves. It starts alongside the sign-in check, and
-  // goes out only once that passed.
+  // in once the query resolves. For a signed cookie it starts alongside the
+  // check that the user still exists, and goes out only once that passed.
+  await requireSessionCookie(args);
   let metrics = early(loadPage());
   await requireUser(args);
 

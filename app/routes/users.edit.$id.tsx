@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { data } from "react-router";
 import { dataWithError, redirectWithSuccess } from "remix-toast";
 import { ProfilePage } from "~/components/profile";
-import { early, requireUser } from "~/cookies.server";
+import { early, requireSessionCookie, requireUser } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
 import type { Route } from "./+types/users.edit.$id";
@@ -24,20 +24,23 @@ export async function loader(args: Route.LoaderArgs) {
     throw notFound();
   }
 
-  // Started alongside the sign-in check; read only once every check passed.
-  let profile = early(
+  let load = (id: string) =>
     Promise.all([
-      db.query.users.findFirst({ where: eq(users.id, paramsUserId) }),
-      db.query.desks.findFirst({ where: eq(desks.userId, paramsUserId) }),
-    ]),
-  );
+      db.query.users.findFirst({ where: eq(users.id, id) }),
+      db.query.desks.findFirst({ where: eq(desks.userId, id) }),
+    ]);
+  // Your own profile starts loading alongside the sign-in check; someone
+  // else's waits for the role that lets you see it. Read only once every
+  // check passed.
+  let claimed = await requireSessionCookie(args);
+  let own = claimed === paramsUserId ? early(load(paramsUserId)) : undefined;
   let { userId, role } = await requireUser(args);
 
   if (userId !== paramsUserId && role !== "admin") {
     throw notAllowed();
   }
 
-  let [userFromDb, desk] = await profile;
+  let [userFromDb, desk] = await (own ?? load(paramsUserId));
 
   if (!userFromDb) {
     throw notFound();
