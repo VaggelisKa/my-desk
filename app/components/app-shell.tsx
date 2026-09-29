@@ -47,6 +47,10 @@ let Desk = createLucideIcon("desk", [
 // Every tab link prefetches with `render`. Since each tab has a clientLoader,
 // that preloads only the tab's code and route map (which Safari does too) and
 // no data: the tab cache (see tab-warmup.tsx) loads the data instead.
+//
+// Tab links also move with a view transition, so the page cross-fades into
+// the next tab instead of swapping in one frame. The masthead and the dock
+// sit out of the fade (see `view-transition-name` in globals.css).
 let TABS: {
   id: Tab;
   label: string;
@@ -153,6 +157,7 @@ export function Masthead({ user }: { user: ShellUser }) {
                 ref={itemRef(tab.id)}
                 to={tab.to}
                 prefetch="render"
+                viewTransition
                 aria-current={isActive ? "page" : undefined}
                 onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
                 className={cn(
@@ -207,7 +212,7 @@ export function Dock({ user }: { user: ShellUser }) {
       data-compact={compact || undefined}
       className="app-dock group/dock fixed inset-x-0 bottom-[calc(12px+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 font-display transition-[opacity,transform] duration-200 data-[hidden]:pointer-events-none data-[hidden]:translate-y-4 data-[hidden]:opacity-0 md:hidden"
     >
-      <div className="relative flex items-center gap-0.5 rounded-full bg-[rgb(31_42_46/0.8)] p-[5px] shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150">
+      <div className="app-dock-pill relative flex items-center gap-0.5 rounded-full bg-[rgb(31_42_46/0.8)] p-[5px] shadow-[0_14px_30px_-10px_rgb(31_42_46/0.55),0_2px_6px_rgb(31_42_46/0.2)] ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150">
         {activeIndex >= 0 && (
           <span
             aria-hidden
@@ -230,6 +235,7 @@ export function Dock({ user }: { user: ShellUser }) {
               key={tab.id}
               to={tab.to}
               prefetch="render"
+              viewTransition
               aria-current={isActive ? "page" : undefined}
               onClick={(event) => {
                 if (!isActive) tapHaptic();
