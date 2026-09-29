@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { useState } from "react";
-import { BookingsBarChart } from "~/components/bookings-bar-chart";
+import { BookingsBarChart, GuestHatch } from "~/components/bookings-bar-chart";
 import { MetricsHeader } from "~/components/metrics-skeleton";
 import { officeNow } from "~/lib/dates";
 import {
@@ -241,6 +241,7 @@ function BookingsChart({ days, now }: { days: Day[]; now: Date }) {
         </span>
         <span className="inline-flex items-center gap-2">
           <svg aria-hidden width="12" height="12">
+            <GuestHatch />
             <rect
               width="12"
               height="12"

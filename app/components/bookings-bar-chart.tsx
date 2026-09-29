@@ -1,6 +1,20 @@
 import { format, isSameMonth } from "date-fns";
-import { useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { valueTicks, type bookingsBy, type Period } from "~/lib/metrics";
+import {
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
+import {
+  barAt,
+  barIndexAt,
+  valueTicks,
+  visibleLabels,
+  type Plot,
+} from "~/lib/bar-chart";
+import type { bookingsBy, Period } from "~/lib/metrics";
 
 // The Metrics bar chart, drawn by hand as SVG: stacked bars (own desk, then
 // striped guests), the total above each bar, a dashed grid and a tooltip.
@@ -26,6 +40,28 @@ type ChartProps = {
   now: Date;
 };
 
+/**
+ * The guest stripes, used by the bars and the legend swatch. It lives in the
+ * legend, which is always on the page, so the swatch has it even before the
+ * chart is drawn.
+ */
+export function GuestHatch() {
+  return (
+    <defs>
+      <pattern
+        id="guest-hatch"
+        width="6"
+        height="6"
+        patternUnits="userSpaceOnUse"
+        patternTransform="rotate(45)"
+      >
+        <rect width="6" height="6" fill={MOSS_SOFT} />
+        <line x1="0" y1="0" x2="0" y2="6" stroke={MOSS} strokeWidth="3" />
+      </pattern>
+    </defs>
+  );
+}
+
 let measureContext: CanvasRenderingContext2D | null = null;
 
 function textWidth(text: string, font: string) {
@@ -35,38 +71,6 @@ function textWidth(text: string, font: string) {
   }
   measureContext.font = font;
   return measureContext.measureText(text).width;
-}
-
-/**
- * Which date labels fit: always the first and the last, and between them
- * each one that keeps clear of the one before.
- */
-function visibleLabels(
-  centers: number[],
-  widths: number[],
-  start: number,
-  end: number,
-) {
-  let shown = centers.map(() => false);
-  let at = [...centers];
-  let last = centers.length - 1;
-
-  // Nudge the end labels inside the chart rather than cut them off.
-  at[last] = Math.min(at[last], end - widths[last] / 2);
-  if (at[last] - widths[last] / 2 >= start) {
-    shown[last] = true;
-    end = at[last] - widths[last] / 2 - MIN_LABEL_GAP;
-  }
-
-  at[0] = Math.max(at[0], start + widths[0] / 2);
-  for (let i = 0; i < last; i++) {
-    if (at[i] - widths[i] / 2 >= start && at[i] + widths[i] / 2 <= end) {
-      shown[i] = true;
-      start = at[i] + widths[i] / 2 + MIN_LABEL_GAP;
-    }
-  }
-
-  return at.map((x, i) => (shown[i] ? x : null));
 }
 
 /** A bar with rounded top corners, like the guest part on top of a stack. */
@@ -107,8 +111,15 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
   let tip = useRef<HTMLDivElement>(null);
   let [box, setBox] = useState<{ width: number; height: number } | null>(null);
   let [font, setFont] = useState("");
-  // The bar under the pointer and how far down the pointer is.
-  let [active, setActive] = useState<{ index: number; y: number } | null>(null);
+  // Label widths are measured in the web font, so draw again once it is in.
+  let [, fontsLoaded] = useReducer((n: number) => n + 1, 0);
+  // The bar under the pointer, how far down the pointer is, and which
+  // grouping it was: switching to months leaves nothing selected.
+  let [active, setActive] = useState<{
+    index: number;
+    y: number;
+    period: Period;
+  } | null>(null);
   let tipShown = useRef(false);
 
   // The chart is as wide as the page allows, so it is drawn once the browser
@@ -123,57 +134,77 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
       setBox({ width: el.clientWidth, height: el.clientHeight }),
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    let cancelled = false;
+    document.fonts?.ready.then(() => {
+      if (!cancelled) {
+        fontsLoaded();
+      }
+    });
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   }, []);
 
-  let plotWidth = box ? Math.max(0, box.width - LEFT - RIGHT) : 0;
-  let plotHeight = box ? Math.max(0, box.height - TOP - BOTTOM) : 0;
-  let band = data.length ? plotWidth / data.length : 0;
-  let barWidth = band * 0.8 > 1 ? Math.floor(band * 0.8) : band * 0.8;
+  let plot: Plot = {
+    left: LEFT,
+    top: TOP,
+    width: box ? Math.max(0, box.width - LEFT - RIGHT) : 0,
+    height: box ? Math.max(0, box.height - TOP - BOTTOM) : 0,
+  };
+  let { slot } = barAt(plot, data.length, 0);
   let ticks = valueTicks(Math.max(0, ...data.map((row) => row.total)));
-  let y = (value: number) => TOP + plotHeight - (value / ticks[4]) * plotHeight;
-  // After a switch to months the bar under a finger may be gone.
-  let activeRow = active ? data[active.index] : undefined;
+  let y = (value: number) =>
+    plot.top + plot.height - (value / ticks[4]) * plot.height;
+  let shown = active?.period === period ? active : null;
+  let activeRow = shown ? data[shown.index] : undefined;
+
+  // A finger's tooltip stays up after the tap; a tap anywhere else on the
+  // page puts it away.
+  let hasTip = activeRow != null;
+  useEffect(() => {
+    if (!hasTip) {
+      return;
+    }
+    function away(event: globalThis.PointerEvent) {
+      if (
+        event.pointerType !== "mouse" &&
+        !frame.current?.contains(event.target as Node)
+      ) {
+        setActive(null);
+      }
+    }
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [hasTip]);
 
   // Keep the tooltip beside the pointer and inside the chart, flipping it to
   // the other side near the right and bottom edges.
   useLayoutEffect(() => {
     let el = tip.current;
-    if (!el || !box || !active || !activeRow) {
+    if (!el || !box || !shown) {
       tipShown.current = false;
       return;
     }
-    let x = LEFT + band * (active.index + 0.5);
+    let x = LEFT + slot * (shown.index + 0.5);
     let left =
       x + 10 + el.offsetWidth > box.width
         ? Math.max(0, x - el.offsetWidth - 10)
         : x + 10;
     let top =
-      active.y + 10 + el.offsetHeight > box.height
-        ? Math.max(0, active.y - el.offsetHeight - 10)
-        : active.y + 10;
+      shown.y + 10 + el.offsetHeight > box.height
+        ? Math.max(0, shown.y - el.offsetHeight - 10)
+        : shown.y + 10;
     el.style.transition = tipShown.current ? "transform 400ms ease" : "";
     el.style.transform = `translate(${left}px, ${top}px)`;
     tipShown.current = true;
-  }, [active, activeRow, band, box]);
+  }, [shown, slot, box]);
 
   function onPointer(event: PointerEvent<SVGSVGElement>) {
     let rect = event.currentTarget.getBoundingClientRect();
-    let px = event.clientX - rect.left;
     let py = event.clientY - rect.top;
-    let inside =
-      px >= LEFT &&
-      px <= LEFT + plotWidth &&
-      py >= TOP &&
-      py <= TOP + plotHeight;
-    setActive(
-      inside && band > 0
-        ? {
-            index: Math.min(data.length - 1, Math.floor((px - LEFT) / band)),
-            y: py,
-          }
-        : null,
-    );
+    let index = barIndexAt(plot, data.length, event.clientX - rect.left, py);
+    setActive(index == null ? null : { index, y: py, period });
   }
 
   let dateLabels = data.map((row) =>
@@ -183,15 +214,15 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
         ? `${format(row.start, "MMM")} so far`
         : format(row.start, "MMM"),
   );
-  let labelAt =
-    box && data.length
-      ? visibleLabels(
-          data.map((_, i) => LEFT + band * (i + 0.5)),
-          dateLabels.map((label) => textWidth(label, font)),
-          LEFT,
-          LEFT + plotWidth,
-        )
-      : [];
+  let labelAt = box
+    ? visibleLabels(
+        data.map((_, i) => LEFT + slot * (i + 0.5)),
+        dateLabels.map((label) => textWidth(label, font)),
+        LEFT,
+        LEFT + plot.width,
+        MIN_LABEL_GAP,
+      )
+    : [];
 
   return (
     <div
@@ -200,38 +231,30 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
       className="relative h-[240px] text-xs sm:h-[300px]"
     >
       {box && (
+        // Out of the flow, so its drawn width never holds the frame open
+        // while the page narrows. Sideways drags move between bars; up and
+        // down still scroll the page.
         <svg
-          className="bookings-chart block"
+          className="bookings-chart absolute inset-0 touch-pan-y"
           width={box.width}
           height={box.height}
           onPointerMove={onPointer}
           onPointerDown={onPointer}
           onPointerLeave={(event) => {
-            // A tap leaves the tooltip up until the next tap, as on a phone
-            // there is no hovering away from a bar.
+            // A tap leaves the tooltip up, as on a phone there is no
+            // hovering away from a bar.
             if (event.pointerType === "mouse") {
               setActive(null);
             }
           }}
+          // The page took the touch over to scroll.
+          onPointerCancel={() => setActive(null)}
         >
-          <defs>
-            <pattern
-              id="guest-hatch"
-              width="6"
-              height="6"
-              patternUnits="userSpaceOnUse"
-              patternTransform="rotate(45)"
-            >
-              <rect width="6" height="6" fill={MOSS_SOFT} />
-              <line x1="0" y1="0" x2="0" y2="6" stroke={MOSS} strokeWidth="3" />
-            </pattern>
-          </defs>
-
           {ticks.map((tick) => (
             <line
               key={tick}
               x1={LEFT}
-              x2={LEFT + plotWidth}
+              x2={LEFT + plot.width}
               y1={y(tick)}
               y2={y(tick)}
               className="stroke-line"
@@ -245,7 +268,7 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
                 <text
                   key={row.start}
                   x={labelAt[i]}
-                  y={TOP + plotHeight + 16}
+                  y={TOP + plot.height + 16}
                   dy="0.71em"
                   textAnchor="middle"
                 >
@@ -266,18 +289,18 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
             ))}
           </g>
 
-          {active && activeRow && (
+          {shown && activeRow && (
             <rect
-              x={LEFT + band * active.index}
+              x={LEFT + slot * shown.index}
               y={TOP}
-              width={band}
-              height={plotHeight}
+              width={slot}
+              height={plot.height}
               className="fill-paper-muted"
             />
           )}
 
           {data.map((row, i) => {
-            let x = LEFT + band * i + band * 0.1;
+            let bar = barAt(plot, data.length, i);
             let ownTop = y(row.own);
             let totalTop = y(row.total);
 
@@ -285,22 +308,27 @@ export function BookingsBarChart({ data, period, now }: ChartProps) {
               <g key={row.start}>
                 {row.own > 0 && (
                   <rect
-                    x={x}
+                    x={bar.x}
                     y={ownTop}
-                    width={barWidth}
+                    width={bar.width}
                     height={y(0) - ownTop}
                     className="fill-ink"
                   />
                 )}
                 {row.guests > 0 && (
                   <path
-                    d={roundedTop(x, totalTop, barWidth, ownTop - totalTop)}
+                    d={roundedTop(
+                      bar.x,
+                      totalTop,
+                      bar.width,
+                      ownTop - totalTop,
+                    )}
                     fill="url(#guest-hatch)"
                     stroke={MOSS}
                   />
                 )}
                 <text
-                  x={x + barWidth / 2}
+                  x={bar.x + bar.width / 2}
                   y={totalTop - 6}
                   textAnchor="middle"
                   fontSize={FONT_SIZE}

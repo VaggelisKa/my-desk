@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingsBy, busiestDays, summarise, valueTicks } from "~/lib/metrics";
+import { bookingsBy, busiestDays, summarise } from "~/lib/metrics";
 
 function row(date: Date, bookings: number, guestBookings = 0) {
   return {
@@ -97,15 +97,5 @@ describe("bookingsBy", () => {
 
     expect(bookingsBy("months", sparse, now).map((m) => m.total)).toEqual([5]);
     expect(bookingsBy("weeks", sparse, now).map((m) => m.total)).toEqual([5]);
-  });
-});
-
-describe("valueTicks", () => {
-  it("picks five round values from 0 that cover the tallest bar", () => {
-    expect(valueTicks(270)).toEqual([0, 70, 140, 210, 280]);
-    expect(valueTicks(1135)).toEqual([0, 300, 600, 900, 1200]);
-    expect(valueTicks(18)).toEqual([0, 5, 10, 15, 20]);
-    expect(valueTicks(3)).toEqual([0, 1, 2, 3, 4]);
-    expect(valueTicks(0)).toEqual([0, 1, 2, 3, 4]);
   });
 });
