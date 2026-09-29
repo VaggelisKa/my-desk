@@ -143,6 +143,27 @@ test("tapping another tab while one loads shows the new tab's skeleton", async (
   await expect(page).toHaveURL("/");
 });
 
+test("tapping your own tab while another loads adds no Back step", async ({
+  page,
+}) => {
+  await gotoHydrated(page, "/");
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  await page.getByRole("link", { name: "Metrics" }).last().click();
+  await expect(page).toHaveURL("/metrics");
+  await page.route(/\/bookings\.data/, () => {
+    // Never answers, so Bookings stays loading.
+  });
+
+  await page.getByRole("link", { name: "Bookings" }).last().click();
+  await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
+  await page.getByRole("link", { name: "Metrics" }).last().click();
+  await expect(page.getByRole("heading", { name: "Bookings" })).toHaveCount(0);
+  await expect(page).toHaveURL("/metrics");
+
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+});
+
 test.describe("with reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 

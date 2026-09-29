@@ -132,7 +132,7 @@ let landed: (() => void) | undefined;
  */
 function useTabFade() {
   let navigate = useNavigate();
-  let { key } = useLocation();
+  let { key, pathname, search, hash } = useLocation();
 
   useLayoutEffect(() => {
     landed?.();
@@ -159,7 +159,9 @@ function useTabFade() {
         new Promise<void>((resolve) => {
           landed = resolve;
           setTimeout(resolve, FADE_WAIT_MS);
-          void navigate(to);
+          // Like a Link: going to the page you are on (cancelling a tab
+          // that is still loading) replaces it rather than adding an entry.
+          void navigate(to, { replace: pathname + search + hash === to });
         }),
     );
   };
