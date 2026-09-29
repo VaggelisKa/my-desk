@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
 import { useLocation, useNavigation, useSearchParams } from "react-router";
 import { AdminHeader } from "~/components/admin/shared";
 import { BookingsHeader } from "~/components/bookings";
@@ -12,48 +11,30 @@ import { defaultDay, formatDate, officeNow } from "~/lib/dates";
 import { cn } from "~/lib/utils";
 
 /**
- * How long a tab tap may take before its skeleton shows. A tab in the tab
- * cache lands well within it, so its page cross-fades straight in from the
- * one you were on (the tab links move with a view transition, which would
- * otherwise start from the skeleton). A tab that has to wait on the server
- * still shows its skeleton about as soon as you can tell.
- */
-const SKELETON_AFTER_MS = 100;
-
-/**
- * The tab a navigation is heading to, once it has loaded for
- * `SKELETON_AFTER_MS`, when that is not the tab you are on. Moving within a
- * tab (filters, days, Upcoming · Recurring) and form submissions keep the
- * page up as before.
+ * The tab a navigation is heading to, while it loads, when that is not the
+ * tab you are on. Moving within a tab (filters, days, Upcoming · Recurring)
+ * and form submissions keep the page up as before.
  */
 export function usePendingTab() {
   let location = useLocation();
   let navigation = useNavigation();
-  // The navigation that has been loading long enough to show its skeleton.
-  let [slowKey, setSlowKey] = useState<string>();
 
-  let target =
-    navigation.state === "loading" &&
-    !navigation.formMethod &&
-    navigation.location
-      ? activeTab(navigation.location.pathname)
-      : undefined;
-  let pending = target !== activeTab(location.pathname) ? target : undefined;
-  let key = pending && navigation.location?.key;
+  if (
+    navigation.state !== "loading" ||
+    navigation.formMethod ||
+    !navigation.location
+  ) {
+    return undefined;
+  }
 
-  useEffect(() => {
-    if (!key) return;
-    let timer = setTimeout(() => setSlowKey(key), SKELETON_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [key]);
-
-  return key && key === slowKey ? pending : undefined;
+  let target = activeTab(navigation.location.pathname);
+  return target !== activeTab(location.pathname) ? target : undefined;
 }
 
 /**
- * What a tab looks like before its data arrives. The shell swaps it in
- * shortly after you tap another tab, so the switch feels instant like a
- * native app instead of waiting on the server with the old page still up. Each one draws
+ * What a tab looks like before its data arrives. The shell swaps it in the
+ * moment you tap another tab, so the switch feels instant like a native app
+ * instead of waiting on the server with the old page still up. Each one draws
  * the page's real heading so nothing moves when the content lands.
  */
 export function TabPending({

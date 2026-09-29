@@ -336,17 +336,24 @@ body:has([data-selection-bar]) .app-dock {
   }
 }
 
-/* Tab switches cross-fade the page (the tab links move with a view
-   transition). Quick, so a tap still feels instant. The masthead and the
-   dock pill get their own names so they sit out of the fade: their new state
-   shows live straight away, so the tab highlight keeps sliding and nothing
-   blinks. The names go on the elements with the backdrop blur, since a named
-   element only blurs what is inside it. */
+/* A tap on another tab cross-fades the page (see `useTabFade`), quickly,
+   so the tap still feels instant. The masthead, the dock pill and the
+   loading bar get their own names so they sit out of the fade: their new
+   state shows live straight away, so the tab highlight keeps sliding and
+   nothing blinks. The names go on the elements with the backdrop blur, since
+   a named element only blurs what is inside it. */
 .app-masthead {
   view-transition-name: masthead;
 }
 .app-dock-pill {
   view-transition-name: dock;
+}
+/* Hidden for the keyboard: no name, so it is never drawn over the fade. */
+.app-dock[data-hidden] .app-dock-pill {
+  view-transition-name: none;
+}
+.app-progress {
+  view-transition-name: progress;
 }
 /* Taps go through to the new page underneath while it fades in. */
 ::view-transition {
@@ -359,18 +366,14 @@ body:has([data-selection-bar]) .app-dock {
 }
 ::view-transition-group(masthead),
 ::view-transition-group(dock),
+::view-transition-group(progress),
 ::view-transition-new(masthead),
-::view-transition-new(dock) {
+::view-transition-new(dock),
+::view-transition-new(progress) {
   animation: none;
 }
 ::view-transition-old(masthead),
-::view-transition-old(dock) {
+::view-transition-old(dock),
+::view-transition-old(progress) {
   display: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none !important;
-  }
 }

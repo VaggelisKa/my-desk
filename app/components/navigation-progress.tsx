@@ -32,7 +32,7 @@ export function NavigationProgress() {
       role="progressbar"
       aria-label="Loading page"
       aria-valuetext={isNavigating ? "Loading" : "Done"}
-      className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5"
+      className="app-progress pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5"
     >
       <div
         className={cn(

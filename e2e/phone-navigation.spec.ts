@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { authFile, expect, test } from "./fixtures";
 import { gotoHydrated } from "./pages/hydration";
 
@@ -59,6 +60,104 @@ test("a tapped tab shows up straight away and fills in once its data arrives", a
   await page.goBack();
   await expect(page).toHaveURL("/");
   await expect.poll(scrollTop).toBe(250);
+});
+
+/** Counts view transitions (the tab fade) from here on. */
+async function countFades(page: Page) {
+  await page.evaluate(() => {
+    let doc = document as Document & {
+      startViewTransition: (update: () => Promise<void>) => unknown;
+    };
+    let start = doc.startViewTransition.bind(doc);
+    let win = window as unknown as { fades: number };
+    win.fades = 0;
+    doc.startViewTransition = (update) => {
+      win.fades++;
+      return start(update);
+    };
+  });
+  return () =>
+    page.evaluate(() => (window as unknown as { fades: number }).fades);
+}
+
+test("a tab tap fades into its page, and Back does not fade", async ({
+  page,
+}) => {
+  await gotoHydrated(page, "/");
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  let fades = await countFades(page);
+
+  await page.getByRole("link", { name: "Bookings" }).last().click();
+  await expect(page).toHaveURL("/bookings");
+  await expect(page.getByText("Nothing booked yet")).toBeVisible();
+  expect(await fades()).toBe(1);
+
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  expect(await fades()).toBe(1);
+});
+
+test("a tab from the tab cache fades in without a skeleton", async ({
+  page,
+}) => {
+  let warmed = page.waitForResponse(/\/bookings\.data\?.*warm/);
+  await gotoHydrated(page, "/");
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  await page.clock.fastForward(1_000);
+  await warmed;
+
+  await page.evaluate(() => {
+    let win = window as unknown as { skeletons: number };
+    win.skeletons = 0;
+    new MutationObserver(() => {
+      if (document.querySelector(".animate-pulse")) win.skeletons++;
+    }).observe(document.body, { subtree: true, childList: true });
+  });
+
+  await page.getByRole("link", { name: "Bookings" }).last().click();
+  await expect(page).toHaveURL("/bookings");
+  await expect(page.getByText("Nothing booked yet")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { skeletons: number }).skeletons,
+    ),
+  ).toBe(0);
+});
+
+test("tapping another tab while one loads shows the new tab's skeleton", async ({
+  page,
+}) => {
+  await gotoHydrated(page, "/");
+  await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+  await page.route(/\/(bookings|metrics)\.data/, () => {
+    // Never answers, so both tabs stay loading.
+  });
+
+  await page.getByRole("link", { name: "Bookings" }).last().click();
+  await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Metrics" }).last().click();
+  await expect(page.getByRole("heading", { name: "Metrics" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unclaimed" })).toHaveCount(0);
+  await expect(page).toHaveURL("/");
+});
+
+test.describe("with reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("a tab tap goes straight to its page without a fade", async ({
+    page,
+  }) => {
+    await gotoHydrated(page, "/");
+    await page.getByRole("button", { name: "Unclaimed" }).waitFor();
+    let fades = await countFades(page);
+
+    await page.getByRole("link", { name: "Bookings" }).last().click();
+    await expect(page).toHaveURL("/bookings");
+    await expect(page.getByText("Nothing booked yet")).toBeVisible();
+    expect(await fades()).toBe(0);
+  });
 });
 
 test("a role an admin gave you shows once a tab refreshes", async ({

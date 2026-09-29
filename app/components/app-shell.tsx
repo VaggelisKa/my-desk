@@ -12,7 +12,7 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import { Link, useLocation, useNavigation } from "react-router";
+import { Link, useLocation, useNavigate, useNavigation } from "react-router";
 import { activeTab, PAGE_COLUMN, type Tab } from "~/lib/app-shell";
 import { tapHaptic } from "~/lib/haptics";
 import { cn, deskLabel } from "~/lib/utils";
@@ -48,9 +48,7 @@ let Desk = createLucideIcon("desk", [
 // that preloads only the tab's code and route map (which Safari does too) and
 // no data: the tab cache (see tab-warmup.tsx) loads the data instead.
 //
-// Tab links also move with a view transition, so the page cross-fades into
-// the next tab instead of swapping in one frame. The masthead and the dock
-// sit out of the fade (see `view-transition-name` in globals.css).
+// A tap on another tab cross-fades into its page (see `useTabFade`).
 let TABS: {
   id: Tab;
   label: string;
@@ -111,6 +109,62 @@ function rememberMenuSource(event: MouseEvent<HTMLElement>) {
   menuSource = event.currentTarget;
 }
 
+// How long a tab tap keeps the old page up for its fade while the next page
+// loads. A tab in the tab cache lands well within it; one still waiting on
+// the server fades to its skeleton instead.
+let FADE_WAIT_MS = 150;
+
+// This TypeScript's DOM types don't have view transitions yet.
+type TransitionDocument = Document & {
+  startViewTransition?: (update: () => Promise<void>) => unknown;
+};
+
+// Ends the wait of the fade in flight once its page has rendered.
+let landed: (() => void) | undefined;
+
+/**
+ * A tap on another tab cross-fades into its page with a view transition,
+ * rather than popping in. It is started here instead of with React Router's
+ * `viewTransition`, which also plays on Back and Forward: Safari's swipe
+ * back animates already, and moves within a tab (Recurring back to
+ * Upcoming) would fade too. Never with reduced motion. The masthead and the
+ * dock sit out of the fade (see `view-transition-name` in globals.css).
+ */
+function useTabFade() {
+  let navigate = useNavigate();
+  let { key } = useLocation();
+
+  useLayoutEffect(() => {
+    landed?.();
+    landed = undefined;
+  }, [key]);
+
+  return (event: MouseEvent, to: string) => {
+    let doc = document as TransitionDocument;
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      typeof doc.startViewTransition !== "function" ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    event.preventDefault();
+    doc.startViewTransition(
+      () =>
+        new Promise<void>((resolve) => {
+          landed = resolve;
+          setTimeout(resolve, FADE_WAIT_MS);
+          void navigate(to);
+        }),
+    );
+  };
+}
+
 /**
  * The tab to highlight follows the link you clicked straight away rather
  * than waiting for its page to load.
@@ -129,6 +183,7 @@ function useSlidingIndicator() {
 export function Masthead({ user }: { user: ShellUser }) {
   let { pathname } = useLocation();
   let { active, position, animate, itemRef } = useSlidingIndicator();
+  let fade = useTabFade();
 
   return (
     <header className="app-masthead sticky top-0 z-30 hidden h-[52px] border-b border-line bg-white/85 px-4 font-display text-ink backdrop-blur-md md:block">
@@ -157,9 +212,11 @@ export function Masthead({ user }: { user: ShellUser }) {
                 ref={itemRef(tab.id)}
                 to={tab.to}
                 prefetch="render"
-                viewTransition
                 aria-current={isActive ? "page" : undefined}
-                onClick={scrollToTopIfActive(isActive && pathname === tab.to)}
+                onClick={(event) => {
+                  scrollToTopIfActive(isActive && pathname === tab.to)(event);
+                  if (!isActive) fade(event, tab.to);
+                }}
                 className={cn(
                   "relative flex items-center px-2.5 text-[13px] font-semibold text-ink-muted transition-colors duration-300 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-moss",
                   isActive && "text-ink",
@@ -197,6 +254,7 @@ export function Dock({ user }: { user: ShellUser }) {
   let active = useActiveTab();
   let keyboardOpen = useKeyboardOpen();
   let compact = useCompactOnScroll();
+  let fade = useTabFade();
   let tabs = tabsFor(user);
   let activeIndex = tabs.findIndex((tab) => tab.id === active);
 
@@ -235,11 +293,11 @@ export function Dock({ user }: { user: ShellUser }) {
               key={tab.id}
               to={tab.to}
               prefetch="render"
-              viewTransition
               aria-current={isActive ? "page" : undefined}
               onClick={(event) => {
                 if (!isActive) tapHaptic();
                 scrollToTopIfActive(isActive && pathname === tab.to)(event);
+                if (!isActive) fade(event, tab.to);
               }}
               style={{ width: itemWidth }}
               className={cn(
