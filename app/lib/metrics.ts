@@ -115,3 +115,29 @@ export function bookingsBy(period: Period, days: Day[], now: Date) {
     .sort((a, b) => a.start - b.start)
     .map((g) => ({ ...g, total: g.own + g.guests }));
 }
+
+/**
+ * Five evenly spaced round values from 0 that cover `max`, like 0, 70, 140,
+ * 210, 280 for 270.
+ */
+export function valueTicks(max: number) {
+  if (max <= 0) {
+    return [0, 1, 2, 3, 4];
+  }
+
+  // A step of 1, 2, 2.5, 5 and so on times a power of ten, at least a quarter
+  // of the way to `max`, grown until four steps reach it. Counted in whole
+  // units so no rounding error creeps in.
+  let quarter = max / 4;
+  let digits = quarter < 1 ? 0 : String(Math.floor(quarter)).length;
+  let stepOf = (units: number) =>
+    digits === 1 ? units : Math.ceil((units * 10 ** digits) / 20);
+  let units = Math.ceil(digits === 1 ? quarter : (quarter * 20) / 10 ** digits);
+  let step = stepOf(units);
+
+  while (step * 4 < max) {
+    step = stepOf(++units);
+  }
+
+  return [0, step, step * 2, step * 3, step * 4];
+}

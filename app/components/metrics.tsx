@@ -1,7 +1,6 @@
 import { format } from "date-fns";
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { BookingsBarChart } from "~/components/bookings-bar-chart";
-import { CHART_FRAME } from "~/components/chart-frame";
 import { MetricsHeader } from "~/components/metrics-skeleton";
 import { officeNow } from "~/lib/dates";
 import {
@@ -232,12 +231,8 @@ function BookingsChart({ days, now }: { days: Day[]; now: Date }) {
 
       <ChartTable data={data} period={period} />
 
-      {/* Drawn only; the table above carries the same numbers. The chart
-          library loads only here, with an empty frame of the same size
-          until it arrives. */}
-      <Suspense fallback={<div aria-hidden className={CHART_FRAME} />}>
-        <BookingsBarChart data={data} period={period} now={now} />
-      </Suspense>
+      {/* Drawn only; the table above carries the same numbers. */}
+      <BookingsBarChart data={data} period={period} now={now} />
 
       <div className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-ink-muted">
         <span className="inline-flex items-center gap-2">
