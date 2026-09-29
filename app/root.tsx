@@ -31,7 +31,7 @@ import {
   WarmTabs,
 } from "~/components/tab-warmup";
 import { Toaster } from "~/components/ui/toaster";
-import { getAuthenticatedUser } from "~/cookies.server";
+import { getUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { activeTab, PAGE_COLUMN } from "~/lib/app-shell";
 import {
@@ -88,10 +88,11 @@ export let links: Route.LinksFunction = () => [
 // page), so the tab and screen readers never get a blank one.
 export let meta: Route.MetaFunction = () => [{ title: "My desk" }];
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader(args: Route.LoaderArgs) {
+  // The same read the page's loaders share, so a request reads the user once.
   let [{ toast, headers }, user] = await Promise.all([
-    getToast(request),
-    getAuthenticatedUser(request),
+    getToast(args.request),
+    getUser(args),
   ]);
 
   // Only what the app chrome shows goes to the browser.

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { data } from "react-router";
 import { dataWithError, redirectWithSuccess } from "remix-toast";
 import { ProfilePage } from "~/components/profile";
-import { requireAuthCookie } from "~/cookies.server";
+import { early, requireUser } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, users } from "~/lib/db/schema";
 import type { Route } from "./+types/users.edit.$id";
@@ -16,22 +16,28 @@ let notAllowed = () =>
 
 export let meta: Route.MetaFunction = () => [{ title: "Profile" }];
 
-export async function loader({ params, request }: Route.LoaderArgs) {
-  let { userId, role } = await requireAuthCookie(request);
-  let paramsUserId = params?.id?.toLowerCase();
+export async function loader(args: Route.LoaderArgs) {
+  let paramsUserId = args.params?.id?.toLowerCase();
 
+  // Never the case: the route only matches with an ID.
   if (!paramsUserId) {
     throw notFound();
   }
+
+  // Started alongside the sign-in check; read only once every check passed.
+  let profile = early(
+    Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, paramsUserId) }),
+      db.query.desks.findFirst({ where: eq(desks.userId, paramsUserId) }),
+    ]),
+  );
+  let { userId, role } = await requireUser(args);
 
   if (userId !== paramsUserId && role !== "admin") {
     throw notAllowed();
   }
 
-  let [userFromDb, desk] = await Promise.all([
-    db.query.users.findFirst({ where: eq(users.id, paramsUserId) }),
-    db.query.desks.findFirst({ where: eq(desks.userId, paramsUserId) }),
-  ]);
+  let [userFromDb, desk] = await profile;
 
   if (!userFromDb) {
     throw notFound();
@@ -51,8 +57,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
-  let { userId: sessionUserId, role } = await requireAuthCookie(request);
+export async function action(args: Route.ActionArgs) {
+  let { request, params } = args;
+  let { userId: sessionUserId, role } = await requireUser(args);
   // The user comes from the URL the loader authorized, not the form.
   let userId = params.id?.toLowerCase();
 

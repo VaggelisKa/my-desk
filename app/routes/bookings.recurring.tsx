@@ -11,7 +11,7 @@ import { Form, redirect, useNavigation, useSubmit } from "react-router";
 import type { OwnDesk } from "~/components/bookings";
 import { DeskChip } from "~/components/desk-chip";
 import { Button } from "~/components/ui/button";
-import { requireAuthCookie } from "~/cookies.server";
+import { requireUser } from "~/cookies.server";
 import { parseDate, WEEKDAYS, type Weekday } from "~/lib/dates";
 import { rescueFocus } from "~/lib/focus";
 import { changeRecurring, loadRecurring } from "~/lib/recurring.server";
@@ -21,8 +21,8 @@ import type { Route } from "./+types/bookings.recurring";
 
 export let meta: Route.MetaFunction = () => [{ title: "Recurring bookings" }];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let { userId } = await requireAuthCookie(request);
+export async function loader(args: Route.LoaderArgs) {
+  let { userId } = await requireUser(args);
   let recurring = await loadRecurring(userId);
 
   // Only your own desk can be booked ahead, so without one there is nothing
@@ -39,10 +39,10 @@ export function clientLoader({
   );
 }
 
-export async function action({ request }: Route.ActionArgs) {
-  let user = await requireAuthCookie(request);
+export async function action(args: Route.ActionArgs) {
+  let user = await requireUser(args);
 
-  return changeRecurring(user, await request.formData());
+  return changeRecurring(user, await args.request.formData());
 }
 
 let dayNames: Record<Weekday, string> = {

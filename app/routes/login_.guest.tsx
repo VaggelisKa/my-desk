@@ -7,7 +7,7 @@ import {
   AuthSubmit,
   CodeField,
 } from "~/components/auth-card";
-import { createUserCookie, getAuthenticatedUser } from "~/cookies.server";
+import { createUserCookie, getUser } from "~/cookies.server";
 import {
   addPerson,
   checkNewPerson,
@@ -21,8 +21,8 @@ export let meta: Route.MetaFunction = () => [
   },
 ];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let user = await getAuthenticatedUser(request);
+export async function loader(args: Route.LoaderArgs) {
+  let user = await getUser(args);
 
   if (user) {
     throw redirect("/");

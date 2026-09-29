@@ -12,7 +12,7 @@ import { DeskTile, type DeskTileState } from "~/components/desk-tile";
 import { ErrorCard } from "~/components/error-card";
 import { DesksSkeleton, Legend } from "~/components/tab-pending";
 import { Wall } from "~/components/wall";
-import { requireAuthCookie } from "~/cookies.server";
+import { early, requireUser } from "~/cookies.server";
 import { bookDesk } from "~/lib/bookings.server";
 import {
   defaultDay,
@@ -30,8 +30,8 @@ export const meta: MetaFunction = () => {
   return [{ title: "Desks" }];
 };
 
-export async function loader({ request, url }: Route.LoaderArgs) {
-  let { userId } = await requireAuthCookie(request);
+export async function loader(args: Route.LoaderArgs) {
+  let { url } = args;
 
   // "Today" is the office's, from the server, so the first render and
   // hydration agree even when the browser sits in another timezone. A missing
@@ -43,23 +43,27 @@ export async function loader({ request, url }: Route.LoaderArgs) {
     formatDate(defaultDay(now));
 
   // Not awaited on purpose: the shell streams immediately and the desk grid
-  // fills in once the query resolves.
-  let desks = loadDesks({
-    showFree: url.searchParams.get("show-free"),
-    column: url.searchParams.get("column"),
-    block: url.searchParams.get("block"),
-    selectedDayFilter: selectedDay,
-  });
+  // fills in once the query resolves. It needs nobody's row, so it starts
+  // alongside the sign-in check, and goes out only once that passed.
+  let desks = early(
+    loadDesks({
+      showFree: url.searchParams.get("show-free"),
+      column: url.searchParams.get("column"),
+      block: url.searchParams.get("block"),
+      selectedDayFilter: selectedDay,
+    }),
+  );
+  let { userId } = await requireUser(args);
 
   return { desks, userId, today, selectedDay };
 }
 
 // Booking happens in the desk sheet, so its fetcher posts here and the grid
 // revalidates with the new reservations while the sheet stays open.
-export async function action({ request }: Route.ActionArgs) {
-  let { userId } = await requireAuthCookie(request);
+export async function action(args: Route.ActionArgs) {
+  let { userId } = await requireUser(args);
 
-  return bookDesk(userId, await request.formData());
+  return bookDesk(userId, await args.request.formData());
 }
 
 // Fetcher actions that fail skip revalidation by default. A 409 means someone

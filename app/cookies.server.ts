@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
-import { createCookie, redirect } from "react-router";
+import {
+  createContext,
+  createCookie,
+  redirect,
+  type RouterContextProvider,
+} from "react-router";
 import { z } from "zod";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
@@ -44,7 +49,8 @@ export function createUserCookie(userId: string) {
   });
 }
 
-export async function getAuthenticatedUser(request: Request) {
+/** The user ID the signed session cookie names, or null. Not checked against the DB. */
+async function sessionUserId(request: Request) {
   let parsedCookie: unknown;
   try {
     parsedCookie = await userCookie.parse(request.headers.get("Cookie"));
@@ -58,17 +64,85 @@ export async function getAuthenticatedUser(request: Request) {
     return null;
   }
 
+  return session.data.userId;
+}
+
+async function findUser(userId: string) {
   // Identity is signed; authorization and profile data always come from the DB.
   return (
     (await db.query.users.findFirst({
-      where: eq(users.id, session.data.userId),
+      where: eq(users.id, userId),
       with: { desk: true },
     })) ?? null
   );
 }
 
-export async function requireAuthCookie(request: Request) {
-  let user = await getAuthenticatedUser(request);
+/**
+ * Lets a query start before the auth check. When the check throws first, the
+ * query's promise is dropped, so its failure must not become an unhandled
+ * rejection; whoever does await it still gets the error.
+ */
+export function early<T>(query: Promise<T>) {
+  query.catch(() => {});
+  return query;
+}
+
+type RequestAuth = {
+  request: Request;
+  userId: Promise<string | null>;
+  user: Promise<Awaited<ReturnType<typeof findUser>>>;
+};
+
+let requestAuth = createContext<RequestAuth | null>(null);
+
+/** What a loader or action gets: the request and its per-request context. */
+export type AuthArgs = {
+  request: Request;
+  context: Readonly<RouterContextProvider>;
+};
+
+/**
+ * The session for this request, read once. The root loader and the page's
+ * loaders run in the same request and share one context, so the user row is
+ * read from the DB once however many of them ask for it.
+ *
+ * Not across a form post: without JavaScript the action and the loaders run
+ * in one request, and the loaders must see what the action changed (a new
+ * name, a desk).
+ */
+function authFor({ request, context }: AuthArgs) {
+  let reading = request.method === "GET" || request.method === "HEAD";
+  let auth = reading ? context.get(requestAuth) : null;
+
+  if (auth?.request !== request) {
+    let userId = sessionUserId(request);
+    auth = {
+      request,
+      userId,
+      user: early(userId.then((id) => (id ? findUser(id) : null))),
+    };
+    if (reading) context.set(requestAuth, auth);
+  }
+
+  return auth;
+}
+
+/** The signed-in user, or null. Read from the DB at most once per request. */
+export function getUser(args: AuthArgs) {
+  return authFor(args).user;
+}
+
+/**
+ * The user ID the signed cookie names, known before the DB has confirmed the
+ * user still exists. Only for starting a query early: return nothing from it
+ * until `requireUser` has passed.
+ */
+export function claimedUserId(args: AuthArgs) {
+  return authFor(args).userId;
+}
+
+export async function requireUser(args: AuthArgs) {
+  let user = await getUser(args);
 
   if (!user) {
     throw redirect("/login", {

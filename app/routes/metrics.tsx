@@ -3,7 +3,7 @@ import { Await } from "react-router";
 import { ErrorCard } from "~/components/error-card";
 import { Metrics } from "~/components/metrics";
 import { MetricsSkeleton } from "~/components/metrics-skeleton";
-import { requireAuthCookie } from "~/cookies.server";
+import { early, requireUser } from "~/cookies.server";
 import { parseDate } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { bookingMetrics, desks } from "~/lib/db/schema";
@@ -34,12 +34,14 @@ async function loadPage() {
   return { rows, deskCount };
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuthCookie(request);
-
+export async function loader(args: Route.LoaderArgs) {
   // Not awaited on purpose: the shell streams immediately and the page fills
-  // in once the query resolves.
-  return { metrics: loadPage() };
+  // in once the query resolves. It starts alongside the sign-in check, and
+  // goes out only once that passed.
+  let metrics = early(loadPage());
+  await requireUser(args);
+
+  return { metrics };
 }
 
 // Client navigations await the query so the navigation stays pending until the
