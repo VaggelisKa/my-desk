@@ -67,8 +67,10 @@ type DepthFrame = {
 };
 
 // The Latin Archivo files (the fonts themselves are declared in globals.css).
-// Every weight shows on the first screen, so fetch them with the stylesheets
-// instead of after the page has been laid out.
+// Every weight shows on the first screen, so start downloading them alongside
+// the stylesheets rather than once the page has been laid out. Text still
+// shows in the fallback font until they arrive (font-display: swap), just
+// for less time.
 let fonts = [archivo400, archivo500, archivo600, archivo700];
 
 export let links: Route.LinksFunction = () => [
