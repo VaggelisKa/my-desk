@@ -24,10 +24,23 @@ import { AppMenu, Dock, Masthead } from "~/components/app-shell";
 import { ErrorCard } from "~/components/error-card";
 import { NavigationProgress } from "~/components/navigation-progress";
 import { TabPending, usePendingTab } from "~/components/tab-pending";
+import {
+  useClearOnSubmit,
+  useFreshAfterLongBreak,
+  useShowBackgroundRefresh,
+  WarmTabs,
+} from "~/components/tab-warmup";
 import { Toaster } from "~/components/ui/toaster";
 import { getAuthenticatedUser } from "~/cookies.server";
 import stylesheet from "~/globals.css?url";
 import { activeTab, PAGE_COLUMN } from "~/lib/app-shell";
+import {
+  clearTabCache,
+  isMutation,
+  isShellStale,
+  markShellFresh,
+  shellMarks,
+} from "~/lib/tab-cache";
 import { cn } from "~/lib/utils";
 import type { Route } from "./+types/root";
 import { useToast } from "./components/ui/use-toast";
@@ -98,27 +111,47 @@ export async function loader({ request }: Route.LoaderArgs) {
   return data({ user: shellUser, toast }, { headers });
 }
 
+// Marks the shell fresh once it really reloads (see `isShellStale`). Only runs
+// on revalidation, never on the first load (no `hydrate`).
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  let marks = shellMarks();
+  let data = await serverLoader();
+  markShellFresh(marks);
+  return data;
+}
+
 // Toasts are flashed through this loader. React Router skips revalidation after
 // an action responds with a 4xx/5xx, which would swallow every error toast.
-// Switching between the Admin tab's Desks, People and Bookings needs nothing
-// new from the server (the tab's lists share one loader), so it skips this one
-// too and the switch lands on tap.
+//
+// This runs after every change (a booking, an admin change, signing out) and
+// before anything reloads, so it also empties the tab cache there: no tab
+// shows data from before the change. A GET form (the Desks filters) changes
+// nothing, so it keeps the cache.
+//
+// Moving between tabs changes nothing the shell shows, so it skips this loader
+// and the tab's cached data lands on tap. The shell loads again when a tab's
+// loader redirected or failed (a signed-out session, a lost admin role with
+// its toast), and in the background along with each tab refresh, so a name,
+// role or desk changed by an admin shows up.
 export function shouldRevalidate({
   actionStatus,
-  currentUrl,
   nextUrl,
   formMethod,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  if (actionStatus !== undefined && actionStatus >= 400) {
+  if (isMutation(formMethod)) {
+    clearTabCache();
+
+    return actionStatus !== undefined && actionStatus >= 400
+      ? true
+      : defaultShouldRevalidate;
+  }
+
+  if (isShellStale()) {
     return true;
   }
 
-  if (
-    !formMethod &&
-    activeTab(currentUrl.pathname) === "admin" &&
-    activeTab(nextUrl.pathname) === "admin"
-  ) {
+  if (activeTab(nextUrl.pathname)) {
     return false;
   }
 
@@ -274,6 +307,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useOutletScrollRestoration(outlet, pendingTab !== undefined);
   useTouchFocusRings();
+  useShowBackgroundRefresh();
+  useClearOnSubmit();
+  useFreshAfterLongBreak();
 
   useEffect(() => {
     if (!data?.toast) {
@@ -371,6 +407,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <>
             <Dock user={user} />
             <AppMenu user={user} />
+            {!error && <WarmTabs user={user} />}
           </>
         )}
 

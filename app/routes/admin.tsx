@@ -7,6 +7,7 @@ import {
   requireAdmin,
 } from "~/lib/admin.server";
 import { formatDate, officeNow } from "~/lib/dates";
+import { cached } from "~/lib/tab-cache";
 import type { Route } from "./+types/admin";
 
 // The Admin tab: Desks (/admin), People (/admin/people) and Bookings
@@ -26,12 +27,26 @@ export async function action({ request }: Route.ActionArgs) {
   return handleAdminAction(request);
 }
 
-// Switching segments shows the same data, so only a change refetches it.
+// The same for every segment, so one entry serves all three.
+export function clientLoader({
+  serverLoader,
+  request,
+}: Route.ClientLoaderArgs) {
+  return cached("routes/admin", request, () => serverLoader());
+}
+
+// Switching segments shows the same data, so only a change refetches it. A
+// revalidation of the same page still runs, so a background refresh can show
+// newer data.
 export function shouldRevalidate({
   formMethod,
+  currentUrl,
+  nextUrl,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs) {
-  return formMethod ? defaultShouldRevalidate : false;
+  return formMethod || currentUrl.href === nextUrl.href
+    ? defaultShouldRevalidate
+    : false;
 }
 
 export default function AdminLayout({ loaderData }: Route.ComponentProps) {

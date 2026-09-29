@@ -127,6 +127,13 @@ export class TestDatabase {
       .where(eq(schema.users.id, users[user].id));
   }
 
+  async setRole(user: SeedUser, role: "user" | "admin") {
+    await this.db
+      .update(schema.users)
+      .set({ role })
+      .where(eq(schema.users.id, users[user].id));
+  }
+
   async moveDesk(id: number, place: { row: number; column: number }) {
     await this.db
       .update(schema.desks)

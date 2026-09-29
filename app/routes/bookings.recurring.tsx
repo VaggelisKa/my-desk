@@ -15,6 +15,7 @@ import { requireAuthCookie } from "~/cookies.server";
 import { parseDate, WEEKDAYS, type Weekday } from "~/lib/dates";
 import { rescueFocus } from "~/lib/focus";
 import { changeRecurring, loadRecurring } from "~/lib/recurring.server";
+import { cached, cacheKey } from "~/lib/tab-cache";
 import { cn, deskLabel } from "~/lib/utils";
 import type { Route } from "./+types/bookings.recurring";
 
@@ -27,6 +28,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Only your own desk can be booked ahead, so without one there is nothing
   // to repeat.
   return recurring ?? redirect("/bookings");
+}
+
+export function clientLoader({
+  serverLoader,
+  request,
+}: Route.ClientLoaderArgs) {
+  return cached(cacheKey("routes/bookings.recurring", request), request, () =>
+    serverLoader(),
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {

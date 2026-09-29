@@ -7,6 +7,7 @@ import {
   removeBookings,
 } from "~/lib/bookings.server";
 import { formatDate, officeNow } from "~/lib/dates";
+import { cacheKey, cached } from "~/lib/tab-cache";
 import type { Route } from "./+types/bookings._index";
 import type { loader as bookingsLoader } from "./bookings";
 
@@ -23,6 +24,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     bookings: await listUpcomingBookings(userId),
     today: formatDate(officeNow()),
   };
+}
+
+// Coming back shows your last list at once and refreshes it behind the scenes.
+export function clientLoader({
+  serverLoader,
+  request,
+}: Route.ClientLoaderArgs) {
+  return cached(cacheKey("routes/bookings._index", request), request, () =>
+    serverLoader(),
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
