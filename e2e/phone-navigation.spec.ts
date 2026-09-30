@@ -115,12 +115,44 @@ test("a tab from the tab cache fades in without a skeleton", async ({
     }).observe(document.body, { subtree: true, childList: true });
   });
 
+  // Counts the page's entrance animations still to play when the fade takes
+  // its picture of the new page.
+  await page.evaluate(() => {
+    let doc = document as Document & {
+      startViewTransition: (update: () => Promise<void>) => unknown;
+    };
+    let start = doc.startViewTransition.bind(doc);
+    doc.startViewTransition = (update) =>
+      start(async () => {
+        await update();
+        (window as unknown as { enterAtLanding: number }).enterAtLanding =
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation instanceof CSSAnimation &&
+                animation.animationName === "enter" &&
+                animation.playState !== "finished",
+            ).length;
+      });
+  });
+
   await page.getByRole("link", { name: "Bookings" }).last().click();
   await expect(page).toHaveURL("/bookings");
   await expect(page.getByText("Nothing booked yet")).toBeVisible();
   expect(
     await page.evaluate(
       () => (window as unknown as { skeletons: number }).skeletons,
+    ),
+  ).toBe(0);
+  // The fade is its entrance: once the page has rendered for it, the page's
+  // own stagger doesn't play on top.
+  expect(
+    await page.evaluate(() => document.querySelectorAll(".enter").length),
+  ).toBeGreaterThan(0);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { enterAtLanding: number }).enterAtLanding,
     ),
   ).toBe(0);
 });

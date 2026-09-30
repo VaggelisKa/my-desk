@@ -122,6 +122,22 @@ type TransitionDocument = Document & {
 // Ends the wait of the fade in flight once its page has rendered.
 let landed: (() => void) | undefined;
 
+// The fade is the page's entrance, so content that lands within it skips its
+// own `.enter` stagger rather than fading in twice. Content that replaces a
+// skeleton after the fade still eases in as usual.
+function skipEnterAnimations() {
+  for (let element of document.querySelectorAll(".enter")) {
+    for (let animation of element.getAnimations()) {
+      if (
+        animation instanceof CSSAnimation &&
+        animation.animationName === "enter"
+      ) {
+        animation.finish();
+      }
+    }
+  }
+}
+
 /**
  * A tap on another tab cross-fades into its page with a view transition,
  * rather than popping in. It is started here instead of with React Router's
@@ -135,7 +151,9 @@ function useTabFade() {
   let { key, pathname, search, hash } = useLocation();
 
   useLayoutEffect(() => {
-    landed?.();
+    if (!landed) return;
+    skipEnterAnimations();
+    landed();
     landed = undefined;
   }, [key]);
 
@@ -158,7 +176,12 @@ function useTabFade() {
       () =>
         new Promise<void>((resolve) => {
           landed = resolve;
-          setTimeout(resolve, FADE_WAIT_MS);
+          setTimeout(() => {
+            // Too slow: the fade goes to the skeleton, and the page's
+            // content eases in on its own once it arrives.
+            if (landed === resolve) landed = undefined;
+            resolve();
+          }, FADE_WAIT_MS);
           // Like a Link: going to the page you are on (cancelling a tab
           // that is still loading) replaces it rather than adding an entry.
           void navigate(to, { replace: pathname + search + hash === to });
