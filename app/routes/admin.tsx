@@ -1,6 +1,7 @@
 import { SheetStack } from "@silk-hq/components";
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import { AdminHeader, type AdminData } from "~/components/admin/shared";
+import { early, requireSessionCookie } from "~/cookies.server";
 import {
   handleAdminAction,
   loadAdminData,
@@ -16,15 +17,18 @@ import type { Route } from "./+types/admin";
 
 export let meta: Route.MetaFunction = () => [{ title: "Admin" }];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let { userId } = await requireAdmin(request);
-  let data = await loadAdminData();
+export async function loader(args: Route.LoaderArgs) {
+  // For a signed cookie, started alongside the admin check (the role is only
+  // in the DB), and returned only once it passed.
+  await requireSessionCookie(args);
+  let data = early(loadAdminData());
+  let { userId } = await requireAdmin(args);
 
-  return { ...data, me: userId, today: formatDate(officeNow()) };
+  return { ...(await data), me: userId, today: formatDate(officeNow()) };
 }
 
-export async function action({ request }: Route.ActionArgs) {
-  return handleAdminAction(request);
+export async function action(args: Route.ActionArgs) {
+  return handleAdminAction(args);
 }
 
 // The same for every segment, so one entry serves all three.

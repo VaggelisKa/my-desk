@@ -7,11 +7,7 @@ import {
   AuthSubmit,
   CodeField,
 } from "~/components/auth-card";
-import {
-  createUserCookie,
-  getAuthenticatedUser,
-  signedOutCookie,
-} from "~/cookies.server";
+import { createUserCookie, getUser, signedOutCookie } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import type { Route } from "./+types/login";
@@ -22,8 +18,9 @@ export let meta: Route.MetaFunction = () => [
   },
 ];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let user = await getAuthenticatedUser(request);
+export async function loader(args: Route.LoaderArgs) {
+  let { request } = args;
+  let user = await getUser(args);
 
   if (user) {
     throw redirect("/");

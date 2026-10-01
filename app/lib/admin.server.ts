@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm";
 import { data } from "react-router";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
-import { requireAuthCookie } from "~/cookies.server";
+import { requireUser, type AuthArgs } from "~/cookies.server";
 import { deletePicked, pickedBookings } from "~/lib/bookings.server";
 import { CronError, deleteCron } from "~/lib/cron";
 import { todayStart } from "~/lib/dates";
@@ -20,16 +20,16 @@ import { desks, reservations, users } from "~/lib/db/schema";
 import {
   addPerson,
   checkNewPerson,
-  type NewPersonErrors,
   personWithId,
+  type NewPersonErrors,
 } from "~/lib/people.server";
 import { capitalize, deskLabel, plural } from "~/lib/utils";
 
 // The Admin tab: who owns which desk, who is who, and what is booked. Every
 // loader and action here checks the role itself; hiding the tab is not enough.
 
-export async function requireAdmin(request: Request) {
-  let session = await requireAuthCookie(request);
+export async function requireAdmin(args: AuthArgs) {
+  let session = await requireUser(args);
 
   if (session.role !== "admin") {
     throw await redirectWithError("/", {
@@ -232,9 +232,9 @@ function field(formData: FormData, name: string) {
 let deskName = (desk: { block: number; row: number; column: number }) =>
   `desk ${deskLabel(desk)}`;
 
-export async function handleAdminAction(request: Request) {
-  let { userId: adminId } = await requireAdmin(request);
-  let formData = await request.formData();
+export async function handleAdminAction(args: AuthArgs) {
+  let { userId: adminId } = await requireAdmin(args);
+  let formData = await args.request.formData();
   let intent = field(formData, "intent");
 
   switch (intent) {

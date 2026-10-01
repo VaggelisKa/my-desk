@@ -1,6 +1,6 @@
 import { data, useRouteLoaderData } from "react-router";
 import { BookingList, EmptyBookings } from "~/components/bookings";
-import { requireAuthCookie } from "~/cookies.server";
+import { early, requireSessionCookie, requireUser } from "~/cookies.server";
 import {
   listUpcomingBookings,
   removeBooking,
@@ -17,11 +17,16 @@ export let meta: Route.MetaFunction = () => [
   },
 ];
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let { userId } = await requireAuthCookie(request);
+export async function loader(args: Route.LoaderArgs) {
+  // The signed cookie already names who is asking, so their bookings load
+  // alongside the check that they still exist, and go out only once that
+  // passed.
+  let claimed = await requireSessionCookie(args);
+  let bookings = early(listUpcomingBookings(claimed));
+  await requireUser(args);
 
   return {
-    bookings: await listUpcomingBookings(userId),
+    bookings: await bookings,
     today: formatDate(officeNow()),
   };
 }
@@ -36,8 +41,9 @@ export function clientLoader({
   );
 }
 
-export async function action({ request }: Route.ActionArgs) {
-  let user = await requireAuthCookie(request);
+export async function action(args: Route.ActionArgs) {
+  let { request } = args;
+  let user = await requireUser(args);
 
   if (request.method !== "DELETE") {
     return data(null, { status: 405 });

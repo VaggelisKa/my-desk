@@ -1,6 +1,6 @@
 import { Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import { BookingsHeader } from "~/components/bookings";
-import { requireAuthCookie } from "~/cookies.server";
+import { requireUser } from "~/cookies.server";
 import { cached } from "~/lib/tab-cache";
 import type { Route } from "./+types/bookings";
 
@@ -8,8 +8,8 @@ import type { Route } from "./+types/bookings";
 // (/bookings/recurring) keep their own loaders and actions, and share
 // this header so the switch between them stays mounted and animates.
 
-export async function loader({ request }: Route.LoaderArgs) {
-  let { desk } = await requireAuthCookie(request);
+export async function loader(args: Route.LoaderArgs) {
+  let { desk } = await requireUser(args);
 
   return { desk };
 }
