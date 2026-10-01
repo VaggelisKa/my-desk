@@ -98,7 +98,7 @@ test.describe("on a phone", () => {
       page.evaluate(
         () => document.documentElement.scrollHeight - window.innerHeight,
       );
-    await page.locator(".recharts-surface").waitFor();
+    await page.locator(".bookings-chart").waitFor();
     await expect.poll(windowOverflow).toBe(0);
 
     await outlet.evaluate((el) => el.scrollTo(0, el.scrollHeight));

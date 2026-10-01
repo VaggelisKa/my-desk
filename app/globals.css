@@ -1,3 +1,10 @@
+/* Bundled into this file at build time rather than linked from root.tsx, so
+   the fonts do not add four more stylesheets that hold up the first paint. */
+@import "@fontsource/archivo/400.css";
+@import "@fontsource/archivo/500.css";
+@import "@fontsource/archivo/600.css";
+@import "@fontsource/archivo/700.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
