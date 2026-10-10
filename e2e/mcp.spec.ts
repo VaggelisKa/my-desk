@@ -1,4 +1,4 @@
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { format } from "date-fns";
 import { createHash, randomBytes } from "node:crypto";
 import { expect, test } from "./fixtures";
@@ -40,6 +40,37 @@ async function callTool(
   args: Record<string, unknown> = {},
 ) {
   return rpc(request, token, "tools/call", { name, arguments: args });
+}
+
+/**
+ * Presses Allow or Cancel and returns where the authorize page sends the
+ * browser back to. The answer is read from the form post's redirect, and the
+ * browser is never sent on to the assistant's callback (a localhost port
+ * nothing listens on), so the test doesn't depend on how a browser treats
+ * that hop.
+ */
+async function answer(page: Page, button: "Allow" | "Cancel") {
+  let location = new Promise<URL>((resolve, reject) => {
+    void page.route("**/oauth/authorize?**", async (route) => {
+      if (route.request().method() !== "POST") {
+        return route.fallback();
+      }
+      try {
+        let response = await route.fetch({ maxRedirects: 0 });
+        resolve(new URL(response.headers().location));
+        await route.fulfill({ body: "ok" });
+      } catch (error) {
+        reject(error);
+        await route.abort();
+      }
+    });
+  });
+
+  let [back] = await Promise.all([
+    location,
+    page.getByRole("button", { name: button }).click(),
+  ]);
+  return back;
 }
 
 test.describe("connecting", () => {
@@ -106,14 +137,6 @@ test.describe("connecting", () => {
       scope: "desks",
     });
 
-    // The assistant's callback: catch where Allow sends the browser.
-    let redirected = new Promise<URL>((resolve) => {
-      void page.route(`${callback}**`, async (route) => {
-        resolve(new URL(route.request().url()));
-        await route.fulfill({ body: "ok" });
-      });
-    });
-
     await gotoHydrated(page, `/oauth/authorize?${authorize}`);
     await expect(
       page.getByRole("heading", { name: "Sign in to connect" }),
@@ -124,9 +147,7 @@ test.describe("connecting", () => {
     await expect(
       page.getByRole("heading", { name: "Allow Claude?" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Allow" }).click();
-
-    let back = await redirected;
+    let back = await answer(page, "Allow");
     expect(back.searchParams.get("state")).toBe("xyz");
     let code = back.searchParams.get("code")!;
 
@@ -177,13 +198,6 @@ test.describe("connecting", () => {
       })
     ).json();
 
-    let redirected = new Promise<URL>((resolve) => {
-      void page.route(`${callback}**`, async (route) => {
-        resolve(new URL(route.request().url()));
-        await route.fulfill({ body: "ok" });
-      });
-    });
-
     await gotoHydrated(
       page,
       `/oauth/authorize?${new URLSearchParams({
@@ -196,9 +210,10 @@ test.describe("connecting", () => {
     );
     await page.getByLabel("User ID").fill(users.bob.id);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("button", { name: "Cancel" }).click();
-
-    let back = await redirected;
+    await expect(
+      page.getByRole("heading", { name: /^Allow .+\?$/ }),
+    ).toBeVisible();
+    let back = await answer(page, "Cancel");
     expect(back.searchParams.get("error")).toBe("access_denied");
     expect(back.searchParams.has("code")).toBe(false);
   });
