@@ -10,12 +10,20 @@ import { oauthClients, oauthCodes, oauthTokens } from "~/lib/db/schema";
 // Every token names one person; tools take the caller from it, never from
 // their arguments. Only hashes of secrets, codes and tokens are stored.
 
-/** The one thing a token allows: what a signed-in person can do with desks. */
+/** What every token allows: what a signed-in person can do with desks. */
 export const SCOPE = "desks";
+
+/**
+ * What an Admin can add on the Allow page: the Admin tab's actions. It is
+ * only ever granted to someone who is an Admin, and the tools check the role
+ * again on each call.
+ */
+export const ADMIN_SCOPE = "admin";
 
 const CODE_TTL = 5 * 60 * 1000;
 export const ACCESS_TTL = 60 * 60 * 1000;
-const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000;
+/** How long a connection lasts without use: each refresh starts it again. */
+const REFRESH_TTL = 90 * 24 * 60 * 60 * 1000;
 
 /**
  * Where an assistant may send people back after they allowed it: Claude and
@@ -90,7 +98,7 @@ export function authServerMetadata(origin: string) {
       "client_secret_post",
       "client_secret_basic",
     ],
-    scopes_supported: [SCOPE],
+    scopes_supported: [SCOPE, ADMIN_SCOPE],
   };
 }
 
@@ -98,7 +106,7 @@ export function protectedResourceMetadata(origin: string) {
   return {
     resource: resourceUrl(origin),
     authorization_servers: [origin],
-    scopes_supported: [SCOPE],
+    scopes_supported: [SCOPE, ADMIN_SCOPE],
     bearer_methods_supported: ["header"],
     resource_name: "MyDesk",
   };
@@ -285,6 +293,7 @@ export async function createCode(grant: {
   userId: string;
   redirectUri: string;
   codeChallenge: string;
+  scope: string;
 }) {
   let code = newSecret();
 
@@ -305,6 +314,7 @@ async function issueTokens(grant: {
   grantId: string;
   clientId: string;
   userId: string;
+  scope: string;
 }) {
   let access = newSecret();
   let refresh = newSecret();
@@ -330,7 +340,7 @@ async function issueTokens(grant: {
     token_type: "Bearer",
     expires_in: ACCESS_TTL / 1000,
     refresh_token: refresh,
-    scope: SCOPE,
+    scope: grant.scope,
   };
 }
 
@@ -376,6 +386,7 @@ export async function exchangeCode(
     grantId: randomBytes(16).toString("hex"),
     clientId,
     userId: grant.userId,
+    scope: grant.scope,
   });
 }
 
@@ -414,6 +425,7 @@ export async function refreshTokens(clientId: string, refreshToken: unknown) {
     grantId: old.grantId,
     clientId,
     userId: old.userId,
+    scope: old.scope,
   });
 }
 
@@ -428,7 +440,12 @@ export async function verifyAccessToken(token: string) {
   });
 
   return row
-    ? { userId: row.userId, clientId: row.clientId, expiresAt: row.expiresAt }
+    ? {
+        userId: row.userId,
+        clientId: row.clientId,
+        expiresAt: row.expiresAt,
+        scopes: row.scope.split(" ").filter(Boolean),
+      }
     : null;
 }
 

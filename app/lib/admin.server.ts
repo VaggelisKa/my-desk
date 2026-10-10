@@ -232,136 +232,246 @@ function field(formData: FormData, name: string) {
 let deskName = (desk: { block: number; row: number; column: number }) =>
   `desk ${deskLabel(desk)}`;
 
+/**
+ * How an admin change went, for the web app's toasts and the assistants'
+ * answers alike. `warning` is a change that happened with a catch.
+ */
+export type AdminOutcome =
+  | { ok: true; message: string; warning?: string }
+  | { ok: false; status: number; message: string; description?: string };
+
+function toToast(outcome: AdminOutcome) {
+  if (!outcome.ok) {
+    let { status, message, description } = outcome;
+    return dataWithError(
+      null,
+      description ? { message, description } : { message },
+      { status },
+    );
+  }
+
+  return outcome.warning
+    ? dataWithError(done, {
+        message: outcome.message,
+        description: outcome.warning,
+      })
+    : dataWithSuccess(done, { message: outcome.message });
+}
+
+/**
+ * Gives a desk to someone. The new owner gives up any desk they had, so
+ * nobody ends up with two, and the old owner loses the desk's later days.
+ */
+export async function moveDesk(
+  deskId: number,
+  ownerId: string,
+): Promise<AdminOutcome> {
+  let newOwnerId = ownerId.trim().toLowerCase();
+  let [desk, newOwner] = await Promise.all([
+    db.query.desks.findFirst({ where: eq(desks.id, deskId) }),
+    db.query.users.findFirst({ where: eq(users.id, newOwnerId) }),
+  ]);
+
+  if (!desk || !newOwner) {
+    return {
+      ok: false,
+      status: 404,
+      message: desk ? "Person not found" : "Desk not found",
+    };
+  }
+  if (desk.userId === newOwner.id) {
+    return {
+      ok: true,
+      message: `${capitalize(newOwner.firstName)} already has this desk`,
+    };
+  }
+
+  // One transaction, so if someone else took the desk meanwhile the whole
+  // move is undone and nobody loses a desk or a booking.
+  let previousDesks = await db.query.desks.findMany({
+    where: and(eq(desks.userId, newOwner.id), ne(desks.id, deskId)),
+    columns: { id: true },
+  });
+  let previousIds = previousDesks.map((previous) => previous.id);
+
+  try {
+    await db.transaction(async (tx) => {
+      if (desk.userId) await releaseDesks([deskId], desk.userId, tx);
+      let claimed = await tx
+        .update(desks)
+        .set({ userId: newOwner.id })
+        .where(and(eq(desks.id, deskId), isNull(desks.userId)))
+        .returning({ id: desks.id });
+
+      if (claimed.length === 0) throw new DeskChanged();
+      if (previousIds.length) {
+        await releaseDesks(previousIds, newOwner.id, tx);
+      }
+    });
+  } catch (error) {
+    if (!(error instanceof DeskChanged)) throw error;
+
+    return {
+      ok: false,
+      status: 409,
+      message: "The desk changed meanwhile",
+      description: "Nothing was moved. Look again and try once more.",
+    };
+  }
+
+  // Their weekly jobs were for the desks they no longer have.
+  let stopped = await Promise.all([
+    previousIds.length ? stopRecurring(newOwner.id) : true,
+    desk.userId ? stopRecurring(desk.userId) : true,
+  ]);
+  let message = `Moved ${deskName(desk)} to ${capitalize(newOwner.firstName)}`;
+
+  return stopped.every(Boolean)
+    ? { ok: true, message }
+    : { ok: true, message, warning: stopLater };
+}
+
+/** Takes a desk from its owner, with their later days on it. */
+export async function unassignDesk(deskId: number): Promise<AdminOutcome> {
+  let desk = await db.query.desks.findFirst({ where: eq(desks.id, deskId) });
+
+  if (!desk) {
+    return { ok: false, status: 404, message: "Desk not found" };
+  }
+  let message = `${capitalize(deskName(desk))} is unclaimed now`;
+  let ownerId = desk.userId;
+
+  if (!ownerId) {
+    return { ok: true, message };
+  }
+
+  await db.transaction((tx) => releaseDesks([deskId], ownerId, tx));
+
+  return (await stopRecurring(ownerId))
+    ? { ok: true, message }
+    : { ok: true, message, warning: stopLater };
+}
+
+/**
+ * Cancels one person's booking of a desk on a day (`date` as stored). The
+ * person too: the row may be old, and the day taken by someone else since.
+ * Their booking is not the one the admin asked to cancel.
+ */
+export async function cancelBookingOf(
+  deskId: number,
+  date: string,
+  userId: string,
+): Promise<AdminOutcome> {
+  let deleted = await db
+    .delete(reservations)
+    .where(
+      and(
+        eq(reservations.deskId, deskId),
+        eq(reservations.date, date),
+        eq(reservations.userId, userId),
+      ),
+    )
+    .returning({ deskId: reservations.deskId });
+
+  return deleted.length
+    ? { ok: true, message: "Booking cancelled" }
+    : { ok: false, status: 404, message: "Booking not found" };
+}
+
+/**
+ * Adds a person, optionally at a desk. Only an unclaimed desk: taking a desk
+ * from someone is a move, with its own confirm.
+ */
+export async function addPersonAt(
+  input: { id: string; firstName: string; lastName: string },
+  deskId: number | null,
+): Promise<
+  | { ok: true; message: string }
+  | { ok: false; status: number; errors: AddPersonErrors }
+> {
+  let { person, errors } = checkNewPerson(input);
+
+  if (errors) {
+    return { ok: false, status: 400, errors };
+  }
+
+  let desk =
+    deskId !== null
+      ? await db.query.desks.findFirst({ where: eq(desks.id, deskId) })
+      : undefined;
+
+  if (deskId !== null && !desk) {
+    return { ok: false, status: 404, errors: { deskId: "Desk not found" } };
+  }
+
+  // One transaction, so a desk someone took meanwhile adds nobody.
+  try {
+    await db.transaction(async (tx) => {
+      if (!(await addPerson(person, tx))) throw new IdTaken();
+      if (deskId === null) return;
+
+      let claimed = await tx
+        .update(desks)
+        .set({ userId: person.id })
+        .where(and(eq(desks.id, deskId), isNull(desks.userId)))
+        .returning({ id: desks.id });
+      if (claimed.length === 0) throw new DeskChanged();
+    });
+  } catch (error) {
+    if (error instanceof IdTaken) {
+      let owner = await personWithId(person.id);
+      return {
+        ok: false,
+        status: 409,
+        errors: {
+          id: owner
+            ? `Already used by ${capitalize(owner.firstName)} ${capitalize(owner.lastName)}`
+            : "This user ID is already used",
+        },
+      };
+    }
+    if (error instanceof DeskChanged) {
+      return {
+        ok: false,
+        status: 409,
+        errors: { deskId: "Someone took this desk meanwhile. Pick another." },
+      };
+    }
+    throw error;
+  }
+
+  let name = `${capitalize(person.firstName)} ${capitalize(person.lastName)}`;
+  return {
+    ok: true,
+    message: desk ? `Added ${name} at ${deskName(desk)}` : `Added ${name}`,
+  };
+}
+
 export async function handleAdminAction(args: AuthArgs) {
   let { userId: adminId } = await requireAdmin(args);
   let formData = await args.request.formData();
   let intent = field(formData, "intent");
 
   switch (intent) {
-    case "reassign": {
-      let deskId = Number(field(formData, "deskId"));
-      let newOwnerId = field(formData, "userId").toLowerCase();
-      let [desk, newOwner] = await Promise.all([
-        db.query.desks.findFirst({ where: eq(desks.id, deskId) }),
-        db.query.users.findFirst({ where: eq(users.id, newOwnerId) }),
-      ]);
+    case "reassign":
+      return toToast(
+        await moveDesk(
+          Number(field(formData, "deskId")),
+          field(formData, "userId"),
+        ),
+      );
 
-      if (!desk || !newOwner) {
-        return dataWithError(
-          null,
-          { message: desk ? "Person not found" : "Desk not found" },
-          { status: 404 },
-        );
-      }
-      if (desk.userId === newOwner.id) {
-        return dataWithSuccess(done, {
-          message: `${capitalize(newOwner.firstName)} already has this desk`,
-        });
-      }
+    case "unassign":
+      return toToast(await unassignDesk(Number(field(formData, "deskId"))));
 
-      // The new owner gives up any desk they had, so nobody ends up with two.
-      // One transaction, so if someone else took the desk meanwhile the whole
-      // move is undone and nobody loses a desk or a booking.
-      let previousDesks = await db.query.desks.findMany({
-        where: and(eq(desks.userId, newOwner.id), ne(desks.id, deskId)),
-        columns: { id: true },
-      });
-      let previousIds = previousDesks.map((previous) => previous.id);
-
-      try {
-        await db.transaction(async (tx) => {
-          if (desk.userId) await releaseDesks([deskId], desk.userId, tx);
-          let claimed = await tx
-            .update(desks)
-            .set({ userId: newOwner.id })
-            .where(and(eq(desks.id, deskId), isNull(desks.userId)))
-            .returning({ id: desks.id });
-
-          if (claimed.length === 0) throw new DeskChanged();
-          if (previousIds.length) {
-            await releaseDesks(previousIds, newOwner.id, tx);
-          }
-        });
-      } catch (error) {
-        if (!(error instanceof DeskChanged)) throw error;
-
-        return dataWithError(
-          null,
-          {
-            message: "The desk changed meanwhile",
-            description: "Nothing was moved. Look again and try once more.",
-          },
-          { status: 409 },
-        );
-      }
-
-      // Their weekly jobs were for the desks they no longer have.
-      let stopped = await Promise.all([
-        previousIds.length ? stopRecurring(newOwner.id) : true,
-        desk.userId ? stopRecurring(desk.userId) : true,
-      ]);
-      let message = `Moved ${deskName(desk)} to ${capitalize(newOwner.firstName)}`;
-
-      return stopped.every(Boolean)
-        ? dataWithSuccess(done, { message })
-        : dataWithError(done, { message, description: stopLater });
-    }
-
-    case "unassign": {
-      let deskId = Number(field(formData, "deskId"));
-      let desk = await db.query.desks.findFirst({
-        where: eq(desks.id, deskId),
-      });
-
-      if (!desk) {
-        return dataWithError(
-          null,
-          { message: "Desk not found" },
-          { status: 404 },
-        );
-      }
-      let message = `${capitalize(deskName(desk))} is unclaimed now`;
-
-      let ownerId = desk.userId;
-
-      if (!ownerId) {
-        return dataWithSuccess(done, { message });
-      }
-
-      await db.transaction((tx) => releaseDesks([deskId], ownerId, tx));
-
-      return (await stopRecurring(ownerId))
-        ? dataWithSuccess(done, { message })
-        : dataWithError(done, { message, description: stopLater });
-    }
-
-    case "cancel": {
-      let deskId = Number(field(formData, "deskId"));
-      let date = field(formData, "date");
-      // The person too: the row may be old, and the day taken by someone else
-      // since. Their booking is not the one the admin asked to cancel.
-      let userId = field(formData, "userId");
-      let deleted = await db
-        .delete(reservations)
-        .where(
-          and(
-            eq(reservations.deskId, deskId),
-            eq(reservations.date, date),
-            eq(reservations.userId, userId),
-          ),
-        )
-        .returning({ deskId: reservations.deskId });
-
-      if (!deleted.length) {
-        return dataWithError(
-          null,
-          { message: "Booking not found" },
-          { status: 404 },
-        );
-      }
-
-      return dataWithSuccess(done, { message: "Booking cancelled" });
-    }
+    case "cancel":
+      return toToast(
+        await cancelBookingOf(
+          Number(field(formData, "deskId")),
+          field(formData, "date"),
+          field(formData, "userId"),
+        ),
+      );
 
     case "cancel-many": {
       let picked = pickedBookings(formData);
@@ -425,78 +535,22 @@ export async function handleAdminAction(args: AuthArgs) {
     }
 
     case "add-person": {
-      let { person, errors } = checkNewPerson({
-        id: field(formData, "userId"),
-        firstName: field(formData, "firstName"),
-        lastName: field(formData, "lastName"),
-      });
-
-      if (errors) {
-        return data({ ok: false as const, errors }, { status: 400 });
-      }
-
-      // A desk is optional, and only an unclaimed one: taking a desk from
-      // someone is a move, with its own confirm.
       let pickedDesk = field(formData, "deskId");
-      let deskId = pickedDesk ? Number(pickedDesk) : null;
-      let desk =
-        deskId !== null
-          ? await db.query.desks.findFirst({ where: eq(desks.id, deskId) })
-          : undefined;
+      let added = await addPersonAt(
+        {
+          id: field(formData, "userId"),
+          firstName: field(formData, "firstName"),
+          lastName: field(formData, "lastName"),
+        },
+        pickedDesk ? Number(pickedDesk) : null,
+      );
 
-      if (deskId !== null && !desk) {
-        return data(
-          { ok: false as const, errors: { deskId: "Desk not found" } },
-          { status: 404 },
-        );
-      }
-
-      // One transaction, so a desk someone took meanwhile adds nobody.
-      try {
-        await db.transaction(async (tx) => {
-          if (!(await addPerson(person, tx))) throw new IdTaken();
-          if (deskId === null) return;
-
-          let claimed = await tx
-            .update(desks)
-            .set({ userId: person.id })
-            .where(and(eq(desks.id, deskId), isNull(desks.userId)))
-            .returning({ id: desks.id });
-          if (claimed.length === 0) throw new DeskChanged();
-        });
-      } catch (error) {
-        if (error instanceof IdTaken) {
-          let owner = await personWithId(person.id);
-          return data(
-            {
-              ok: false as const,
-              errors: {
-                id: owner
-                  ? `Already used by ${capitalize(owner.firstName)} ${capitalize(owner.lastName)}`
-                  : "This user ID is already used",
-              },
-            },
-            { status: 409 },
+      return added.ok
+        ? dataWithSuccess(done, { message: added.message })
+        : data(
+            { ok: false as const, errors: added.errors },
+            { status: added.status },
           );
-        }
-        if (error instanceof DeskChanged) {
-          return data(
-            {
-              ok: false as const,
-              errors: {
-                deskId: "Someone took this desk meanwhile. Pick another.",
-              },
-            },
-            { status: 409 },
-          );
-        }
-        throw error;
-      }
-
-      let name = `${capitalize(person.firstName)} ${capitalize(person.lastName)}`;
-      return dataWithSuccess(done, {
-        message: desk ? `Added ${name} at ${deskName(desk)}` : `Added ${name}`,
-      });
     }
 
     case "rename": {

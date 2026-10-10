@@ -5,7 +5,12 @@ import {
   type AuthInfo,
   type McpRequestContext,
 } from "@modelcontextprotocol/server";
-import { oauthHeaders, SCOPE, verifyAccessToken } from "~/lib/mcp/oauth.server";
+import {
+  ADMIN_SCOPE,
+  oauthHeaders,
+  SCOPE,
+  verifyAccessToken,
+} from "~/lib/mcp/oauth.server";
 import { createDeskServer } from "~/lib/mcp/tools.server";
 import type { Route } from "./+types/mcp";
 
@@ -17,6 +22,7 @@ function serverFor({ authInfo }: Pick<McpRequestContext, "authInfo">) {
   return createDeskServer({
     userId: String(authInfo?.extra?.userId),
     clientId: authInfo?.clientId ?? "",
+    admin: authInfo?.scopes.includes(ADMIN_SCOPE) ?? false,
   });
 }
 
@@ -98,7 +104,7 @@ async function serve(request: Request) {
   let authInfo: AuthInfo = {
     token,
     clientId: grant.clientId,
-    scopes: [SCOPE],
+    scopes: grant.scopes,
     expiresAt: Math.floor(grant.expiresAt / 1000),
     resource: new URL(`${origin}/mcp`),
     extra: { userId: grant.userId },

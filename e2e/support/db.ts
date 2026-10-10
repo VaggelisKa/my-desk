@@ -167,9 +167,9 @@ export class TestDatabase {
 
   /**
    * An MCP access token for `user`, as if they had connected an assistant,
-   * so tool tests can skip the sign-in flow.
+   * so tool tests can skip the sign-in flow. `scope` as the Allow page grants it.
    */
-  async addMcpToken(user: SeedUser) {
+  async addMcpToken(user: SeedUser, scope = "desks") {
     let token = randomBytes(32).toString("base64url");
     let clientId = randomBytes(8).toString("hex");
 
@@ -184,6 +184,7 @@ export class TestDatabase {
       grantId: clientId,
       clientId,
       userId: users[user].id,
+      scope,
       expiresAt: NOW.getTime() + 60 * 60 * 1000,
     });
 
@@ -209,6 +210,7 @@ export class TestDatabase {
   mcpAuditLog(user: SeedUser) {
     return this.db.query.mcpAuditLog.findMany({
       where: eq(schema.mcpAuditLog.userId, users[user].id),
+      orderBy: [asc(schema.mcpAuditLog.id)],
     });
   }
 

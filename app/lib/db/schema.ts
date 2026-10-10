@@ -131,6 +131,8 @@ export let oauthCodes = sqliteTable("oauth_codes", {
     .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   redirectUri: text("redirect_uri").notNull(),
   codeChallenge: text("code_challenge").notNull(),
+  /** What the person allowed: "desks", or "desks admin" for an Admin who ticked it. */
+  scope: text("scope").notNull().default("desks"),
   expiresAt: integer("expires_at", { mode: "number" }).notNull(),
 });
 
@@ -153,6 +155,8 @@ export let oauthTokens = sqliteTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
+    /** The grant's scope, kept across refreshes. */
+    scope: text("scope").notNull().default("desks"),
     expiresAt: integer("expires_at", { mode: "number" }).notNull(),
   },
   (t) => [index("idx_oauth_tokens_grant_id").on(t.grantId)],

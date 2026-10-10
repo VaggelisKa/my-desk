@@ -12,15 +12,18 @@ import { createUserCookie, getUser } from "~/cookies.server";
 import { db } from "~/lib/db/drizzle.server";
 import { users } from "~/lib/db/schema";
 import {
+  ADMIN_SCOPE,
   createCode,
   readAuthorizeRequest,
+  SCOPE,
   withParams,
 } from "~/lib/mcp/oauth.server";
 import { capitalize } from "~/lib/utils";
 import type { Route } from "./+types/oauth.authorize";
 
 // Where Claude or ChatGPT sends someone to connect MyDesk: sign in as on the
-// web (skipped when already signed in), then Allow or Cancel. The forms post
+// web (skipped when already signed in), then Allow or Cancel. An Admin can
+// also allow the Admin tab's actions, off unless they tick it. The forms post
 // natively (reloadDocument), so Allow ends in a plain redirect back to the
 // assistant.
 
@@ -39,7 +42,12 @@ export async function loader(args: Route.LoaderArgs) {
   let auth = await readAuthorizeRequest(args.url);
 
   if (auth.kind === "fatal") {
-    return { error: auth.message, client: null, returnsTo: null, user: null };
+    return {
+      error: auth.message,
+      client: null,
+      returnsTo: null,
+      user: null,
+    };
   }
   if (auth.kind === "refuse") {
     throw redirect(auth.to);
@@ -53,6 +61,7 @@ export async function loader(args: Route.LoaderArgs) {
     returnsTo: auth.returnsTo,
     user: user && {
       name: `${capitalize(user.firstName)} ${capitalize(user.lastName)}`,
+      isAdmin: user.role === "admin",
     },
   };
 }
@@ -104,11 +113,14 @@ export async function action(args: Route.ActionArgs) {
     throw redirect(url.pathname + url.search);
   }
 
+  // Admin tools only for someone who is an Admin now and ticked the box.
+  let admin = form.get("admin") === "on" && user.role === "admin";
   let code = await createCode({
     clientId: auth.client.id,
     userId: user.id,
     redirectUri: auth.redirectUri,
     codeChallenge: auth.codeChallenge,
+    scope: admin ? `${SCOPE} ${ADMIN_SCOPE}` : SCOPE,
   });
 
   throw redirect(
@@ -175,6 +187,21 @@ export default function Authorize({
       description={`It will see the desks and bookings, and book or cancel desks as ${user.name}, following the same rules as the app.`}
     >
       <Form method="POST" reloadDocument className="flex flex-col gap-3">
+        {user.isAdmin ? (
+          <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-[15px]">
+            <input
+              type="checkbox"
+              name="admin"
+              className="mt-1 size-4 accent-current"
+            />
+            <span>
+              Also allow Admin actions
+              <span className="block text-[13px] text-ink-muted">
+                Add people, move desks and cancel anyone's bookings.
+              </span>
+            </span>
+          </label>
+        ) : null}
         <p className="text-[13px] text-ink-muted">
           You'll go back to <span className="font-semibold">{returnsTo}</span>.
         </p>

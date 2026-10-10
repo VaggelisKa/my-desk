@@ -213,10 +213,79 @@ test.describe("connecting", () => {
     await expect(
       page.getByRole("heading", { name: /^Allow .+\?$/ }),
     ).toBeVisible();
+    // Only Admins are offered the Admin actions.
+    await expect(page.getByLabel("Also allow Admin actions")).toHaveCount(0);
     let back = await answer(page, "Cancel");
     expect(back.searchParams.get("error")).toBe("access_denied");
     expect(back.searchParams.has("code")).toBe(false);
   });
+});
+
+test("an Admin who ticks Admin actions gets the admin tools", async ({
+  page,
+  request,
+}) => {
+  let callback = "http://localhost:9999/callback";
+  let client = await (
+    await request.post("/oauth/register", {
+      data: {
+        client_name: "Claude",
+        redirect_uris: [callback],
+        token_endpoint_auth_method: "none",
+      },
+    })
+  ).json();
+  let verifier = randomBytes(32).toString("base64url");
+
+  await gotoHydrated(
+    page,
+    `/oauth/authorize?${new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: callback,
+      code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+      code_challenge_method: "S256",
+      scope: "desks admin",
+    })}`,
+  );
+  await page.getByLabel("User ID").fill(users.admin.id);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  // Off until the Admin ticks it, whatever the assistant asked for.
+  let admin = page.getByLabel("Also allow Admin actions");
+  await expect(admin).not.toBeChecked();
+  await admin.check();
+  let back = await answer(page, "Allow");
+
+  let tokens = await (
+    await request.post("/oauth/token", {
+      form: {
+        grant_type: "authorization_code",
+        code: back.searchParams.get("code")!,
+        redirect_uri: callback,
+        client_id: client.client_id,
+        code_verifier: verifier,
+      },
+    })
+  ).json();
+  expect(tokens.scope).toBe("desks admin");
+
+  let { tools } = await rpc(request, tokens.access_token, "tools/list");
+  expect(tools.map((tool: { name: string }) => tool.name)).toContain(
+    "admin_assign_desk",
+  );
+
+  // A refreshed token keeps the scope.
+  let refreshed = await (
+    await request.post("/oauth/token", {
+      form: {
+        grant_type: "refresh_token",
+        refresh_token: tokens.refresh_token,
+        client_id: client.client_id,
+      },
+    })
+  ).json();
+  expect(refreshed.scope).toBe("desks admin");
 });
 
 test.describe("tools", () => {
@@ -397,5 +466,122 @@ test.describe("tools", () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("Too many changes");
     expect(await db.reservation(desks.alice.id, "tuesday")).toBeUndefined();
+  });
+});
+
+test.describe("admin tools", () => {
+  test("are not listed without the admin scope, even for an Admin", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("admin");
+    let { tools } = await rpc(request, token, "tools/list");
+
+    expect(
+      tools.filter((tool: { name: string }) => tool.name.startsWith("admin_")),
+    ).toEqual([]);
+  });
+
+  test("refuse someone who is no longer an Admin", async ({ request, db }) => {
+    let token = await db.addMcpToken("admin", "desks admin");
+    await db.setRole("admin", "user");
+
+    let people = await callTool(request, token, "admin_list_people");
+    expect(people.isError).toBe(true);
+    expect(people.content[0].text).toContain("not an Admin");
+
+    let moved = await callTool(request, token, "admin_unassign_desk", {
+      desk_id: desks.bob.id,
+    });
+    expect(moved.isError).toBe(true);
+    expect((await db.desk(desks.bob.id))?.userId).toBe(users.bob.id);
+  });
+
+  test("move desks and cancel someone's booking, as the Admin tab does", async ({
+    request,
+    db,
+  }) => {
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "monday",
+    });
+    let token = await db.addMcpToken("admin", "desks admin");
+
+    let { tools } = await rpc(request, token, "tools/list");
+    let byName = Object.fromEntries(
+      tools.map((tool: { name: string }) => [tool.name, tool]),
+    );
+    expect(byName.admin_list_people.annotations.readOnlyHint).toBe(true);
+    expect(byName.admin_cancel_booking.annotations.destructiveHint).toBe(true);
+
+    let { structuredContent: people } = await callTool(
+      request,
+      token,
+      "admin_list_people",
+    );
+    expect(people.people).toContainEqual(
+      expect.objectContaining({
+        user_id: users.bob.id,
+        name: "Bob Berg",
+        desk: { desk_id: desks.bob.id, label: expect.any(String) },
+      }),
+    );
+
+    // An Admin with the scope sees who booked, by user ID.
+    let { structuredContent: today } = await callTool(
+      request,
+      token,
+      "list_desks",
+    );
+    let bobs = today.desks.find(
+      (d: { desk_id: number }) => d.desk_id === desks.bob.id,
+    );
+    expect(bobs.booked_by).toEqual([
+      { name: "Bob Berg", is_you: false, user_id: users.bob.id },
+    ]);
+
+    let cancelled = await callTool(request, token, "admin_cancel_booking", {
+      desk_id: desks.bob.id,
+      date: iso("monday"),
+      // As typed: IDs are stored lowercase.
+      user_id: users.bob.id.toUpperCase(),
+    });
+    expect(cancelled.structuredContent.message).toBe("Booking cancelled");
+    expect(await db.reservation(desks.bob.id, "monday")).toBeUndefined();
+
+    let assigned = await callTool(request, token, "admin_assign_desk", {
+      desk_id: desks.unclaimed.id,
+      user_id: users.bob.id,
+    });
+    expect(assigned.isError).toBeFalsy();
+    expect((await db.desk(desks.unclaimed.id))?.userId).toBe(users.bob.id);
+    expect((await db.desk(desks.bob.id))?.userId).toBeNull();
+
+    let log = await db.mcpAuditLog("admin");
+    expect(log.map((entry) => [entry.tool, entry.ok])).toEqual([
+      ["admin_cancel_booking", true],
+      ["admin_assign_desk", true],
+    ]);
+  });
+
+  test("user IDs stay hidden from everyone else", async ({ request, db }) => {
+    await db.addReservation({
+      user: "bob",
+      deskId: desks.bob.id,
+      day: "monday",
+    });
+    let token = await db.addMcpToken("admin");
+
+    let { structuredContent: today } = await callTool(
+      request,
+      token,
+      "list_desks",
+    );
+    let bobs = today.desks.find(
+      (d: { desk_id: number }) => d.desk_id === desks.bob.id,
+    );
+    expect(bobs.owner_id).toBeUndefined();
+    expect(bobs.booked_by[0].user_id).toBeUndefined();
   });
 });

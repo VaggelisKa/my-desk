@@ -3,6 +3,14 @@ import { format, isValid, isWeekend, parse } from "date-fns";
 import { and, asc, count, eq, gt, or } from "drizzle-orm";
 import { z } from "zod";
 import {
+  addPersonAt,
+  cancelBookingOf,
+  loadAdminData,
+  moveDesk,
+  unassignDesk,
+  type AdminOutcome,
+} from "~/lib/admin.server";
+import {
   bookDays,
   listUpcomingBookings,
   MAX_DESKS_PER_DAY,
@@ -23,6 +31,8 @@ import { capitalize, deskLabel } from "~/lib/utils";
 // connected it. Each request builds a server for that one person (from their
 // token), so no tool takes a user ID: the caller is always the token's.
 // Bookings go through the same functions the web app uses, rules included.
+// The admin_ tools exist only for a token with the admin scope, and each call
+// checks that the person is still an Admin.
 
 /** Changes one person may make through assistants in an hour. */
 export const WRITES_PER_HOUR = 30;
@@ -37,6 +47,9 @@ export const SERVER_INSTRUCTIONS = [
   "Dates are YYYY-MM-DD. Call get_me first to learn today's date, your own desk and the booking rules.",
   "book_desk books your own desk unless you pass desk_id; use list_desks to see who is in and what is free on a day.",
 ].join(" ");
+
+const ADMIN_INSTRUCTIONS =
+  "The admin_ tools change other people's desks, bookings and accounts, as the Admin tab does. Say what you will change and get a yes before you call one.";
 
 let isoDate = z
   .string()
@@ -168,6 +181,52 @@ async function change(
   }
 }
 
+let notAdmin = refuse(
+  "Only Admins can do this, and you are not an Admin any more. Connect again if that changes.",
+);
+
+/** A change from the Admin tab: as `change`, for someone who is an Admin right now. */
+function adminChange(
+  caller: { userId: string; clientId: string },
+  tool: string,
+  input: unknown,
+  run: () => Promise<AdminOutcome>,
+) {
+  return change(caller, tool, input, async () => {
+    let user = await findCaller(caller.userId);
+    if (!user) return { ok: false, message: "No account", result: gone };
+    if (user.role !== "admin") {
+      return { ok: false, message: "Not an admin", result: notAdmin };
+    }
+
+    let outcome = await run();
+    if (!outcome.ok) {
+      let message = [outcome.message, outcome.description]
+        .filter(Boolean)
+        .map((part) => part!.replace(/\.$/, ""))
+        .join(". ");
+      return { ok: false, message, result: refuse(`${message}.`) };
+    }
+
+    return {
+      ok: true,
+      message: outcome.message,
+      result: answer({
+        message: outcome.message,
+        warning: outcome.warning ?? null,
+      }),
+    };
+  });
+}
+
+let adminOutput = z.object({
+  message: z.string(),
+  warning: z
+    .string()
+    .nullable()
+    .describe("Set when the change happened with a catch"),
+});
+
 let deskShape = z.object({
   desk_id: z.number().int(),
   label: z.string().describe("block.row.column, as the app shows it"),
@@ -179,10 +238,19 @@ let dayShape = {
 };
 
 /** The MCP server for one signed-in person, connected through `clientId`. */
-export function createDeskServer(caller: { userId: string; clientId: string }) {
+export function createDeskServer(caller: {
+  userId: string;
+  clientId: string;
+  /** The token has the admin scope: the admin_ tools are listed. */
+  admin: boolean;
+}) {
   let server = new McpServer(
     { name: "mydesk", title: "MyDesk", version: "1.0.0" },
-    { instructions: SERVER_INSTRUCTIONS },
+    {
+      instructions: caller.admin
+        ? `${SERVER_INSTRUCTIONS} ${ADMIN_INSTRUCTIONS}`
+        : SERVER_INSTRUCTIONS,
+    },
   );
 
   server.registerTool(
@@ -258,8 +326,19 @@ export function createDeskServer(caller: { userId: string; clientId: string }) {
               .string()
               .nullable()
               .describe("Name of the person the desk belongs to"),
+            owner_id: z
+              .string()
+              .optional()
+              .describe("The owner's user ID, for admin_ tools"),
             booked_by: z.array(
-              z.object({ name: z.string(), is_you: z.boolean() }),
+              z.object({
+                name: z.string(),
+                is_you: z.boolean(),
+                user_id: z
+                  .string()
+                  .optional()
+                  .describe("Their user ID, for admin_ tools"),
+              }),
             ),
             is_yours: z.boolean(),
             you_can_book: z.boolean(),
@@ -306,6 +385,8 @@ export function createDeskServer(caller: { userId: string; clientId: string }) {
         0,
       );
       let isToday = stored === formatDate(now);
+      // User IDs sign people in, so only an Admin with the admin scope sees them.
+      let showIds = caller.admin && user.role === "admin";
       let all = rows.map((desk) => {
         let isYours = desk.userId === user.id;
         let free = desk.reservations.length === 0;
@@ -317,9 +398,11 @@ export function createDeskServer(caller: { userId: string; clientId: string }) {
           desk_id: desk.id,
           label: deskLabel(desk),
           owner: desk.user ? fullName(desk.user) : null,
+          ...(showIds && desk.userId ? { owner_id: desk.userId } : {}),
           booked_by: desk.reservations.map((r) => ({
             name: r.users ? fullName(r.users) : "Someone",
             is_you: r.userId === user.id,
+            ...(showIds ? { user_id: r.userId } : {}),
           })),
           is_yours: isYours,
           you_can_book: free && allowed && mine < MAX_DESKS_PER_DAY,
@@ -535,5 +618,185 @@ export function createDeskServer(caller: { userId: string; clientId: string }) {
       }),
   );
 
+  if (caller.admin) registerAdminTools(server, caller);
+
   return server;
+}
+
+function registerAdminTools(
+  server: McpServer,
+  caller: { userId: string; clientId: string },
+) {
+  server.registerTool(
+    "admin_list_people",
+    {
+      title: "Admin: people",
+      description:
+        "Everyone in MyDesk: user ID, name, role, own desk and whether they have a weekly booking. Use the user IDs with the other admin_ tools.",
+      outputSchema: z.object({
+        people: z.array(
+          z.object({
+            user_id: z.string(),
+            name: z.string(),
+            role: z.enum(["user", "admin"]),
+            desk: deskShape.nullable(),
+            has_weekly_booking: z.boolean(),
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+      },
+    },
+    async () => {
+      let user = await findCaller(caller.userId);
+      if (!user) return gone;
+      if (user.role !== "admin") return notAdmin;
+
+      let { desks: allDesks, people } = await loadAdminData();
+      let byId = new Map(allDesks.map((desk) => [desk.id, desk]));
+
+      return answer({
+        people: people.map((person) => {
+          let desk = person.deskId === null ? null : byId.get(person.deskId);
+          return {
+            user_id: person.id,
+            name: fullName(person),
+            role: person.role,
+            desk: desk ? { desk_id: desk.id, label: deskLabel(desk) } : null,
+            has_weekly_booking: person.hasRecurring,
+          };
+        }),
+      });
+    },
+  );
+
+  server.registerTool(
+    "admin_assign_desk",
+    {
+      title: "Admin: give a desk to someone",
+      description:
+        "Makes a desk someone's own. Its old owner loses it and their bookings on it after today; the new owner gives up any desk they had, with their later bookings on it. Weekly bookings of both stop.",
+      inputSchema: z.object({
+        desk_id: z.number().int(),
+        user_id: z.string().describe("The new owner's user ID"),
+      }),
+      outputSchema: adminOutput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) =>
+      adminChange(caller, "admin_assign_desk", input, () =>
+        moveDesk(input.desk_id, input.user_id),
+      ),
+  );
+
+  server.registerTool(
+    "admin_unassign_desk",
+    {
+      title: "Admin: unassign a desk",
+      description:
+        "Takes a desk from its owner, so nobody owns it. They lose their bookings on it after today, and their weekly booking stops.",
+      inputSchema: z.object({ desk_id: z.number().int() }),
+      outputSchema: adminOutput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) =>
+      adminChange(caller, "admin_unassign_desk", input, () =>
+        unassignDesk(input.desk_id),
+      ),
+  );
+
+  server.registerTool(
+    "admin_cancel_booking",
+    {
+      title: "Admin: cancel someone's booking",
+      description:
+        "Cancels one person's booking of a desk on a day. Get desk_id and booked_by[].user_id from list_desks for that day.",
+      inputSchema: z.object({
+        desk_id: z.number().int(),
+        date: isoDate,
+        user_id: z.string().describe("Who booked it"),
+      }),
+      outputSchema: adminOutput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) =>
+      adminChange(caller, "admin_cancel_booking", input, async () => {
+        let date = fromIso(input.date);
+        if (!date) {
+          return {
+            ok: false,
+            status: 400,
+            message: `${input.date} is not a real date`,
+          };
+        }
+        return cancelBookingOf(
+          input.desk_id,
+          formatDate(date),
+          input.user_id.trim().toLowerCase(),
+        );
+      }),
+  );
+
+  server.registerTool(
+    "admin_add_person",
+    {
+      title: "Admin: add a person",
+      description:
+        "Adds someone to MyDesk, optionally with a desk nobody owns. They sign in with the user ID, so it must be the six characters they will type.",
+      inputSchema: z.object({
+        user_id: z.string().describe("Six characters, as they will sign in"),
+        first_name: z.string(),
+        last_name: z.string(),
+        desk_id: z
+          .number()
+          .int()
+          .optional()
+          .describe("A desk nobody owns, to make theirs"),
+      }),
+      outputSchema: adminOutput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async (input) =>
+      adminChange(caller, "admin_add_person", input, async () => {
+        let added = await addPersonAt(
+          {
+            id: input.user_id,
+            firstName: input.first_name,
+            lastName: input.last_name,
+          },
+          input.desk_id ?? null,
+        );
+        return added.ok
+          ? added
+          : {
+              ok: false,
+              status: added.status,
+              message: Object.values(added.errors)
+                .map((error) => error.replace(/\.$/, ""))
+                .join(". "),
+            };
+      }),
+  );
 }
