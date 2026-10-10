@@ -103,44 +103,58 @@ async function change(
 ) {
   // Logged before it runs, so calls made at the same moment all count, and
   // an attempt that fails still leaves a trace. Refusals and errors don't
-  // use up the allowance; changes and calls still running do.
-  let [entry] = await db
-    .insert(mcpAuditLog)
-    .values({
-      userId: caller.userId,
-      clientId: caller.clientId,
-      tool,
-      input: JSON.stringify(input),
-      ok: false,
-      message: PENDING,
-      createdAt: Date.now(),
-    })
-    .returning({ id: mcpAuditLog.id });
-  let finish = (ok: boolean, message: string) =>
-    db
+  // use up the allowance; changes, and calls still running, do. Nothing
+  // changes without its audit entry.
+  let entryId: number | undefined;
+  let finish = async (ok: boolean, message: string) => {
+    if (entryId === undefined) return;
+    await db
       .update(mcpAuditLog)
       .set({ ok, message })
-      .where(eq(mcpAuditLog.id, entry.id));
-
-  let [{ recent }] = await db
-    .select({ recent: count() })
-    .from(mcpAuditLog)
-    .where(
-      and(
-        eq(mcpAuditLog.userId, caller.userId),
-        gt(mcpAuditLog.createdAt, Date.now() - 60 * 60 * 1000),
-        or(eq(mcpAuditLog.ok, true), eq(mcpAuditLog.message, PENDING)),
-      ),
-    );
-
-  if (recent > WRITES_PER_HOUR) {
-    await finish(false, "Over the hourly limit");
-    return refuse(
-      "Too many changes in a short time. Try again in a while, or use the MyDesk app.",
-    );
-  }
+      .where(eq(mcpAuditLog.id, entryId));
+  };
 
   try {
+    let now = Date.now();
+    let [entry] = await db
+      .insert(mcpAuditLog)
+      .values({
+        userId: caller.userId,
+        clientId: caller.clientId,
+        tool,
+        input: JSON.stringify(input),
+        ok: false,
+        message: PENDING,
+        createdAt: now,
+      })
+      .returning({ id: mcpAuditLog.id });
+    entryId = entry.id;
+
+    let [{ recent }] = await db
+      .select({ recent: count() })
+      .from(mcpAuditLog)
+      .where(
+        and(
+          eq(mcpAuditLog.userId, caller.userId),
+          gt(mcpAuditLog.createdAt, now - 60 * 60 * 1000),
+          or(
+            eq(mcpAuditLog.ok, true),
+            // One left running by a crash stops counting after a few minutes.
+            and(
+              eq(mcpAuditLog.message, PENDING),
+              gt(mcpAuditLog.createdAt, now - 5 * 60 * 1000),
+            ),
+          ),
+        ),
+      );
+
+    if (recent > WRITES_PER_HOUR) {
+      await finish(false, "Over the hourly limit");
+      return refuse(
+        "Too many changes in a short time. Try again in a while, or use the MyDesk app.",
+      );
+    }
+
     let { ok, message, result } = await run();
     await finish(ok, message);
     return result;
