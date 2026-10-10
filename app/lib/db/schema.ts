@@ -104,3 +104,79 @@ export let reservationsRelations = relations(reservations, ({ one }) => ({
     references: [desks.id],
   }),
 }));
+
+// Assistants (Claude, ChatGPT) that connect to the MCP server. Each registers
+// itself once (OAuth dynamic client registration), then people sign in
+// through it. Secrets, codes and tokens are stored as SHA-256 hashes only.
+export let oauthClients = sqliteTable("oauth_clients", {
+  id: text("id").notNull().primaryKey(),
+  name: text("name").notNull(),
+  /** JSON array of the exact redirect URIs the client registered. */
+  redirectUris: text("redirect_uris").notNull(),
+  /** Set for clients that authenticate at the token endpoint; null for public ones. */
+  secretHash: text("secret_hash"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+/** Authorization codes: single use, a few minutes long, bound to PKCE. */
+export let oauthCodes = sqliteTable("oauth_codes", {
+  codeHash: text("code_hash").notNull().primaryKey(),
+  clientId: text("client_id")
+    .notNull()
+    .references(() => oauthClients.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  expiresAt: integer("expires_at", { mode: "number" }).notNull(),
+});
+
+/**
+ * Access and refresh tokens. One grant (a person allowing one client) keeps
+ * its `grantId` across refreshes, so disconnecting removes all its tokens.
+ */
+export let oauthTokens = sqliteTable(
+  "oauth_tokens",
+  {
+    tokenHash: text("token_hash").notNull().primaryKey(),
+    kind: text("kind", { enum: ["access", "refresh"] }).notNull(),
+    grantId: text("grant_id").notNull(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    expiresAt: integer("expires_at", { mode: "number" }).notNull(),
+  },
+  (t) => [index("idx_oauth_tokens_grant_id").on(t.grantId)],
+);
+
+/** Every change made through the MCP server, also what rate limits count. */
+export let mcpAuditLog = sqliteTable(
+  "mcp_audit_log",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    clientId: text("client_id").notNull(),
+    tool: text("tool").notNull(),
+    /** The tool's arguments, as JSON. */
+    input: text("input").notNull(),
+    ok: integer("ok", { mode: "boolean" }).notNull(),
+    /** What the tool answered, in a sentence. */
+    message: text("message").notNull(),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (t) => [index("idx_mcp_audit_log_user_created").on(t.userId, t.createdAt)],
+);

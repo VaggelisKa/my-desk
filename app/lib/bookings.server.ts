@@ -64,23 +64,34 @@ function isAlreadyBookedError(error: unknown): boolean {
   return "cause" in error && isAlreadyBookedError(error.cause);
 }
 
+/** Why a booking did not happen, in the words the app shows. */
+export type BookingRefusal = {
+  ok: false;
+  status: 400 | 403 | 404 | 409;
+  message: string;
+  description?: string;
+};
+
 /**
- * Books `deskId` for the picked `date` fields (`dd.MM.yyyy`). The desk owner
- * can plan ahead; anyone else can only take the desk for today.
+ * Books `deskId` for `userId` on the `dates` (`dd.MM.yyyy`), all or none.
+ * The desk owner can plan ahead; anyone else can only take the desk for
+ * today. Shared by the desk sheet and the MCP server, so both follow the
+ * same rules.
  */
-export async function bookDesk(userId: string, formData: FormData) {
-  let deskId = Number(formData.get("deskId"));
-  let dates = [...new Set(formData.getAll("date").map(String))];
+export async function bookDays(
+  userId: string,
+  deskId: number,
+  dates: string[],
+): Promise<{ ok: true; days: Date[] } | BookingRefusal> {
+  dates = [...new Set(dates)];
 
   if (dates.length === 0) {
-    return dataWithError(
-      null,
-      {
-        message: "No days picked",
-        description: "Pick at least one free day.",
-      },
-      { status: 400 },
-    );
+    return {
+      ok: false,
+      status: 400,
+      message: "No days picked",
+      description: "Pick at least one free day.",
+    };
   }
 
   let desk = await db.query.desks.findFirst({
@@ -89,7 +100,7 @@ export async function bookDesk(userId: string, formData: FormData) {
   });
 
   if (!desk) {
-    return dataWithError(null, { message: "Desk not found!" }, { status: 404 });
+    return { ok: false, status: 404, message: "Desk not found!" };
   }
 
   // The same rules the sheet shows, in office time: the owner books weekdays
@@ -100,7 +111,7 @@ export async function bookDesk(userId: string, formData: FormData) {
   let isOwner = desk.userId === userId;
 
   if (!isOwner && !dates.every((date) => date === today)) {
-    return dataWithError(null, notOwnerError, { status: 403 });
+    return { ok: false, status: 403, ...notOwnerError };
   }
 
   let isBookable = isOwner
@@ -108,16 +119,14 @@ export async function bookDesk(userId: string, formData: FormData) {
     : (date: Date) => isValid(date) && !isWeekend(date);
 
   if (!days.every(isBookable)) {
-    return dataWithError(
-      null,
-      {
-        message: "Those days cannot be booked",
-        description: isOwner
-          ? `You can book weekdays this week and next. Today closes at ${LAST_BOOKING_HOUR}:00.`
-          : undefined,
-      },
-      { status: 400 },
-    );
+    return {
+      ok: false,
+      status: 400,
+      message: "Those days cannot be booked",
+      description: isOwner
+        ? `You can book weekdays this week and next. Today closes at ${LAST_BOOKING_HOUR}:00.`
+        : undefined,
+    };
   }
 
   // Counted in the stored form: date-fns also reads "1.2.2026", which would
@@ -154,32 +163,42 @@ export async function bookDesk(userId: string, formData: FormData) {
       let full = error.days
         .sort((a, b) => a.getTime() - b.getTime())
         .map((date) => format(date, "EEE d MMM"));
-      return dataWithError(
-        null,
-        {
-          message: `${MAX_DESKS_PER_DAY} desks a day at most`,
-          description: `You already have ${MAX_DESKS_PER_DAY} desks booked on ${full.join(", ")}.`,
-        },
-        { status: 409 },
-      );
+      return {
+        ok: false,
+        status: 409,
+        message: `${MAX_DESKS_PER_DAY} desks a day at most`,
+        description: `You already have ${MAX_DESKS_PER_DAY} desks booked on ${full.join(", ")}.`,
+      };
     }
     if (!isAlreadyBookedError(error)) {
       throw error;
     }
 
-    return dataWithError(
-      null,
-      {
-        message: "Desk already booked",
-        description: "Someone else booked this desk in the meantime.",
-      },
-      { status: 409 },
-    );
+    return {
+      ok: false,
+      status: 409,
+      message: "Desk already booked",
+      description: "Someone else booked this desk in the meantime.",
+    };
   }
 
-  let booked = days
-    .sort((a, b) => a.getTime() - b.getTime())
-    .map((date) => format(date, "EEE d MMM"));
+  return { ok: true, days: days.sort((a, b) => a.getTime() - b.getTime()) };
+}
+
+/** The desk sheet's booking: `bookDays` for the form's `deskId` and `date` fields. */
+export async function bookDesk(userId: string, formData: FormData) {
+  let result = await bookDays(
+    userId,
+    Number(formData.get("deskId")),
+    formData.getAll("date").map(String),
+  );
+
+  if (!result.ok) {
+    let { status, message, description } = result;
+    return dataWithError(null, { message, description }, { status });
+  }
+
+  let booked = result.days.map((date) => format(date, "EEE d MMM"));
 
   return dataWithSuccess(null, {
     message: "Desk booked",
