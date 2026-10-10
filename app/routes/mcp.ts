@@ -81,7 +81,7 @@ async function serve(request: Request) {
       headers: {
         ...oauthHeaders,
         "Access-Control-Allow-Headers":
-          "Authorization, Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Last-Event-ID",
+          "Authorization, Content-Type, Mcp-Protocol-Version, Mcp-Session-Id, Mcp-Method, Mcp-Name, Last-Event-ID",
         "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
       },
     });

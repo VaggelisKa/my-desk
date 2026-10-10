@@ -16,25 +16,30 @@ export async function loader({ url }: Route.LoaderArgs) {
 
   // Days before the office's today only: bookings are stored at midnight of
   // their day, so comparing with the time now would also take today's.
-  // Also expired sign-in codes and assistant tokens, and the MCP audit log
-  // after 90 days.
+  try {
+    await db
+      .delete(reservations)
+      .where(lt(reservations.dateTimestamp, todayStart()));
+  } catch (error) {
+    // The details go to the logs, not to whoever called.
+    console.error(error);
+    return new Response("Could not clean up past bookings", { status: 500 });
+  }
+
+  // Expired sign-in codes and assistant tokens, and the MCP audit log after
+  // 90 days. Apart from the bookings, so a problem here never holds them up.
   let now = Date.now();
   try {
     await db.batch([
-      db
-        .delete(reservations)
-        .where(lt(reservations.dateTimestamp, todayStart())),
       db.delete(oauthCodes).where(lt(oauthCodes.expiresAt, now)),
       db.delete(oauthTokens).where(lt(oauthTokens.expiresAt, now)),
       db
         .delete(mcpAuditLog)
         .where(lt(mcpAuditLog.createdAt, now - 90 * 24 * 60 * 60 * 1000)),
     ]);
-
-    return new Response("Past bookings cleaned up", { status: 200 });
   } catch (error) {
-    // The details go to the logs, not to whoever called.
     console.error(error);
-    return new Response("Could not clean up past bookings", { status: 500 });
   }
+
+  return new Response("Past bookings cleaned up", { status: 200 });
 }

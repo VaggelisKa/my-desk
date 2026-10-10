@@ -27,6 +27,9 @@ import { capitalize, deskLabel } from "~/lib/utils";
 /** Changes one person may make through assistants in an hour. */
 export const WRITES_PER_HOUR = 30;
 
+/** An audit entry whose change is still running. */
+const PENDING = "Running";
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export const SERVER_INSTRUCTIONS = [
@@ -98,6 +101,27 @@ async function change(
     result: ReturnType<typeof answer> | ReturnType<typeof refuse>;
   }>,
 ) {
+  // Logged before it runs, so calls made at the same moment all count, and
+  // an attempt that fails still leaves a trace. Refusals and errors don't
+  // use up the allowance; changes and calls still running do.
+  let [entry] = await db
+    .insert(mcpAuditLog)
+    .values({
+      userId: caller.userId,
+      clientId: caller.clientId,
+      tool,
+      input: JSON.stringify(input),
+      ok: false,
+      message: PENDING,
+      createdAt: Date.now(),
+    })
+    .returning({ id: mcpAuditLog.id });
+  let finish = (ok: boolean, message: string) =>
+    db
+      .update(mcpAuditLog)
+      .set({ ok, message })
+      .where(eq(mcpAuditLog.id, entry.id));
+
   let [{ recent }] = await db
     .select({ recent: count() })
     .from(mcpAuditLog)
@@ -105,28 +129,29 @@ async function change(
       and(
         eq(mcpAuditLog.userId, caller.userId),
         gt(mcpAuditLog.createdAt, Date.now() - 60 * 60 * 1000),
+        or(eq(mcpAuditLog.ok, true), eq(mcpAuditLog.message, PENDING)),
       ),
     );
 
-  if (recent >= WRITES_PER_HOUR) {
+  if (recent > WRITES_PER_HOUR) {
+    await finish(false, "Over the hourly limit");
     return refuse(
       "Too many changes in a short time. Try again in a while, or use the MyDesk app.",
     );
   }
 
-  let { ok, message, result } = await run();
-
-  await db.insert(mcpAuditLog).values({
-    userId: caller.userId,
-    clientId: caller.clientId,
-    tool,
-    input: JSON.stringify(input),
-    ok,
-    message,
-    createdAt: Date.now(),
-  });
-
-  return result;
+  try {
+    let { ok, message, result } = await run();
+    await finish(ok, message);
+    return result;
+  } catch (error) {
+    // The details go to the logs, not to the assistant.
+    console.error(error);
+    await finish(false, "Failed").catch(console.error);
+    return refuse(
+      "Something went wrong. Nothing may have changed; check with list_my_bookings.",
+    );
+  }
 }
 
 let deskShape = z.object({
@@ -184,7 +209,7 @@ export function createDeskServer(caller: { userId: string; clientId: string }) {
         timezone: "Europe/Copenhagen",
         rules: [
           "Only weekdays can be booked.",
-          `Your own desk: any weekday this week and next. Today only until ${LAST_BOOKING_HOUR}:00.`,
+          `Your own desk: any weekday of the current and the next work week (from Saturday on, the coming two). Today only until ${LAST_BOOKING_HOUR}:00.`,
           "Someone else's desk, or a desk nobody owns: today only.",
           `At most ${MAX_DESKS_PER_DAY} desks per person on the same day (your own plus one, for example for a guest).`,
           "You can only cancel your own bookings.",
@@ -328,7 +353,10 @@ export function createDeskServer(caller: { userId: string; clientId: string }) {
           label: deskLabel(booking.desk),
           ...day(parseDate(booking.date)),
           is_your_desk: booking.mine,
-          desk_owner: booking.ownerName && capitalize(booking.ownerName),
+          desk_owner:
+            booking.mine || !booking.ownerName
+              ? null
+              : capitalize(booking.ownerName),
         })),
       });
     },
