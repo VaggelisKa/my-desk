@@ -7,11 +7,16 @@ import {
 } from "~/lib/mcp/oauth.server";
 import type { Route } from "./+types/oauth.token";
 
+// React Router sends OPTIONS (CORS preflight) and GET to the loader.
+export function loader({ request }: Route.LoaderArgs) {
+  return new Response(null, {
+    status: request.method === "OPTIONS" ? 204 : 405,
+    headers: { ...oauthHeaders, Allow: "POST, OPTIONS" },
+  });
+}
+
 // Trades the code from the Allow page, or a refresh token, for tokens.
 export async function action({ request }: Route.ActionArgs) {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: oauthHeaders });
-  }
   if (request.method !== "POST") {
     return new Response(null, { status: 405, headers: oauthHeaders });
   }

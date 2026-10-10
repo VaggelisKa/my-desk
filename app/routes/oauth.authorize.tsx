@@ -39,7 +39,7 @@ export async function loader(args: Route.LoaderArgs) {
   let auth = await readAuthorizeRequest(args.url);
 
   if (auth.kind === "fatal") {
-    return { error: auth.message, client: null, user: null };
+    return { error: auth.message, client: null, returnsTo: null, user: null };
   }
   if (auth.kind === "refuse") {
     throw redirect(auth.to);
@@ -50,6 +50,7 @@ export async function loader(args: Route.LoaderArgs) {
   return {
     error: null,
     client: auth.client.name,
+    returnsTo: auth.returnsTo,
     user: user && {
       name: `${capitalize(user.firstName)} ${capitalize(user.lastName)}`,
     },
@@ -119,7 +120,7 @@ export default function Authorize({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  let { error, client, user } = loaderData;
+  let { error, client, returnsTo, user } = loaderData;
   let [userId, setUserId] = useState("");
 
   if (error || !client) {
@@ -174,6 +175,9 @@ export default function Authorize({
       description={`It will see the desks and bookings, and book or cancel desks as ${user.name}, following the same rules as the app.`}
     >
       <Form method="POST" reloadDocument className="flex flex-col gap-3">
+        <p className="text-[13px] text-ink-muted">
+          You'll go back to <span className="font-semibold">{returnsTo}</span>.
+        </p>
         <AuthSubmit name="intent" value="allow">
           Allow
         </AuthSubmit>

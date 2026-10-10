@@ -88,7 +88,7 @@ async function serve(request: Request) {
   }
 
   let header = request.headers.get("Authorization");
-  let token = header?.startsWith("Bearer ") ? header.slice(7).trim() : null;
+  let token = header?.match(/^Bearer\s+(\S+)\s*$/i)?.[1] ?? null;
   let grant = token ? await verifyAccessToken(token) : null;
 
   if (!token || !grant) {

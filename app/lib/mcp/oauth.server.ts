@@ -23,7 +23,13 @@ const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000;
  * Allow page from handing a code to any other site. `MCP_REDIRECT_HOSTS`
  * (comma separated) adds more.
  */
-const REDIRECT_HOSTS = ["claude.ai", "claude.com", "chatgpt.com"];
+const REDIRECT_HOSTS = [
+  "claude.ai",
+  "claude.com",
+  "chatgpt.com",
+  "chat.openai.com",
+  "platform.openai.com",
+];
 const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 
 export class OAuthFailure extends Error {
@@ -245,8 +251,12 @@ export async function authenticateClient(request: Request, form: FormData) {
     let decoded = Buffer.from(basic.slice(6), "base64").toString("utf8");
     let colon = decoded.indexOf(":");
     if (colon !== -1) {
-      id = decodeURIComponent(decoded.slice(0, colon));
-      secret = decodeURIComponent(decoded.slice(colon + 1));
+      try {
+        id = decodeURIComponent(decoded.slice(0, colon));
+        secret = decodeURIComponent(decoded.slice(colon + 1));
+      } catch {
+        throw new OAuthFailure("invalid_client", "Malformed credentials.", 401);
+      }
     }
   }
 
@@ -341,14 +351,19 @@ export async function exchangeCode(
     throw new OAuthFailure("invalid_request", "code_verifier is invalid.");
   }
 
+  // Only the client it was issued to can use (and so use up) a code.
   let [grant] = await db
     .delete(oauthCodes)
-    .where(eq(oauthCodes.codeHash, hash(code)))
+    .where(
+      and(
+        eq(oauthCodes.codeHash, hash(code)),
+        eq(oauthCodes.clientId, clientId),
+      ),
+    )
     .returning();
 
   if (
     !grant ||
-    grant.clientId !== clientId ||
     grant.expiresAt <= Date.now() ||
     // Required when the authorization request carried one, and it always does.
     grant.redirectUri !== redirectUri ||
@@ -376,16 +391,24 @@ export async function refreshTokens(clientId: string, refreshToken: unknown) {
       and(
         eq(oauthTokens.tokenHash, hash(refreshToken)),
         eq(oauthTokens.kind, "refresh"),
+        eq(oauthTokens.clientId, clientId),
       ),
     )
     .returning();
 
-  if (!old || old.clientId !== clientId || old.expiresAt <= Date.now()) {
+  if (!old || old.expiresAt <= Date.now()) {
     throw new OAuthFailure(
       "invalid_grant",
       "The refresh token is invalid or expired.",
     );
   }
+
+  // The connection's earlier access token goes with its refresh token.
+  await db
+    .delete(oauthTokens)
+    .where(
+      and(eq(oauthTokens.grantId, old.grantId), eq(oauthTokens.kind, "access")),
+    );
 
   return issueTokens({
     grantId: old.grantId,
@@ -483,6 +506,8 @@ export async function readAuthorizeRequest(url: URL) {
   return {
     kind: "ok",
     client: { id: client.id, name: client.name },
+    /** Where the code goes, shown on the Allow page. */
+    returnsTo: new URL(redirectUri).host,
     redirectUri,
     codeChallenge,
     state,

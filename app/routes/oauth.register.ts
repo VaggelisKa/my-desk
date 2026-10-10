@@ -5,12 +5,17 @@ import {
 } from "~/lib/mcp/oauth.server";
 import type { Route } from "./+types/oauth.register";
 
+// React Router sends OPTIONS (CORS preflight) and GET to the loader.
+export function loader({ request }: Route.LoaderArgs) {
+  return new Response(null, {
+    status: request.method === "OPTIONS" ? 204 : 405,
+    headers: { ...oauthHeaders, Allow: "POST, OPTIONS" },
+  });
+}
+
 // Dynamic client registration (RFC 7591): Claude and ChatGPT register
 // themselves here the first time someone adds MyDesk as a connector.
 export async function action({ request }: Route.ActionArgs) {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: oauthHeaders });
-  }
   if (request.method !== "POST") {
     return new Response(null, { status: 405, headers: oauthHeaders });
   }
