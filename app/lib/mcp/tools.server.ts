@@ -39,6 +39,10 @@ export const WRITES_PER_HOUR = 30;
 
 /** An audit entry whose change is still running. */
 const PENDING = "Running";
+/** The longest tool input the audit log keeps, in characters. */
+const MAX_LOGGED_INPUT = 2000;
+/** The longest name or user ID an admin tool takes. */
+const MAX_TEXT = 80;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -115,9 +119,10 @@ async function change(
   }>,
 ) {
   // Logged before it runs, so calls made at the same moment all count, and
-  // an attempt that fails still leaves a trace. Refusals and errors don't
-  // use up the allowance; changes, and calls still running, do. Nothing
-  // changes without its audit entry.
+  // an attempt that fails still leaves a trace. Every attempt uses up the
+  // allowance, refused ones too, so writes can't be probed without limit.
+  // Calls over the limit leave no entry, which keeps the log bounded.
+  // Nothing changes without its audit entry.
   let entryId: number | undefined;
   let finish = async (ok: boolean, message: string) => {
     if (entryId === undefined) return;
@@ -135,7 +140,7 @@ async function change(
         userId: caller.userId,
         clientId: caller.clientId,
         tool,
-        input: JSON.stringify(input),
+        input: JSON.stringify(input).slice(0, MAX_LOGGED_INPUT),
         ok: false,
         message: PENDING,
         createdAt: now,
@@ -150,19 +155,12 @@ async function change(
         and(
           eq(mcpAuditLog.userId, caller.userId),
           gt(mcpAuditLog.createdAt, now - 60 * 60 * 1000),
-          or(
-            eq(mcpAuditLog.ok, true),
-            // One left running by a crash stops counting after a few minutes.
-            and(
-              eq(mcpAuditLog.message, PENDING),
-              gt(mcpAuditLog.createdAt, now - 5 * 60 * 1000),
-            ),
-          ),
         ),
       );
 
     if (recent > WRITES_PER_HOUR) {
-      await finish(false, "Over the hourly limit");
+      await db.delete(mcpAuditLog).where(eq(mcpAuditLog.id, entryId));
+      entryId = undefined;
       return refuse(
         "Too many changes in a short time. Try again in a while, or use the MyDesk app.",
       );
@@ -680,7 +678,7 @@ function registerAdminTools(
         "Makes a desk someone's own. Its old owner loses it and their bookings on it after today; the new owner gives up any desk they had, with their later bookings on it. Weekly bookings of both stop.",
       inputSchema: z.object({
         desk_id: z.number().int(),
-        user_id: z.string().describe("The new owner's user ID"),
+        user_id: z.string().max(MAX_TEXT).describe("The new owner's user ID"),
       }),
       outputSchema: adminOutput,
       annotations: {
@@ -726,7 +724,7 @@ function registerAdminTools(
       inputSchema: z.object({
         desk_id: z.number().int(),
         date: isoDate,
-        user_id: z.string().describe("Who booked it"),
+        user_id: z.string().max(MAX_TEXT).describe("Who booked it"),
       }),
       outputSchema: adminOutput,
       annotations: {
@@ -761,9 +759,12 @@ function registerAdminTools(
       description:
         "Adds someone to MyDesk, optionally with a desk nobody owns. They sign in with the user ID, so it must be the six characters they will type.",
       inputSchema: z.object({
-        user_id: z.string().describe("Six characters, as they will sign in"),
-        first_name: z.string(),
-        last_name: z.string(),
+        user_id: z
+          .string()
+          .max(MAX_TEXT)
+          .describe("Six characters, as they will sign in"),
+        first_name: z.string().max(MAX_TEXT),
+        last_name: z.string().max(MAX_TEXT),
         desk_id: z
           .number()
           .int()

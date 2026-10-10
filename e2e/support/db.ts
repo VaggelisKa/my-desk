@@ -1,6 +1,6 @@
 import { createClient, type Client } from "@libsql/client";
 import { addDays, format, getWeek, startOfWeek } from "date-fns";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createHash, randomBytes } from "node:crypto";
 import * as schema from "../../app/lib/db/schema";
@@ -189,6 +189,14 @@ export class TestDatabase {
     });
 
     return token;
+  }
+
+  /** Moves the use of every used refresh token `ms` into the past. */
+  async backdateRefreshUse(ms: number) {
+    await this.db
+      .update(schema.oauthTokens)
+      .set({ expiresAt: sql`${schema.oauthTokens.expiresAt} - ${ms}` })
+      .where(eq(schema.oauthTokens.kind, "used"));
   }
 
   /** Fills `user`'s hourly allowance of changes through assistants. */

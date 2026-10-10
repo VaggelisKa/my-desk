@@ -1,4 +1,4 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, count, eq, gt } from "drizzle-orm";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { db } from "~/lib/db/drizzle.server";
 import { oauthClients, oauthCodes, oauthTokens } from "~/lib/db/schema";
@@ -24,6 +24,8 @@ const CODE_TTL = 5 * 60 * 1000;
 export const ACCESS_TTL = 60 * 60 * 1000;
 /** How long a connection lasts without use: each refresh starts it again. */
 const REFRESH_TTL = 90 * 24 * 60 * 60 * 1000;
+/** How soon after its use a refresh token may come back without ending the connection. */
+const REUSE_GRACE = 30 * 1000;
 
 /**
  * Where an assistant may send people back after they allowed it: Claude and
@@ -39,6 +41,14 @@ const REDIRECT_HOSTS = [
   "platform.openai.com",
 ];
 const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+const MAX_REDIRECT_LENGTH = 2048;
+
+/**
+ * New assistants that may register in an hour, all together. Registering
+ * needs no account, so this keeps a script from filling the database;
+ * Claude and ChatGPT register once per person connecting.
+ */
+const REGISTRATIONS_PER_HOUR = 100;
 
 export class OAuthFailure extends Error {
   constructor(
@@ -121,6 +131,7 @@ export function isAllowedRedirect(value: unknown) {
   } catch {
     return false;
   }
+  if (value.length > MAX_REDIRECT_LENGTH) return false;
   if (url.hash || url.username || url.password) return false;
 
   if (LOOPBACK_HOSTS.includes(url.hostname)) {
@@ -164,6 +175,18 @@ export async function registerClient(metadata: Registration) {
     throw new OAuthFailure(
       "invalid_redirect_uri",
       "Only Claude, ChatGPT and localhost redirect URIs are allowed.",
+    );
+  }
+
+  let [{ recent }] = await db
+    .select({ recent: count() })
+    .from(oauthClients)
+    .where(gt(oauthClients.createdAt, new Date(Date.now() - 60 * 60 * 1000)));
+  if (recent >= REGISTRATIONS_PER_HOUR) {
+    throw new OAuthFailure(
+      "temporarily_unavailable",
+      "Too many registrations. Try again later.",
+      429,
     );
   }
 
@@ -390,28 +413,56 @@ export async function exchangeCode(
   });
 }
 
-/** A new token pair for a refresh token, which is used up (rotation). */
+/**
+ * A new token pair for a refresh token, which is used up (rotation). A used
+ * one coming back means two parties hold it, one of them likely a thief, so
+ * the whole connection ends (OAuth 2.1, section 4.3.1). Not within
+ * `REUSE_GRACE` of its use, though: that is the assistant retrying, or two
+ * of its requests crossing, and ending the connection would only lock out
+ * the person.
+ */
 export async function refreshTokens(clientId: string, refreshToken: unknown) {
   if (typeof refreshToken !== "string" || !refreshToken) {
     throw new OAuthFailure("invalid_request", "refresh_token is missing.");
   }
 
+  let tokenHash = hash(refreshToken);
+  let now = Date.now();
+  let invalid = new OAuthFailure(
+    "invalid_grant",
+    "The refresh token is invalid or expired.",
+  );
+
+  // Marked used in one statement, so of two refreshes at once only one wins.
+  // A used token keeps a full lifetime from its use, which is how long a
+  // replay is still spotted, and from which its time of use is read back.
   let [old] = await db
-    .delete(oauthTokens)
+    .update(oauthTokens)
+    .set({ kind: "used", expiresAt: now + REFRESH_TTL })
     .where(
       and(
-        eq(oauthTokens.tokenHash, hash(refreshToken)),
+        eq(oauthTokens.tokenHash, tokenHash),
         eq(oauthTokens.kind, "refresh"),
         eq(oauthTokens.clientId, clientId),
+        gt(oauthTokens.expiresAt, now),
       ),
     )
     .returning();
 
-  if (!old || old.expiresAt <= Date.now()) {
-    throw new OAuthFailure(
-      "invalid_grant",
-      "The refresh token is invalid or expired.",
-    );
+  if (!old) {
+    let used = await db.query.oauthTokens.findFirst({
+      where: and(
+        eq(oauthTokens.tokenHash, tokenHash),
+        eq(oauthTokens.kind, "used"),
+        eq(oauthTokens.clientId, clientId),
+      ),
+      columns: { grantId: true, expiresAt: true },
+    });
+    let usedAt = used ? used.expiresAt - REFRESH_TTL : now;
+    if (used && now - usedAt > REUSE_GRACE) {
+      await db.delete(oauthTokens).where(eq(oauthTokens.grantId, used.grantId));
+    }
+    throw invalid;
   }
 
   // The connection's earlier access token goes with its refresh token.

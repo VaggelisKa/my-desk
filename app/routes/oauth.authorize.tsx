@@ -66,8 +66,28 @@ export async function loader(args: Route.LoaderArgs) {
   };
 }
 
+/**
+ * Whether a form post came from another site. Browsers send at least one of
+ * these headers on a form post; the cookie's SameSite=Lax already keeps a
+ * signed-in Allow from working cross-site, this stops the sign-in too.
+ */
+function isCrossSite(request: Request, url: URL) {
+  let site = request.headers.get("Sec-Fetch-Site");
+  if (site) return site !== "same-origin" && site !== "none";
+  let origin = request.headers.get("Origin");
+  return origin !== null && origin !== url.origin;
+}
+
 export async function action(args: Route.ActionArgs) {
   let url = new URL(args.request.url);
+
+  if (isCrossSite(args.request, url)) {
+    return data(
+      { signInError: "Open this page from your assistant." },
+      { status: 403 },
+    );
+  }
+
   let auth = await readAuthorizeRequest(url);
 
   if (auth.kind === "fatal") {

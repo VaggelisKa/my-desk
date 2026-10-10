@@ -5,6 +5,30 @@ import {
 } from "~/lib/mcp/oauth.server";
 import type { Route } from "./+types/oauth.register";
 
+/** Ten redirect URIs at their longest, with room for the other fields. */
+const MAX_BODY = 32 * 1024;
+
+/** The body as text, refused past `MAX_BODY` bytes without reading on. */
+async function readCapped(request: Request) {
+  let reader = request.body?.getReader();
+  let chunks: Uint8Array[] = [];
+  let size = 0;
+  while (reader) {
+    let { done, value } = await reader.read();
+    if (done || !value) break;
+    size += value.byteLength;
+    if (size > MAX_BODY) {
+      await reader.cancel();
+      throw new OAuthFailure(
+        "invalid_client_metadata",
+        "The body is too long.",
+      );
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 // React Router sends OPTIONS (CORS preflight) and GET to the loader.
 export function loader({ request }: Route.LoaderArgs) {
   return new Response(null, {
@@ -21,12 +45,17 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   try {
-    let metadata = await request.json().catch(() => {
-      throw new OAuthFailure(
-        "invalid_client_metadata",
-        "The body must be JSON.",
-      );
-    });
+    let body = await readCapped(request);
+    let metadata = (() => {
+      try {
+        return JSON.parse(body) as unknown;
+      } catch {
+        throw new OAuthFailure(
+          "invalid_client_metadata",
+          "The body must be JSON.",
+        );
+      }
+    })();
     if (typeof metadata !== "object" || metadata === null) {
       throw new OAuthFailure(
         "invalid_client_metadata",

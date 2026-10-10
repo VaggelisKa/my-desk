@@ -144,7 +144,8 @@ export let oauthTokens = sqliteTable(
   "oauth_tokens",
   {
     tokenHash: text("token_hash").notNull().primaryKey(),
-    kind: text("kind", { enum: ["access", "refresh"] }).notNull(),
+    /** "used": a refresh token already traded in, kept to spot it being replayed. */
+    kind: text("kind", { enum: ["access", "refresh", "used"] }).notNull(),
     grantId: text("grant_id").notNull(),
     clientId: text("client_id")
       .notNull()

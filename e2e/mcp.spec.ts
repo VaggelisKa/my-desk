@@ -109,6 +109,32 @@ test.describe("connecting", () => {
     expect((await response.json()).error).toBe("invalid_redirect_uri");
   });
 
+  test("registering refuses overlong redirect URIs", async ({ request }) => {
+    let response = await request.post("/oauth/register", {
+      data: {
+        redirect_uris: [`https://claude.ai/callback?x=${"a".repeat(3000)}`],
+      },
+    });
+
+    expect(response.status()).toBe(400);
+  });
+
+  test("the sign-in form refuses posts from other sites", async ({
+    request,
+  }) => {
+    let response = await request.post(
+      "/oauth/authorize?client_id=x&redirect_uri=y",
+      {
+        form: { intent: "sign-in", "user-id": users.alice.id },
+        headers: { "Sec-Fetch-Site": "cross-site" },
+        maxRedirects: 0,
+      },
+    );
+
+    expect(response.status()).toBe(403);
+    expect(response.headers()["set-cookie"] ?? "").not.toContain("user=");
+  });
+
   test("sign in, Allow, and the token books as that person", async ({
     page,
     request,
@@ -183,8 +209,27 @@ test.describe("connecting", () => {
           client_id: client.client_id,
         },
       });
-    expect((await refresh()).status()).toBe(200);
+    let rotated = await (await refresh()).json();
+    expect(rotated.refresh_token).toBeTruthy();
+
+    // A replay right after its use is the assistant retrying: refused, but
+    // the connection stays.
     expect((await refresh()).status()).toBe(400);
+    let tools = () =>
+      request.post("/mcp", {
+        headers: {
+          Authorization: `Bearer ${rotated.access_token}`,
+          Accept: "application/json, text/event-stream",
+          "Content-Type": "application/json",
+        },
+        data: { jsonrpc: "2.0", id: ++id, method: "tools/list", params: {} },
+      });
+    expect((await tools()).status()).toBe(200);
+
+    // Later, a replay means someone else has it: the connection ends.
+    await db.backdateRefreshUse(60 * 1000);
+    expect((await refresh()).status()).toBe(400);
+    expect((await tools()).status()).toBe(401);
   });
 
   test("Cancel sends the assistant away without a code", async ({
@@ -453,6 +498,28 @@ test.describe("tools", () => {
     ]);
     expect(await db.reservation(desks.alice.id, "tuesday")).toBeUndefined();
     expect(await db.reservation(desks.bob.id, "tuesday")).toBeTruthy();
+  });
+
+  test("refused changes count toward the hourly limit", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    await db.addMcpChanges("alice", 29);
+
+    // Bob's desk on a day he booked: refused, but counted.
+    let refused = await callTool(request, token, "cancel_bookings", {
+      bookings: [{ desk_id: desks.bob.id, date: iso("tuesday") }],
+    });
+    expect(refused.structuredContent.not_found).toHaveLength(1);
+
+    let result = await callTool(request, token, "book_desk", {
+      dates: [iso("tuesday")],
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("Too many changes");
+    // Over the limit leaves no entry, so the log can't be flooded.
+    expect(await db.mcpAuditLog("alice")).toHaveLength(30);
   });
 
   test("changes stop at the hourly limit", async ({ request, db }) => {
