@@ -1,11 +1,13 @@
-import { lt } from "drizzle-orm";
+import { lt, notInArray, or } from "drizzle-orm";
 import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import {
+  bookingHistory,
   mcpAuditLog,
   oauthCodes,
   oauthTokens,
   reservations,
+  users,
 } from "~/lib/db/schema";
 import type { Route } from "./+types/cron.reservations-cleanup";
 
@@ -26,8 +28,8 @@ export async function loader({ url }: Route.LoaderArgs) {
     return new Response("Could not clean up past bookings", { status: 500 });
   }
 
-  // Expired sign-in codes and assistant tokens, and the MCP audit log after
-  // 90 days. Apart from the bookings, so a problem here never holds them up.
+  // Expired sign-in codes and assistant tokens, the MCP audit log after 90
+  // days and booking history after 400. Apart from the bookings, so a problem here never holds them up.
   let now = Date.now();
   try {
     await db.batch([
@@ -36,6 +38,17 @@ export async function loader({ url }: Route.LoaderArgs) {
       db
         .delete(mcpAuditLog)
         .where(lt(mcpAuditLog.createdAt, now - 90 * 24 * 60 * 60 * 1000)),
+      // Booking history for a little over a year, enough to compare years.
+      db.delete(bookingHistory).where(
+        or(
+          lt(bookingHistory.endedAt, now - 400 * 24 * 60 * 60 * 1000),
+          // People who were removed take their history with them.
+          notInArray(
+            bookingHistory.userId,
+            db.select({ id: users.id }).from(users),
+          ),
+        ),
+      ),
     ]);
   } catch (error) {
     console.error(error);

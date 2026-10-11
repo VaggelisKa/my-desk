@@ -1,5 +1,13 @@
 import { createClient, type Client } from "@libsql/client";
-import { addDays, format, getWeek, startOfWeek } from "date-fns";
+import {
+  addDays,
+  addHours,
+  format,
+  getWeek,
+  startOfDay,
+  startOfWeek,
+  subDays,
+} from "date-fns";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createHash, randomBytes } from "node:crypto";
@@ -99,6 +107,8 @@ export class TestDatabase {
       this.db.delete(schema.oauthCodes),
       this.db.delete(schema.oauthClients),
       this.db.delete(schema.reservations),
+      // After the bookings, whose deletion the trigger records here.
+      this.db.delete(schema.bookingHistory),
       this.db.delete(schema.desks),
       this.db.delete(schema.users),
       this.db.delete(schema.bookingMetrics),
@@ -197,6 +207,45 @@ export class TestDatabase {
       .update(schema.oauthTokens)
       .set({ expiresAt: sql`${schema.oauthTokens.expiresAt} - ${ms}` })
       .where(eq(schema.oauthTokens.kind, "used"));
+  }
+
+  /**
+   * A past booking of `user`'s, as the trigger records it: `daysAgo` before
+   * the pinned today, kept or cancelled `cancelledDaysBefore` days before it.
+   */
+  async addHistory(
+    user: SeedUser,
+    entry: { daysAgo: number; kept: boolean; cancelledDaysBefore?: number },
+  ) {
+    let day = startOfDay(subDays(NOW, entry.daysAgo));
+    let endedAt = entry.kept
+      ? addHours(addDays(day, 1), 2)
+      : addHours(subDays(day, entry.cancelledDaysBefore ?? 0), 9);
+
+    await this.db.insert(schema.bookingHistory).values({
+      userId: users[user].id,
+      deskId: desks[user === "guest" ? "unclaimed" : user].id,
+      date: format(day, "dd.MM.yyyy"),
+      dateTimestamp: day.getTime(),
+      bookedAt: subDays(day, 3).getTime(),
+      endedAt: endedAt.getTime(),
+    });
+  }
+
+  /** The Metrics tab's row for the day `daysAgo` before the pinned today. */
+  async addMetrics(daysAgo: number, bookings: number) {
+    await this.db.insert(schema.bookingMetrics).values({
+      metricDate: format(subDays(NOW, daysAgo), "dd.MM.yyyy"),
+      totalBookings: bookings,
+      totalGuestBookings: 0,
+      participation_percentage: Math.round((bookings / 4) * 100),
+    });
+  }
+
+  history(user: SeedUser) {
+    return this.db.query.bookingHistory.findMany({
+      where: eq(schema.bookingHistory.userId, users[user].id),
+    });
   }
 
   /** Fills `user`'s hourly allowance of changes through assistants. */

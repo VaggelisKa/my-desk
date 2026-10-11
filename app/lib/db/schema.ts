@@ -77,6 +77,37 @@ export let bookingMetrics = sqliteTable("booking_metrics", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/**
+ * Every booking that left the reservations table, written by a database
+ * trigger (migration 0022) so no code path can skip it: past days the
+ * nightly cleanup removes, and cancellations. A booking whose row went after
+ * its day ended was kept; before or on the day, it was cancelled. No foreign
+ * keys, so deleting a person or desk never fails on it; readers join users.
+ */
+export let bookingHistory = sqliteTable(
+  "booking_history",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    deskId: integer("desk_id", { mode: "number" }),
+    /** As `reservations.date`, "dd.MM.yyyy". */
+    date: text("date").notNull(),
+    /** As `reservations.date_timestamp`: midnight of the day, office time. */
+    dateTimestamp: integer("date_timestamp", { mode: "number" }).notNull(),
+    bookedAt: integer("booked_at", { mode: "number" }),
+    /** When the booking's row was deleted, real time in ms. */
+    endedAt: integer("ended_at", { mode: "number" }).notNull(),
+    /** An Admin removed it (moved or cleared the desk, or cancelled it): not the person's own cancellation. */
+    removedByAdmin: integer("removed_by_admin", { mode: "boolean" })
+      .notNull()
+      .default(false),
+  },
+  (t) => [
+    index("idx_booking_history_date").on(t.dateTimestamp),
+    index("idx_booking_history_user").on(t.userId, t.dateTimestamp),
+  ],
+);
+
 // relations for query syntax
 export let usersRelations = relations(users, ({ one, many }) => ({
   reservations: many(reservations),

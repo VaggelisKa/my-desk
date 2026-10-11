@@ -350,7 +350,7 @@ test.describe("tools", () => {
     expect(result.instructions).toContain("YYYY-MM-DD");
   });
 
-  test("lists five tools, reads marked read-only and cancel destructive", async ({
+  test("lists seven tools, reads marked read-only and cancel destructive", async ({
     request,
     db,
   }) => {
@@ -363,11 +363,19 @@ test.describe("tools", () => {
     expect(Object.keys(byName).sort()).toEqual([
       "book_desk",
       "cancel_bookings",
+      "get_booking_history",
       "get_me",
+      "get_office_stats",
       "list_desks",
       "list_my_bookings",
     ]);
-    for (let name of ["get_me", "list_desks", "list_my_bookings"]) {
+    for (let name of [
+      "get_me",
+      "list_desks",
+      "list_my_bookings",
+      "get_office_stats",
+      "get_booking_history",
+    ]) {
       expect(byName[name].annotations.readOnlyHint).toBe(true);
     }
     expect(byName.cancel_bookings.annotations.destructiveHint).toBe(true);
@@ -650,5 +658,234 @@ test.describe("admin tools", () => {
     );
     expect(bobs.owner_id).toBeUndefined();
     expect(bobs.booked_by[0].user_id).toBeUndefined();
+  });
+});
+
+test.describe("history and office numbers", () => {
+  test("get_office_stats averages the Metrics tab's days per weekday", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    // NOW is a Monday: 7 and 14 days ago are Mondays, 6 days ago a Tuesday.
+    await db.addMetrics(14, 2);
+    await db.addMetrics(7, 4);
+    await db.addMetrics(6, 1);
+    await db.addMetrics(100, 4);
+
+    let { structuredContent } = await callTool(
+      request,
+      token,
+      "get_office_stats",
+    );
+
+    expect(structuredContent.desk_count).toBe(4);
+    expect(structuredContent.days).toHaveLength(3);
+    expect(structuredContent.by_weekday).toEqual([
+      {
+        weekday: "Monday",
+        days: 2,
+        average_bookings: 3,
+        average_occupancy_pct: 75,
+      },
+      {
+        weekday: "Tuesday",
+        days: 1,
+        average_bookings: 1,
+        average_occupancy_pct: 25,
+      },
+    ]);
+  });
+
+  test("cancelling records the booking in the history", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    await callTool(request, token, "cancel_bookings", {
+      bookings: [{ desk_id: desks.alice.id, date: iso("tuesday") }],
+    });
+
+    expect(await db.history("alice")).toMatchObject([
+      { deskId: desks.alice.id, date: bookingDay("tuesday").date },
+    ]);
+  });
+
+  test("everyone sees their own history, and only their own", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    await db.addHistory("alice", { daysAgo: 7, kept: true });
+    await db.addHistory("alice", {
+      daysAgo: 6,
+      kept: false,
+      cancelledDaysBefore: 0,
+    });
+    await db.addHistory("alice", {
+      daysAgo: 5,
+      kept: false,
+      cancelledDaysBefore: 2,
+    });
+    await db.addHistory("bob", { daysAgo: 7, kept: true });
+
+    // user_id is not offered without the admin scope; it is ignored.
+    let { structuredContent } = await callTool(
+      request,
+      token,
+      "get_booking_history",
+      { user_id: users.bob.id },
+    );
+
+    expect(structuredContent.people).toEqual([
+      expect.objectContaining({
+        name: "Alice Andersen",
+        is_you: true,
+        kept: 1,
+        cancelled: 2,
+        cancelled_on_the_day: 1,
+        cancel_rate: 0.67,
+      }),
+    ]);
+    expect(structuredContent.people[0].user_id).toBeUndefined();
+    expect(structuredContent.people[0].kept_by_weekday.Monday).toBe(1);
+    expect(
+      structuredContent.bookings.map(
+        (b: { outcome: string; cancelled_days_before?: number }) => [
+          b.outcome,
+          b.cancelled_days_before,
+        ],
+      ),
+    ).toEqual([
+      ["kept", undefined],
+      ["cancelled", 0],
+      ["cancelled", 2],
+    ]);
+  });
+
+  test("a day counts only once all its bookings are settled, by the latest cancellation", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    // A guest desk cancelled while Alice's own booking that day stays.
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.unclaimed.id,
+      day: "tuesday",
+    });
+    await callTool(request, token, "cancel_bookings", {
+      bookings: [{ desk_id: desks.unclaimed.id, date: iso("tuesday") }],
+    });
+    // Two desks cancelled on one past day: days ahead, then that morning.
+    await db.addHistory("alice", {
+      daysAgo: 7,
+      kept: false,
+      cancelledDaysBefore: 3,
+    });
+    await db.addHistory("alice", {
+      daysAgo: 7,
+      kept: false,
+      cancelledDaysBefore: 0,
+    });
+
+    let { structuredContent } = await callTool(
+      request,
+      token,
+      "get_booking_history",
+    );
+
+    expect(structuredContent.people[0]).toMatchObject({
+      cancelled: 1,
+      cancelled_on_the_day: 1,
+      upcoming: 1,
+    });
+  });
+
+  test("an Admin with the admin scope sees everyone, or one person", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("admin", "desks admin");
+    await db.addHistory("alice", { daysAgo: 7, kept: true });
+    await db.addHistory("bob", {
+      daysAgo: 7,
+      kept: false,
+      cancelledDaysBefore: 1,
+    });
+
+    let everyone = await callTool(request, token, "get_booking_history");
+    let byId = Object.fromEntries(
+      everyone.structuredContent.people.map((p: { user_id: string }) => [
+        p.user_id,
+        p,
+      ]),
+    );
+    expect(Object.keys(byId).sort()).toEqual(
+      [users.admin.id, users.alice.id, users.bob.id, users.guest.id].sort(),
+    );
+    expect(byId[users.bob.id]).toMatchObject({ kept: 0, cancel_rate: 1 });
+    expect(everyone.structuredContent.bookings).toBeUndefined();
+
+    let one = await callTool(request, token, "get_booking_history", {
+      user_id: users.alice.id.toUpperCase(),
+    });
+    expect(one.structuredContent.people).toHaveLength(1);
+    expect(one.structuredContent.bookings).toHaveLength(1);
+  });
+
+  test("bookings an Admin removes don't count as cancelled", async ({
+    request,
+    db,
+  }) => {
+    let admin = await db.addMcpToken("admin", "desks admin");
+    let alice = await db.addMcpToken("alice");
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    // Unassigning her desk takes her later bookings on it.
+    await callTool(request, admin, "admin_unassign_desk", {
+      desk_id: desks.alice.id,
+    });
+
+    let { structuredContent } = await callTool(
+      request,
+      alice,
+      "get_booking_history",
+    );
+    expect(structuredContent.people[0]).toMatchObject({
+      cancelled: 0,
+      removed_by_admin: 1,
+    });
+    expect(structuredContent.bookings[0].outcome).toBe("removed_by_admin");
+  });
+
+  test("a former Admin can't see other people's history", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("admin", "desks admin");
+    await db.setRole("admin", "user");
+
+    let result = await callTool(request, token, "get_booking_history", {
+      user_id: users.bob.id,
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not an Admin");
   });
 });

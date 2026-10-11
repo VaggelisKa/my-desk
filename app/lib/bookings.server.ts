@@ -12,6 +12,11 @@ import {
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations } from "~/lib/db/schema";
+import {
+  markRemovedByAdmin,
+  removedBooking,
+  type RemovedBooking,
+} from "~/lib/history.server";
 import { plural } from "~/lib/utils";
 
 /** A booking of `deskId` by `userId` on `date`, as the table stores it. */
@@ -259,19 +264,27 @@ export async function removeBooking(
     );
   }
 
-  let deleted = await db
-    .delete(reservations)
-    .where(
-      and(
-        user.role === "admin"
-          ? undefined
-          : eq(reservations.userId, user.userId),
-        eq(reservations.date, date),
-        eq(reservations.day, day),
-        eq(reservations.deskId, deskId),
-      ),
-    )
-    .returning({ deskId: reservations.deskId });
+  let deleted = await db.transaction(async (tx) => {
+    let removed = await tx
+      .delete(reservations)
+      .where(
+        and(
+          user.role === "admin"
+            ? undefined
+            : eq(reservations.userId, user.userId),
+          eq(reservations.date, date),
+          eq(reservations.day, day),
+          eq(reservations.deskId, deskId),
+        ),
+      )
+      .returning(removedBooking);
+    // An Admin removing someone else's booking: not that person cancelling.
+    await markRemovedByAdmin(
+      removed.filter((booking) => booking.userId !== user.userId),
+      tx,
+    );
+    return removed;
+  });
 
   if (!deleted.length) {
     return dataWithError(
@@ -334,20 +347,32 @@ function anyOf(picked: Picked) {
 }
 
 /**
- * Deletes the picked bookings, a chunk per statement, all in one batch (so
- * all or none go). Returns how many there were.
+ * Deletes the picked bookings, a chunk per statement, all in one transaction
+ * (so all or none go). Returns how many there were.
  */
-export async function deletePicked(picked: Picked) {
-  let [first, ...rest] = Array.from(
-    { length: Math.ceil(picked.length / CHUNK) },
-    (_, i) =>
-      db
-        .delete(reservations)
-        .where(anyOf(picked.slice(i * CHUNK, (i + 1) * CHUNK)))
-        .returning({ deskId: reservations.deskId }),
-  );
-  let results = await db.batch([first, ...rest]);
-  return results.reduce((count, deleted) => count + deleted.length, 0);
+export async function deletePicked(
+  picked: Picked,
+  /** The Admin removing them, when it is one: other people's then count as removed by an Admin. */
+  adminId?: string,
+) {
+  return db.transaction(async (tx) => {
+    let chunks = await Promise.all(
+      Array.from({ length: Math.ceil(picked.length / CHUNK) }, (_, i) =>
+        tx
+          .delete(reservations)
+          .where(anyOf(picked.slice(i * CHUNK, (i + 1) * CHUNK)))
+          .returning(removedBooking),
+      ),
+    );
+    let removed: RemovedBooking[] = chunks.flat();
+    if (adminId) {
+      await markRemovedByAdmin(
+        removed.filter((booking) => booking.userId !== adminId),
+        tx,
+      );
+    }
+    return removed.length;
+  });
 }
 
 /**
