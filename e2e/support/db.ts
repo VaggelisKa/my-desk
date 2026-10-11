@@ -1,7 +1,8 @@
 import { createClient, type Client } from "@libsql/client";
 import { addDays, format, getWeek, startOfWeek } from "date-fns";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
+import { createHash, randomBytes } from "node:crypto";
 import * as schema from "../../app/lib/db/schema";
 import { DATABASE_URL, NOW } from "./env";
 
@@ -93,6 +94,10 @@ export class TestDatabase {
   /** Atomically wipes every table and restores the baseline seed. */
   async reset() {
     await this.db.batch([
+      this.db.delete(schema.mcpAuditLog),
+      this.db.delete(schema.oauthTokens),
+      this.db.delete(schema.oauthCodes),
+      this.db.delete(schema.oauthClients),
       this.db.delete(schema.reservations),
       this.db.delete(schema.desks),
       this.db.delete(schema.users),
@@ -157,6 +162,63 @@ export class TestDatabase {
         eq(schema.reservations.day, day),
         eq(schema.reservations.week, week),
       ),
+    });
+  }
+
+  /**
+   * An MCP access token for `user`, as if they had connected an assistant,
+   * so tool tests can skip the sign-in flow. `scope` as the Allow page grants it.
+   */
+  async addMcpToken(user: SeedUser, scope = "desks") {
+    let token = randomBytes(32).toString("base64url");
+    let clientId = randomBytes(8).toString("hex");
+
+    await this.db.insert(schema.oauthClients).values({
+      id: clientId,
+      name: "Test assistant",
+      redirectUris: JSON.stringify(["http://localhost:9999/callback"]),
+    });
+    await this.db.insert(schema.oauthTokens).values({
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      kind: "access",
+      grantId: clientId,
+      clientId,
+      userId: users[user].id,
+      scope,
+      expiresAt: NOW.getTime() + 60 * 60 * 1000,
+    });
+
+    return token;
+  }
+
+  /** Moves the use of every used refresh token `ms` into the past. */
+  async backdateRefreshUse(ms: number) {
+    await this.db
+      .update(schema.oauthTokens)
+      .set({ expiresAt: sql`${schema.oauthTokens.expiresAt} - ${ms}` })
+      .where(eq(schema.oauthTokens.kind, "used"));
+  }
+
+  /** Fills `user`'s hourly allowance of changes through assistants. */
+  async addMcpChanges(user: SeedUser, howMany: number) {
+    await this.db.insert(schema.mcpAuditLog).values(
+      Array.from({ length: howMany }, () => ({
+        userId: users[user].id,
+        clientId: "test",
+        tool: "book_desk",
+        input: "{}",
+        ok: true,
+        message: "Booked",
+        // The server clock is pinned to NOW, so "the last hour" is around it.
+        createdAt: NOW.getTime(),
+      })),
+    );
+  }
+
+  mcpAuditLog(user: SeedUser) {
+    return this.db.query.mcpAuditLog.findMany({
+      where: eq(schema.mcpAuditLog.userId, users[user].id),
+      orderBy: [asc(schema.mcpAuditLog.id)],
     });
   }
 

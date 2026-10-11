@@ -1,7 +1,12 @@
 import { lt } from "drizzle-orm";
 import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
-import { reservations } from "~/lib/db/schema";
+import {
+  mcpAuditLog,
+  oauthCodes,
+  oauthTokens,
+  reservations,
+} from "~/lib/db/schema";
 import type { Route } from "./+types/cron.reservations-cleanup";
 
 export async function loader({ url }: Route.LoaderArgs) {
@@ -15,11 +20,26 @@ export async function loader({ url }: Route.LoaderArgs) {
     await db
       .delete(reservations)
       .where(lt(reservations.dateTimestamp, todayStart()));
-
-    return new Response("Past bookings cleaned up", { status: 200 });
   } catch (error) {
     // The details go to the logs, not to whoever called.
     console.error(error);
     return new Response("Could not clean up past bookings", { status: 500 });
   }
+
+  // Expired sign-in codes and assistant tokens, and the MCP audit log after
+  // 90 days. Apart from the bookings, so a problem here never holds them up.
+  let now = Date.now();
+  try {
+    await db.batch([
+      db.delete(oauthCodes).where(lt(oauthCodes.expiresAt, now)),
+      db.delete(oauthTokens).where(lt(oauthTokens.expiresAt, now)),
+      db
+        .delete(mcpAuditLog)
+        .where(lt(mcpAuditLog.createdAt, now - 90 * 24 * 60 * 60 * 1000)),
+    ]);
+  } catch (error) {
+    console.error(error);
+  }
+
+  return new Response("Past bookings cleaned up", { status: 200 });
 }

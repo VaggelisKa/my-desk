@@ -313,7 +313,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   let error = useRouteError();
   let { toast } = useToast();
   let outlet = useRef<HTMLDivElement>(null);
-  let user = data?.user?.id ? data.user : undefined;
+  // The page that connects an assistant stands alone, without the tabs.
+  let connecting = useLocation().pathname.startsWith("/oauth/");
+  let user = data?.user?.id && !connecting ? data.user : undefined;
   let pendingTab = usePendingTab();
 
   useOutletScrollRestoration(outlet, pendingTab !== undefined);
