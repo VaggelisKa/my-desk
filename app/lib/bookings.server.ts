@@ -356,15 +356,15 @@ export async function deletePicked(
   adminId?: string,
 ) {
   return db.transaction(async (tx) => {
-    let removed: RemovedBooking[] = [];
-    for (let i = 0; i < picked.length; i += CHUNK) {
-      removed.push(
-        ...(await tx
+    let chunks = await Promise.all(
+      Array.from({ length: Math.ceil(picked.length / CHUNK) }, (_, i) =>
+        tx
           .delete(reservations)
-          .where(anyOf(picked.slice(i, i + CHUNK)))
-          .returning(removedBooking)),
-      );
-    }
+          .where(anyOf(picked.slice(i * CHUNK, (i + 1) * CHUNK)))
+          .returning(removedBooking),
+      ),
+    );
+    let removed: RemovedBooking[] = chunks.flat();
     if (adminId) {
       await markRemovedByAdmin(
         removed.filter((booking) => booking.userId !== adminId),

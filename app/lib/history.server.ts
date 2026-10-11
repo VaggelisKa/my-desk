@@ -40,23 +40,25 @@ export async function markRemovedByAdmin(
       : [],
   );
 
-  for (let i = 0; i < keys.length; i += CHUNK) {
-    await tx
-      .update(bookingHistory)
-      .set({ removedByAdmin: true })
-      .where(
-        inArray(
-          bookingHistory.id,
-          tx
-            .select({ id: max(bookingHistory.id) })
-            .from(bookingHistory)
-            .where(or(...keys.slice(i, i + CHUNK)))
-            .groupBy(
-              bookingHistory.userId,
-              bookingHistory.deskId,
-              bookingHistory.date,
-            ),
+  await Promise.all(
+    Array.from({ length: Math.ceil(keys.length / CHUNK) }, (_, i) =>
+      tx
+        .update(bookingHistory)
+        .set({ removedByAdmin: true })
+        .where(
+          inArray(
+            bookingHistory.id,
+            tx
+              .select({ id: max(bookingHistory.id) })
+              .from(bookingHistory)
+              .where(or(...keys.slice(i * CHUNK, (i + 1) * CHUNK)))
+              .groupBy(
+                bookingHistory.userId,
+                bookingHistory.deskId,
+                bookingHistory.date,
+              ),
+          ),
         ),
-      );
-  }
+    ),
+  );
 }
