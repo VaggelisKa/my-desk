@@ -155,6 +155,13 @@
       "when": 1791654866063,
       "tag": "0021_mcp_admin_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1791712482328,
+      "tag": "0022_booking_history",
+      "breakpoints": true
     }
   ]
 }

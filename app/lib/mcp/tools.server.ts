@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/server";
-import { format, isValid, isWeekend, parse } from "date-fns";
+import { format, isWeekend } from "date-fns";
 import { and, asc, count, eq, gt, or } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -24,7 +24,19 @@ import {
   parseDate,
 } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
-import { desks, mcpAuditLog, reservations, users } from "~/lib/db/schema";
+import { desks, mcpAuditLog, reservations } from "~/lib/db/schema";
+import { registerInsightTools } from "~/lib/mcp/insights.server";
+import {
+  answer,
+  day,
+  dayShape,
+  findCaller,
+  fromIso,
+  fullName,
+  gone,
+  isoDate,
+  refuse,
+} from "~/lib/mcp/shared.server";
 import { capitalize, deskLabel } from "~/lib/utils";
 
 // The MCP server's tools: what Claude or ChatGPT can do for the person who
@@ -44,65 +56,15 @@ const MAX_LOGGED_INPUT = 2000;
 /** The longest name or user ID an admin tool takes. */
 const MAX_TEXT = 80;
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 export const SERVER_INSTRUCTIONS = [
   "MyDesk books desks in a shared office (Europe/Copenhagen time).",
   "Dates are YYYY-MM-DD. Call get_me first to learn today's date, your own desk and the booking rules.",
   "book_desk books your own desk unless you pass desk_id; use list_desks to see who is in and what is free on a day.",
+  "For questions about how the office is used over time, get_office_stats has the daily numbers and get_booking_history what became of past bookings.",
 ].join(" ");
 
 const ADMIN_INSTRUCTIONS =
   "The admin_ tools change other people's desks, bookings and accounts, as the Admin tab does. Say what you will change and get a yes before you call one.";
-
-let isoDate = z
-  .string()
-  .regex(ISO_DATE, "Use YYYY-MM-DD")
-  .describe("A date as YYYY-MM-DD");
-
-/** "2026-10-14" as the app's Date, or null when it is not a real date. */
-function fromIso(value: string) {
-  let date = parse(value, "yyyy-MM-dd", new Date());
-  return isValid(date) && format(date, "yyyy-MM-dd") === value ? date : null;
-}
-
-function day(date: Date) {
-  return { date: format(date, "yyyy-MM-dd"), weekday: format(date, "EEEE") };
-}
-
-function fullName(person: { firstName: string; lastName: string }) {
-  return `${capitalize(person.firstName)} ${capitalize(person.lastName)}`;
-}
-
-/** A tool answer: the data for the model, and the same as text for clients that only read text. */
-function answer<T extends Record<string, unknown>>(data: T) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(data) }],
-    structuredContent: data,
-  };
-}
-
-/** A tool error, as one sentence the model can pass on. */
-function refuse(message: string) {
-  return {
-    content: [{ type: "text" as const, text: message }],
-    isError: true,
-  };
-}
-
-async function findCaller(userId: string) {
-  return db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { id: true, firstName: true, lastName: true, role: true },
-    with: {
-      desk: { columns: { id: true, block: true, row: true, column: true } },
-    },
-  });
-}
-
-let gone = refuse(
-  "Your MyDesk account no longer exists. Ask an admin, then connect again.",
-);
 
 /**
  * Runs a change for `userId`, within the hourly limit, and records it in the
@@ -229,11 +191,6 @@ let deskShape = z.object({
   desk_id: z.number().int(),
   label: z.string().describe("block.row.column, as the app shows it"),
 });
-
-let dayShape = {
-  date: z.string().describe("YYYY-MM-DD"),
-  weekday: z.string(),
-};
 
 /** The MCP server for one signed-in person, connected through `clientId`. */
 export function createDeskServer(caller: {
@@ -616,6 +573,7 @@ export function createDeskServer(caller: {
       }),
   );
 
+  registerInsightTools(server, caller);
   if (caller.admin) registerAdminTools(server, caller);
 
   return server;
@@ -748,6 +706,7 @@ function registerAdminTools(
           input.desk_id,
           formatDate(date),
           input.user_id.trim().toLowerCase(),
+          caller.userId,
         );
       }),
   );

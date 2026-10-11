@@ -17,6 +17,7 @@ import { CronError, deleteCron } from "~/lib/cron";
 import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
 import { desks, reservations, users } from "~/lib/db/schema";
+import { markRemovedByAdmin, removedBooking } from "~/lib/history.server";
 import {
   addPerson,
   checkNewPerson,
@@ -186,13 +187,13 @@ async function stopRecurring(userId: string) {
 async function releaseDesks(
   deskIds: number[],
   ownerId: string,
-  tx: Pick<typeof db, "update" | "delete"> = db,
+  tx: Pick<typeof db, "update" | "delete" | "select"> = db,
 ) {
   await tx
     .update(desks)
     .set({ userId: null })
     .where(and(inArray(desks.id, deskIds), eq(desks.userId, ownerId)));
-  await tx
+  let removed = await tx
     .delete(reservations)
     .where(
       and(
@@ -200,7 +201,9 @@ async function releaseDesks(
         eq(reservations.userId, ownerId),
         gt(reservations.dateTimestamp, todayStart()),
       ),
-    );
+    )
+    .returning(removedBooking);
+  await markRemovedByAdmin(removed, tx);
 }
 
 /** Thrown inside a move's transaction to undo it when the desk changed meanwhile. */
@@ -361,17 +364,24 @@ export async function cancelBookingOf(
   deskId: number,
   date: string,
   userId: string,
+  /** The Admin cancelling it: their own booking is theirs to cancel. */
+  adminId: string,
 ): Promise<AdminOutcome> {
-  let deleted = await db
-    .delete(reservations)
-    .where(
-      and(
-        eq(reservations.deskId, deskId),
-        eq(reservations.date, date),
-        eq(reservations.userId, userId),
-      ),
-    )
-    .returning({ deskId: reservations.deskId });
+  // With its history flag, or neither: unflagged it would read as theirs.
+  let deleted = await db.transaction(async (tx) => {
+    let removed = await tx
+      .delete(reservations)
+      .where(
+        and(
+          eq(reservations.deskId, deskId),
+          eq(reservations.date, date),
+          eq(reservations.userId, userId),
+        ),
+      )
+      .returning(removedBooking);
+    if (userId !== adminId) await markRemovedByAdmin(removed, tx);
+    return removed;
+  });
 
   return deleted.length
     ? { ok: true, message: "Booking cancelled" }
@@ -470,6 +480,7 @@ export async function handleAdminAction(args: AuthArgs) {
           Number(field(formData, "deskId")),
           field(formData, "date"),
           field(formData, "userId"),
+          adminId,
         ),
       );
 
@@ -484,7 +495,7 @@ export async function handleAdminAction(args: AuthArgs) {
         );
       }
 
-      let deleted = await deletePicked(picked);
+      let deleted = await deletePicked(picked, adminId);
 
       if (!deleted) {
         return dataWithError(
@@ -506,10 +517,17 @@ export async function handleAdminAction(args: AuthArgs) {
           ? eq(reservations.deskId, Number(field(formData, "deskId")))
           : eq(reservations.userId, field(formData, "userId"));
 
-      let deleted = await db
-        .delete(reservations)
-        .where(and(where, gte(reservations.dateTimestamp, todayStart())))
-        .returning({ deskId: reservations.deskId });
+      let deleted = await db.transaction(async (tx) => {
+        let removed = await tx
+          .delete(reservations)
+          .where(and(where, gte(reservations.dateTimestamp, todayStart())))
+          .returning(removedBooking);
+        await markRemovedByAdmin(
+          removed.filter((booking) => booking.userId !== adminId),
+          tx,
+        );
+        return removed;
+      });
 
       return dataWithSuccess(done, {
         message: `Cleared ${plural(deleted.length, "booking")}`,
