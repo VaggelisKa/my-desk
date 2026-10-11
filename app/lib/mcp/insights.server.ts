@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { addDays, differenceInCalendarDays, format, subDays } from "date-fns";
-import { and, count, gte, isNotNull, lte } from "drizzle-orm";
+import { and, count, eq, gte, isNotNull, lte } from "drizzle-orm";
 import { z } from "zod";
 import { formatDate, officeNow, parseDate, todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
@@ -308,7 +308,7 @@ export function registerInsightTools(
       });
       if (!range.ok) return refuse(range.error);
 
-      let [people, fetched, upcoming, [first]] = await Promise.all([
+      let [people, fetched, upcoming, [first], live] = await Promise.all([
         db.query.users.findMany({
           where: only ? (u, { eq }) => eq(u.id, only) : undefined,
           columns: {
@@ -326,7 +326,7 @@ export function registerInsightTools(
               lte(h.dateTimestamp, range.end.getTime()),
               only ? eq(h.userId, only) : undefined,
             ),
-          orderBy: (h, { asc }) => [asc(h.dateTimestamp)],
+          orderBy: (h, { asc }) => [asc(h.dateTimestamp), asc(h.id)],
         }),
         db
           .select({ userId: reservations.userId, count: count() })
@@ -343,6 +343,20 @@ export function registerInsightTools(
           .from(bookingHistory)
           .orderBy(bookingHistory.dateTimestamp)
           .limit(1),
+        // Bookings still in place: their days aren't settled yet.
+        db
+          .select({
+            userId: reservations.userId,
+            dateTimestamp: reservations.dateTimestamp,
+          })
+          .from(reservations)
+          .where(
+            and(
+              gte(reservations.dateTimestamp, range.start.getTime()),
+              lte(reservations.dateTimestamp, range.end.getTime()),
+              only ? eq(reservations.userId, only) : undefined,
+            ),
+          ),
       ]);
 
       if (only && !people.length)
@@ -365,6 +379,9 @@ export function registerInsightTools(
         : [];
       let labels = new Map(deskRows.map((desk) => [desk.id, deskLabel(desk)]));
       let upcomingBy = new Map(upcoming.map((row) => [row.userId, row.count]));
+      let unsettled = new Set(
+        live.map((row) => `${row.userId}@${row.dateTimestamp}`),
+      );
 
       let summaries = people
         .map((person) => {
@@ -376,13 +393,22 @@ export function registerInsightTools(
           let lastKept: Date | null = null;
 
           // A day counts once, even with two desks booked (one for a
-          // guest): kept if any booking was, then cancelled, then removed.
+          // guest): kept if any booking was, then cancelled (the latest
+          // cancellation), then removed. A day with a booking still in
+          // place isn't settled, so it isn't counted yet.
           let rank = { kept: 0, cancelled: 1, removed_by_admin: 2 };
           let byDay = new Map<number, ReturnType<typeof outcomeOf>>();
           for (let row of mine) {
+            if (unsettled.has(`${person.id}@${row.dateTimestamp}`)) continue;
             let outcome = outcomeOf(row);
             let seen = byDay.get(row.dateTimestamp);
-            if (!seen || rank[outcome.kind] < rank[seen.kind]) {
+            if (
+              !seen ||
+              rank[outcome.kind] < rank[seen.kind] ||
+              (outcome.kind === "cancelled" &&
+                seen.kind === "cancelled" &&
+                outcome.days_before < seen.days_before)
+            ) {
               byDay.set(row.dateTimestamp, outcome);
             }
           }

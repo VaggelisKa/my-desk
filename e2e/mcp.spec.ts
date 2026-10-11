@@ -769,6 +769,50 @@ test.describe("history and office numbers", () => {
     ]);
   });
 
+  test("a day counts only once all its bookings are settled, by the latest cancellation", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    // A guest desk cancelled while Alice's own booking that day stays.
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.unclaimed.id,
+      day: "tuesday",
+    });
+    await callTool(request, token, "cancel_bookings", {
+      bookings: [{ desk_id: desks.unclaimed.id, date: iso("tuesday") }],
+    });
+    // Two desks cancelled on one past day: days ahead, then that morning.
+    await db.addHistory("alice", {
+      daysAgo: 7,
+      kept: false,
+      cancelledDaysBefore: 3,
+    });
+    await db.addHistory("alice", {
+      daysAgo: 7,
+      kept: false,
+      cancelledDaysBefore: 0,
+    });
+
+    let { structuredContent } = await callTool(
+      request,
+      token,
+      "get_booking_history",
+    );
+
+    expect(structuredContent.people[0]).toMatchObject({
+      cancelled: 1,
+      cancelled_on_the_day: 1,
+      upcoming: 1,
+    });
+  });
+
   test("an Admin with the admin scope sees everyone, or one person", async ({
     request,
     db,
