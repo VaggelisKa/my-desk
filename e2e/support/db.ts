@@ -232,6 +232,19 @@ export class TestDatabase {
     });
   }
 
+  /** A booking of `user`'s own desk `daysAgo` before the pinned today that the cleanup hasn't removed yet. */
+  async addPastReservation(user: SeedUser, daysAgo: number) {
+    let day = startOfDay(subDays(NOW, daysAgo));
+    await this.db.insert(schema.reservations).values({
+      userId: users[user].id,
+      deskId: desks[user === "guest" ? "unclaimed" : user].id,
+      day: format(day, "EEEE").toLowerCase(),
+      week: getWeek(day),
+      date: format(day, "dd.MM.yyyy"),
+      dateTimestamp: day.getTime(),
+    });
+  }
+
   /** The Metrics tab's row for the day `daysAgo` before the pinned today. */
   async addMetrics(daysAgo: number, bookings: number) {
     await this.db.insert(schema.bookingMetrics).values({

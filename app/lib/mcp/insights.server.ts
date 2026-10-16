@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { addDays, differenceInCalendarDays, format, subDays } from "date-fns";
-import { and, count, eq, gte, isNotNull, lte } from "drizzle-orm";
+import { and, count, eq, gte, isNotNull, lt, lte, min } from "drizzle-orm";
 import { z } from "zod";
 import { formatDate, officeNow, parseDate, todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
@@ -270,7 +270,12 @@ export function registerInsightTools(
             z.object({
               ...dayShape,
               desk: z.string().nullable(),
-              outcome: z.enum(["kept", "cancelled", "removed_by_admin"]),
+              outcome: z.enum([
+                "kept",
+                "cancelled",
+                "removed_by_admin",
+                "upcoming",
+              ]),
               cancelled_days_before: z
                 .number()
                 .int()
@@ -308,69 +313,103 @@ export function registerInsightTools(
       });
       if (!range.ok) return refuse(range.error);
 
-      let [people, fetched, upcoming, [first], live] = await Promise.all([
-        db.query.users.findMany({
-          where: only ? (u, { eq }) => eq(u.id, only) : undefined,
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            autoReservationsCronId: true,
-          },
-          with: { desk: { columns: { id: true } } },
-        }),
-        db.query.bookingHistory.findMany({
-          where: (h, { eq }) =>
-            and(
-              gte(h.dateTimestamp, range.start.getTime()),
-              lte(h.dateTimestamp, range.end.getTime()),
-              only ? eq(h.userId, only) : undefined,
-            ),
-          orderBy: (h, { asc }) => [asc(h.dateTimestamp), asc(h.id)],
-        }),
-        db
-          .select({ userId: reservations.userId, count: count() })
-          .from(reservations)
-          .where(
-            and(
-              isNotNull(reservations.dateTimestamp),
-              gte(reservations.dateTimestamp, todayStart()),
-            ),
-          )
-          .groupBy(reservations.userId),
-        db
-          .select({ first: bookingHistory.dateTimestamp })
-          .from(bookingHistory)
-          .orderBy(bookingHistory.dateTimestamp)
-          .limit(1),
-        // Bookings still in place: their days aren't settled yet.
-        db
-          .select({
-            userId: reservations.userId,
-            dateTimestamp: reservations.dateTimestamp,
-          })
-          .from(reservations)
-          .where(
-            and(
-              gte(reservations.dateTimestamp, range.start.getTime()),
-              lte(reservations.dateTimestamp, range.end.getTime()),
-              only ? eq(reservations.userId, only) : undefined,
-            ),
-          ),
-      ]);
+      let [people, fetched, upcoming, [first], live, [firstLive]] =
+        await Promise.all([
+          db.query.users.findMany({
+            where: only ? (u, { eq }) => eq(u.id, only) : undefined,
+            columns: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              autoReservationsCronId: true,
+            },
+            with: { desk: { columns: { id: true } } },
+          }),
+          db.query.bookingHistory.findMany({
+            where: (h, { eq }) =>
+              and(
+                gte(h.dateTimestamp, range.start.getTime()),
+                lte(h.dateTimestamp, range.end.getTime()),
+                only ? eq(h.userId, only) : undefined,
+              ),
+            orderBy: (h, { asc }) => [asc(h.dateTimestamp), asc(h.id)],
+          }),
+          db
+            .select({ userId: reservations.userId, count: count() })
+            .from(reservations)
+            .where(
+              and(
+                isNotNull(reservations.dateTimestamp),
+                gte(reservations.dateTimestamp, todayStart()),
+              ),
+            )
+            .groupBy(reservations.userId),
+          db
+            .select({ first: bookingHistory.dateTimestamp })
+            .from(bookingHistory)
+            .orderBy(bookingHistory.dateTimestamp)
+            .limit(1),
+          // Bookings still in place. Past days the cleanup hasn't removed yet
+          // were kept; today's and later ones aren't settled yet.
+          db
+            .select({
+              userId: reservations.userId,
+              deskId: reservations.deskId,
+              date: reservations.date,
+              dateTimestamp: reservations.dateTimestamp,
+              createdAt: reservations.createdAt,
+            })
+            .from(reservations)
+            .where(
+              and(
+                gte(reservations.dateTimestamp, range.start.getTime()),
+                lte(reservations.dateTimestamp, range.end.getTime()),
+                only ? eq(reservations.userId, only) : undefined,
+              ),
+            )
+            .orderBy(reservations.dateTimestamp, reservations.deskId),
+          db
+            .select({ first: min(reservations.dateTimestamp) })
+            .from(reservations)
+            .where(lt(reservations.dateTimestamp, todayStart())),
+        ]);
 
       if (only && !people.length)
         return refuse(`Nobody has the user ID ${only}.`);
 
-      // Weekends can't be booked; a stray row would fit no weekday.
-      let rows = fetched.filter((row) =>
-        WEEKDAY_NAMES.includes(
-          format(
-            new Date(row.dateTimestamp),
-            "EEEE",
-          ) as (typeof WEEKDAY_NAMES)[number],
-        ),
+      let now = Date.now();
+      let startOfToday = todayStart();
+      let stillBooked = live.flatMap((row) =>
+        row.dateTimestamp === null || row.date === null
+          ? []
+          : [
+              {
+                userId: row.userId,
+                deskId: row.deskId,
+                date: row.date,
+                dateTimestamp: row.dateTimestamp,
+                bookedAt: row.createdAt.getTime(),
+                endedAt: now,
+                removedByAdmin: false,
+                upcoming: row.dateTimestamp >= startOfToday,
+              },
+            ],
       );
+
+      // Weekends can't be booked; a stray row would fit no weekday.
+      let rows = [
+        ...fetched.map((row) => ({ ...row, upcoming: false })),
+        ...stillBooked,
+      ]
+        .sort((a, b) => a.dateTimestamp - b.dateTimestamp)
+        .filter((row) =>
+          WEEKDAY_NAMES.includes(
+            format(
+              new Date(row.dateTimestamp),
+              "EEEE",
+            ) as (typeof WEEKDAY_NAMES)[number],
+          ),
+        );
 
       let deskRows = rows.some((row) => row.deskId !== null)
         ? await db.query.desks.findMany({
@@ -379,8 +418,17 @@ export function registerInsightTools(
         : [];
       let labels = new Map(deskRows.map((desk) => [desk.id, deskLabel(desk)]));
       let upcomingBy = new Map(upcoming.map((row) => [row.userId, row.count]));
+      // Bookings still in place count too: the oldest one may predate the
+      // first deletion the history recorded.
+      let historyStarts =
+        [first?.first, firstLive?.first]
+          .filter((value): value is number => typeof value === "number")
+          .sort((a, b) => a - b)[0] ?? null;
+
       let unsettled = new Set(
-        live.map((row) => `${row.userId}@${row.dateTimestamp}`),
+        stillBooked
+          .filter((row) => row.upcoming)
+          .map((row) => `${row.userId}@${row.dateTimestamp}`),
       );
 
       let summaries = people
@@ -399,7 +447,12 @@ export function registerInsightTools(
           let rank = { kept: 0, cancelled: 1, removed_by_admin: 2 };
           let byDay = new Map<number, ReturnType<typeof outcomeOf>>();
           for (let row of mine) {
-            if (unsettled.has(`${person.id}@${row.dateTimestamp}`)) continue;
+            if (
+              row.upcoming ||
+              unsettled.has(`${person.id}@${row.dateTimestamp}`)
+            ) {
+              continue;
+            }
             let outcome = outcomeOf(row);
             let seen = byDay.get(row.dateTimestamp);
             if (
@@ -458,15 +511,17 @@ export function registerInsightTools(
       return answer({
         from: format(range.start, "yyyy-MM-dd"),
         to: format(range.end, "yyyy-MM-dd"),
-        history_starts: first
-          ? format(new Date(first.first), "yyyy-MM-dd")
+        history_starts: historyStarts
+          ? format(new Date(historyStarts), "yyyy-MM-dd")
           : null,
         people: summaries,
         ...(only
           ? {
               bookings: rows.map((row) => {
                 let date = new Date(row.dateTimestamp);
-                let outcome = outcomeOf(row);
+                let outcome = row.upcoming
+                  ? ({ kind: "upcoming" } as const)
+                  : outcomeOf(row);
                 return {
                   ...day(date),
                   desk:
