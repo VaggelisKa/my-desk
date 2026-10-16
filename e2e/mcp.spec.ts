@@ -1,9 +1,10 @@
 import type { APIRequestContext, Page } from "@playwright/test";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { createHash, randomBytes } from "node:crypto";
 import { expect, test } from "./fixtures";
 import { gotoHydrated } from "./pages/hydration";
 import { bookingDay, desks, users, type Weekday } from "./support/db";
+import { NOW } from "./support/env";
 
 // The MCP server Claude and ChatGPT connect to, spoken to the way they do:
 // OAuth sign-in, then JSON-RPC tool calls over HTTP.
@@ -811,6 +812,42 @@ test.describe("history and office numbers", () => {
       cancelled_on_the_day: 1,
       upcoming: 1,
     });
+  });
+
+  test("past bookings the cleanup hasn't removed yet count as kept", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    // NOW is a Monday: 7 days ago a Monday, 6 a Tuesday, 4 a Thursday.
+    await db.addPastReservation("alice", 7);
+    await db.addPastReservation("alice", 6);
+    await db.addPastReservation("alice", 4);
+    await db.addReservation({
+      user: "alice",
+      deskId: desks.alice.id,
+      day: "tuesday",
+    });
+
+    let { structuredContent } = await callTool(
+      request,
+      token,
+      "get_booking_history",
+    );
+
+    expect(structuredContent.people[0]).toMatchObject({
+      kept: 3,
+      cancelled: 0,
+      upcoming: 1,
+      last_kept: format(subDays(NOW, 4), "yyyy-MM-dd"),
+      kept_by_weekday: { Monday: 1, Tuesday: 1, Thursday: 1 },
+    });
+    expect(structuredContent.history_starts).toBe(
+      format(subDays(NOW, 7), "yyyy-MM-dd"),
+    );
+    expect(
+      structuredContent.bookings.map((b: { outcome: string }) => b.outcome),
+    ).toEqual(["kept", "kept", "kept", "upcoming"]);
   });
 
   test("an Admin with the admin scope sees everyone, or one person", async ({
