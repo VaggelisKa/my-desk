@@ -222,8 +222,10 @@ export default function Authorize({
             </span>
           </label>
         ) : null}
-        <p className="text-[13px] text-ink-muted">
-          You'll go back to <span className="font-semibold">{returnsTo}</span>.
+        <p className="text-[15px]">
+          You'll go back to{" "}
+          <span className="break-all font-semibold">{returnsTo}</span>. Only
+          allow it if that's the assistant you're connecting.
         </p>
         <AuthSubmit name="intent" value="allow">
           Allow

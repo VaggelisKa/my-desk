@@ -28,19 +28,20 @@ const REFRESH_TTL = 90 * 24 * 60 * 60 * 1000;
 const REUSE_GRACE = 30 * 1000;
 
 /**
- * Where an assistant may send people back after they allowed it: Claude and
- * ChatGPT, plus localhost for Claude Code and the MCP Inspector. Keeps the
- * Allow page from handing a code to any other site. `MCP_REDIRECT_HOSTS`
- * (comma separated) adds more.
+ * Where an assistant may send people back after they allowed it. Any app can
+ * connect (Claude, ChatGPT, Grok, Cursor...): each registers its own redirect
+ * URIs and gets codes only at those, exact match, and the Allow page names
+ * where the code goes. So any https address works, plain http only on this
+ * machine (Claude Code, the MCP Inspector), and for desktop apps their own
+ * scheme: a reverse domain name (com.example.app:/callback, RFC 8252) or one
+ * of the coding apps below. Other schemes can open installers, Office files
+ * or settings on the person's computer, so they are refused.
  */
-const REDIRECT_HOSTS = [
-  "claude.ai",
-  "claude.com",
-  "chatgpt.com",
-  "chat.openai.com",
-  "platform.openai.com",
-];
 const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+const APP_SCHEMES = ["cursor:", "vscode:", "vscode-insiders:", "windsurf:"];
+const REVERSE_DOMAIN = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+:$/;
+/** Reverse domain names that are the system's own, not an app's. */
+const SYSTEM_SCHEMES = /^(x-apple|com\.apple|ms-|microsoft)/;
 const MAX_REDIRECT_LENGTH = 2048;
 
 /**
@@ -134,18 +135,20 @@ export function isAllowedRedirect(value: unknown) {
   if (value.length > MAX_REDIRECT_LENGTH) return false;
   if (url.hash || url.username || url.password) return false;
 
-  if (LOOPBACK_HOSTS.includes(url.hostname)) {
-    return url.protocol === "http:" || url.protocol === "https:";
+  if (url.protocol === "https:" || url.protocol === "http:") {
+    return isWebRedirect(url);
   }
-
-  let extra = (process.env.MCP_REDIRECT_HOSTS ?? "")
-    .split(",")
-    .map((host) => host.trim())
-    .filter(Boolean);
-
   return (
-    url.protocol === "https:" &&
-    [...REDIRECT_HOSTS, ...extra].includes(url.hostname)
+    APP_SCHEMES.includes(url.protocol) ||
+    (REVERSE_DOMAIN.test(url.protocol) && !SYSTEM_SCHEMES.test(url.protocol))
+  );
+}
+
+/** An https page, or http on this machine. */
+function isWebRedirect(url: URL) {
+  return (
+    url.protocol === "https:" ||
+    (url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname))
   );
 }
 
@@ -157,7 +160,7 @@ type Registration = {
   response_types?: unknown;
 };
 
-/** Dynamic client registration (RFC 7591), for the redirect hosts above only. */
+/** Dynamic client registration (RFC 7591), for the redirect URIs above. */
 export async function registerClient(metadata: Registration) {
   let redirectUris = metadata.redirect_uris;
 
@@ -174,7 +177,7 @@ export async function registerClient(metadata: Registration) {
   if (!redirectUris.every(isAllowedRedirect)) {
     throw new OAuthFailure(
       "invalid_redirect_uri",
-      "Only Claude, ChatGPT and localhost redirect URIs are allowed.",
+      "Redirect URIs must be https, http on localhost, or an app's own reverse-domain scheme.",
     );
   }
 
@@ -542,16 +545,20 @@ export async function readAuthorizeRequest(url: URL) {
     } as const;
   }
 
+  // Mistakes go back before anyone pressed anything, so only to a web page:
+  // an app's own scheme would launch that app straight from a link.
   let refuse = (error: string, description: string) =>
-    ({
-      kind: "refuse",
-      to: withParams(redirectUri, {
-        error,
-        error_description: description,
-        state,
-        iss: url.origin,
-      }),
-    }) as const;
+    isWebRedirect(new URL(redirectUri))
+      ? ({
+          kind: "refuse",
+          to: withParams(redirectUri, {
+            error,
+            error_description: description,
+            state,
+            iss: url.origin,
+          }),
+        } as const)
+      : ({ kind: "fatal", message: description } as const);
 
   if (param("response_type") !== "code") {
     return refuse("unsupported_response_type", "Only code is supported.");
@@ -575,11 +582,17 @@ export async function readAuthorizeRequest(url: URL) {
     kind: "ok",
     client: { id: client.id, name: client.name },
     /** Where the code goes, shown on the Allow page. */
-    returnsTo: new URL(redirectUri).host,
+    returnsTo: returnsTo(redirectUri),
     redirectUri,
     codeChallenge,
     state,
   } as const;
+}
+
+/** Where a redirect URI goes, for the Allow page: the site, or all of an app's URI. */
+function returnsTo(redirectUri: string) {
+  let url = new URL(redirectUri);
+  return isWebRedirect(url) ? url.host : redirectUri;
 }
 
 /** `base` with the given query parameters added, skipping null ones. */
