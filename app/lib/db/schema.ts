@@ -136,7 +136,7 @@ export let reservationsRelations = relations(reservations, ({ one }) => ({
   }),
 }));
 
-// Assistants (Claude, ChatGPT) that connect to the MCP server. Each registers
+// Assistants (Claude, ChatGPT, Grok...) that connect to the MCP server. Each registers
 // itself once (OAuth dynamic client registration), then people sign in
 // through it. Secrets, codes and tokens are stored as SHA-256 hashes only.
 export let oauthClients = sqliteTable("oauth_clients", {

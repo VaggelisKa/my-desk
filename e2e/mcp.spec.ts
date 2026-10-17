@@ -6,7 +6,7 @@ import { gotoHydrated } from "./pages/hydration";
 import { bookingDay, desks, users, type Weekday } from "./support/db";
 import { NOW } from "./support/env";
 
-// The MCP server Claude and ChatGPT connect to, spoken to the way they do:
+// The MCP server Claude, ChatGPT and other assistants connect to, spoken to the way they do:
 // OAuth sign-in, then JSON-RPC tool calls over HTTP.
 
 function iso(day: Weekday, weekOffset: 0 | 1 = 0) {
@@ -99,15 +99,82 @@ test.describe("connecting", () => {
     expect(server.code_challenge_methods_supported).toEqual(["S256"]);
   });
 
-  test("registering refuses redirects outside Claude, ChatGPT and localhost", async ({
+  test("registering refuses redirects to other sites' http, or to system apps", async ({
     request,
   }) => {
-    let response = await request.post("/oauth/register", {
-      data: { redirect_uris: ["https://evil.example/callback"] },
-    });
+    for (let uri of [
+      "http://evil.example/callback",
+      "javascript:alert(1)",
+      "data:text/html,hi",
+      "ms-appinstaller:?source=https://evil.example/x",
+      "ms-word:ofe|u|https://evil.example/x.docx",
+      "x-apple.systempreferences:com.apple.preference",
+      "steam://run/1",
+      "https://user@grok.com/callback",
+      "https://grok.com/callback#x",
+    ]) {
+      let response = await request.post("/oauth/register", {
+        data: { redirect_uris: [uri] },
+      });
 
-    expect(response.status()).toBe(400);
-    expect((await response.json()).error).toBe("invalid_redirect_uri");
+      expect(response.status(), uri).toBe(400);
+      expect((await response.json()).error).toBe("invalid_redirect_uri");
+    }
+  });
+
+  test("any app can register, and the Allow page names where it goes back", async ({
+    page,
+    request,
+  }) => {
+    let grok = await request.post("/oauth/register", {
+      data: {
+        client_name: "Grok",
+        redirect_uris: ["https://grok.com/oauth/callback"],
+      },
+    });
+    expect(grok.status()).toBe(201);
+
+    let native = await request.post("/oauth/register", {
+      data: { redirect_uris: ["com.example.assistant:/oauth/callback"] },
+    });
+    expect(native.status()).toBe(201);
+
+    let callback = "cursor://anysphere.cursor-retrieval/oauth/callback";
+    let cursor = await request.post("/oauth/register", {
+      data: {
+        client_name: "Cursor",
+        redirect_uris: [callback],
+        token_endpoint_auth_method: "none",
+      },
+    });
+    expect(cursor.status()).toBe(201);
+    let client = await cursor.json();
+
+    let authorize = new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: callback,
+      code_challenge: createHash("sha256")
+        .update(randomBytes(32).toString("base64url"))
+        .digest("base64url"),
+      code_challenge_method: "S256",
+    });
+    // A mistake is shown here, not sent on: that would open the app unasked.
+    let wrong = new URLSearchParams(authorize);
+    wrong.set("response_type", "token");
+    await gotoHydrated(page, `/oauth/authorize?${wrong}`);
+    await expect(
+      page.getByRole("heading", { name: "Can't connect" }),
+    ).toBeVisible();
+
+    await gotoHydrated(page, `/oauth/authorize?${authorize}`);
+    await page.getByLabel("User ID").fill(users.alice.id);
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Allow Cursor?" }),
+    ).toBeVisible();
+    await expect(page.getByText(callback, { exact: true })).toBeVisible();
   });
 
   test("registering refuses overlong redirect URIs", async ({ request }) => {
