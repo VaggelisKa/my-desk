@@ -188,9 +188,10 @@ export let CodeField = React.forwardRef<HTMLInputElement, CodeFieldProps>(
           <input
             ref={(node) => {
               // Anything typed before React hydrated never went through
-              // onChange: hand it over, or the next render clears it. After
-              // that the field always shows `value` by the time this runs.
-              if (node && !inputRef.current && node.value !== value) {
+              // onChange: hand it over, or the next render clears it. On
+              // later renders React has already set the field to `value`
+              // by the time this runs, so nothing happens.
+              if (node && node.value !== value) {
                 onChange(node.value);
               }
               inputRef.current = node;
