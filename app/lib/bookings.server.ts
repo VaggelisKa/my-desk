@@ -60,10 +60,17 @@ class DaysFull extends Error {
 }
 
 // Reservations are unique per desk, day and week. Drizzle wraps the driver's
-// error in its own, with the original as the cause.
+// error in its own, with the original as the cause. For local files libsql
+// gives the base code and keeps the specific one as `extendedCode`.
 function isAlreadyBookedError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   if ("code" in error && error.code === "SQLITE_CONSTRAINT_PRIMARYKEY") {
+    return true;
+  }
+  if (
+    "extendedCode" in error &&
+    error.extendedCode === "SQLITE_CONSTRAINT_PRIMARYKEY"
+  ) {
     return true;
   }
   return "cause" in error && isAlreadyBookedError(error.cause);

@@ -1,5 +1,6 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { createRef, useState } from "react";
+import { renderToString } from "react-dom/server";
 import { Form } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithRouter } from "../../test/render-with-router";
@@ -153,6 +154,23 @@ describe("CodeField", () => {
 
     expect(action).toHaveBeenCalledOnce();
     expect(await action.mock.results[0].value).toEqual({ value: "EMP001" });
+  });
+
+  it("keeps what was typed before the page hydrated", () => {
+    let container = document.createElement("div");
+    container.innerHTML = renderToString(<ControlledCode />);
+    document.body.append(container);
+    container.querySelector("input")!.value = "EMP001";
+
+    render(<ControlledCode />, { container, hydrate: true });
+
+    expect(screen.getByLabelText("User ID")).toHaveValue("EMP001");
+    expect(
+      Array.from(
+        screen.getByTestId("user-id-boxes").children,
+        (box) => box.textContent,
+      ),
+    ).toEqual(["E", "M", "P", "0", "0", "1"]);
   });
 
   it("marks the input invalid and describes it with the error", () => {
