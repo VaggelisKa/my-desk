@@ -5,7 +5,7 @@ import { Field, FormSheet, Select } from "~/components/admin/form-sheet";
 import { useAdminFetcher, type AdminData } from "~/components/admin/shared";
 import { Button } from "~/components/ui/button";
 import { adminBookingDays, formatDate, parseDate } from "~/lib/dates";
-import { capitalize, deskLabel, MAX_DESKS_PER_DAY } from "~/lib/utils";
+import { capitalize, cn, deskLabel, MAX_DESKS_PER_DAY } from "~/lib/utils";
 
 // Admin › Bookings: books a desk for someone else, for example a guest who
 // has no phone at hand or a colleague who asked. The server keeps the usual
@@ -84,6 +84,19 @@ function AddBookingForm({
   let alreadyBooked = person
     ? data.bookings.filter((b) => b.userId === person.id && b.date === date)
     : [];
+  let note =
+    person && alreadyBooked.length > 0
+      ? `${capitalize(person.firstName)} already has desk ${alreadyBooked
+          .map((b) => {
+            let desk = data.desks.find((d) => d.id === b.deskId);
+            return desk ? deskLabel(desk) : String(b.deskId);
+          })
+          .join(" and ")} that day${
+          alreadyBooked.length >= MAX_DESKS_PER_DAY
+            ? ", the most one person can book"
+            : ""
+        }.`
+      : "";
 
   return (
     <fetcher.Form
@@ -155,17 +168,11 @@ function AddBookingForm({
         )}
       </Field>
       {/* Always there, so screen readers hear it when the text changes. */}
-      <p role="status" className="text-[13px] text-ink-muted empty:hidden">
-        {person && alreadyBooked.length > 0
-          ? `${capitalize(person.firstName)} already has desk ${alreadyBooked
-              .map((b) => {
-                let desk = data.desks.find((d) => d.id === b.deskId);
-                return desk ? deskLabel(desk) : String(b.deskId);
-              })
-              .join(
-                " and ",
-              )} that day${alreadyBooked.length >= MAX_DESKS_PER_DAY ? `, the most one person can book` : ""}.`
-          : ""}
+      <p
+        role="status"
+        className={cn("text-[13px] text-ink-muted", !note && "sr-only")}
+      >
+        {note}
       </p>
       {submit && (
         <Button

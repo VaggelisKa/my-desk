@@ -224,7 +224,9 @@ let done = { ok: true } as const;
 export type AddPersonErrors = NewPersonErrors & { deskId?: string };
 
 export type AdminActionData =
-  typeof done | { ok: false; errors: AddPersonErrors } | null;
+  | typeof done
+  | { ok: false; errors: AddPersonErrors }
+  | null;
 
 function field(formData: FormData, name: string) {
   let value = formData.get(name);
