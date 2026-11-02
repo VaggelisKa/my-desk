@@ -149,7 +149,7 @@ export function isOpenForAdmin(date: Date, now: Date) {
 export function adminBookingDays(now: Date) {
   let today = startOfDay(now);
 
-  // Two weeks and the weekend before them, when it is Saturday.
+  // Two weeks from today always holds every day the window allows.
   return Array.from({ length: 14 }, (_, i) => addDays(today, i)).filter(
     (date) => isOpenForAdmin(date, now),
   );

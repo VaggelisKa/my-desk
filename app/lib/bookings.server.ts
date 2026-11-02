@@ -18,7 +18,7 @@ import {
   removedBooking,
   type RemovedBooking,
 } from "~/lib/history.server";
-import { plural } from "~/lib/utils";
+import { MAX_DESKS_PER_DAY, plural } from "~/lib/utils";
 
 /** A booking of `deskId` by `userId` on `date`, as the table stores it. */
 export function bookingRow(deskId: number, userId: string, date: Date) {
@@ -38,11 +38,7 @@ let notOwnerError = {
     "Only the person assigned to a desk can book it ahead. Others can book it for today.",
 };
 
-/**
- * The most desks one person may hold on the same day: their own plus one
- * more, for example for a guest who has no account.
- */
-export let MAX_DESKS_PER_DAY = 2;
+export { MAX_DESKS_PER_DAY };
 
 /**
  * Which of the `picked` days (`dd.MM.yyyy`) are already full for someone who

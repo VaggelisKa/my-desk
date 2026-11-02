@@ -75,3 +75,9 @@ export function calculatePercentDiff(value: number, previousValue: number) {
 export function enterAt(index: number): CSSProperties {
   return { "--enter-index": index } as CSSProperties;
 }
+
+/**
+ * The most desks one person may hold on the same day: their own plus one
+ * more, for example for a guest who has no account.
+ */
+export let MAX_DESKS_PER_DAY = 2;

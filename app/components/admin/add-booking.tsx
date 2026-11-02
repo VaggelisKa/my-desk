@@ -5,7 +5,7 @@ import { Field, FormSheet, Select } from "~/components/admin/form-sheet";
 import { useAdminFetcher, type AdminData } from "~/components/admin/shared";
 import { Button } from "~/components/ui/button";
 import { adminBookingDays, formatDate, parseDate } from "~/lib/dates";
-import { capitalize, deskLabel } from "~/lib/utils";
+import { capitalize, deskLabel, MAX_DESKS_PER_DAY } from "~/lib/utils";
 
 // Admin › Bookings: books a desk for someone else, for example a guest who
 // has no phone at hand or a colleague who asked. The server keeps the usual
@@ -63,32 +63,27 @@ function AddBookingForm({
   // The sheet drops the form when it closes, so it opens empty next time.
   let fetcher = useAdminFetcher(onDone);
   let busy = fetcher.state !== "idle";
+  // What the admin picked. What the form shows is worked out from it on
+  // every render, so a desk someone books meanwhile, or a person removed,
+  // empties its field instead of silently showing another one.
   let [personId, setPersonId] = useState("");
-  let [date, setDate] = useState(() =>
-    days.length ? formatDate(days[0]) : "",
-  );
-  let [deskId, setDeskId] = useState("");
+  let [pickedDate, setPickedDate] = useState("");
+  let [pickedDesk, setPickedDesk] = useState("");
 
   let person = data.people.find((p) => p.id === personId);
-  let taken = (day: string) =>
-    new Set(data.bookings.filter((b) => b.date === day).map((b) => b.deskId));
-  let freeOn = (day: string) => {
-    let booked = taken(day);
-    return data.desks.filter((desk) => !booked.has(desk.id));
-  };
-  let free = freeOn(date);
+  let dayValues = days.map((day) => formatDate(day));
+  let date = dayValues.includes(pickedDate) ? pickedDate : (dayValues[0] ?? "");
+  let booked = new Set(
+    data.bookings.filter((b) => b.date === date).map((b) => b.deskId),
+  );
+  let free = data.desks.filter((desk) => !booked.has(desk.id));
+  let isFree = (value: string) => free.some((d) => String(d.id) === value);
+  // The desk picked by hand while it is free; otherwise their own desk.
+  let own = person?.deskId != null ? String(person.deskId) : "";
+  let deskId = isFree(pickedDesk) ? pickedDesk : isFree(own) ? own : "";
   let alreadyBooked = person
     ? data.bookings.filter((b) => b.userId === person.id && b.date === date)
     : [];
-
-  // Their own desk first, when it is free that day; otherwise the desk
-  // picked so far, while it still is.
-  function pickDesk(nextPerson: typeof person, day: string, current: string) {
-    let open = new Set(freeOn(day).map((desk) => String(desk.id)));
-    let own = nextPerson?.deskId != null ? String(nextPerson.deskId) : "";
-    if (own && open.has(own)) return own;
-    return open.has(current) ? current : "";
-  }
 
   return (
     <fetcher.Form
@@ -104,11 +99,11 @@ function AddBookingForm({
             {...props}
             name="userId"
             required
-            value={personId}
+            value={person ? personId : ""}
             onChange={(event) => {
-              let next = data.people.find((p) => p.id === event.target.value);
               setPersonId(event.target.value);
-              setDeskId(pickDesk(next, date, deskId));
+              // A new person starts from their own desk.
+              setPickedDesk("");
             }}
           >
             <option value="" disabled>
@@ -129,10 +124,7 @@ function AddBookingForm({
             name="date"
             required
             value={date}
-            onChange={(event) => {
-              setDate(event.target.value);
-              setDeskId(pickDesk(person, event.target.value, deskId));
-            }}
+            onChange={(event) => setPickedDate(event.target.value)}
           >
             {days.map((day) => (
               <option key={day.getTime()} value={formatDate(day)}>
@@ -149,7 +141,7 @@ function AddBookingForm({
             name="deskId"
             required
             value={deskId}
-            onChange={(event) => setDeskId(event.target.value)}
+            onChange={(event) => setPickedDesk(event.target.value)}
           >
             <option value="" disabled>
               {free.length ? "Pick a free desk" : "No desk is free that day"}
@@ -162,16 +154,19 @@ function AddBookingForm({
           </Select>
         )}
       </Field>
-      {person && alreadyBooked.length > 0 && (
-        <p role="status" className="text-[13px] text-ink-muted">
-          {`${capitalize(person.firstName)} already has desk ${alreadyBooked
-            .map((b) => {
-              let desk = data.desks.find((d) => d.id === b.deskId);
-              return desk ? deskLabel(desk) : String(b.deskId);
-            })
-            .join(" and ")} that day.`}
-        </p>
-      )}
+      {/* Always there, so screen readers hear it when the text changes. */}
+      <p role="status" className="text-[13px] text-ink-muted empty:hidden">
+        {person && alreadyBooked.length > 0
+          ? `${capitalize(person.firstName)} already has desk ${alreadyBooked
+              .map((b) => {
+                let desk = data.desks.find((d) => d.id === b.deskId);
+                return desk ? deskLabel(desk) : String(b.deskId);
+              })
+              .join(
+                " and ",
+              )} that day${alreadyBooked.length >= MAX_DESKS_PER_DAY ? `, the most one person can book` : ""}.`
+          : ""}
+      </p>
       {submit && (
         <Button
           type="submit"

@@ -396,6 +396,10 @@ export async function bookFor(
   deskId: number,
   date: string,
 ): Promise<AdminOutcome> {
+  if (!Number.isInteger(deskId)) {
+    return { ok: false, status: 404, message: "Desk not found" };
+  }
+
   let [person, desk] = await Promise.all([
     db.query.users.findFirst({
       where: eq(users.id, userId.trim().toLowerCase()),
