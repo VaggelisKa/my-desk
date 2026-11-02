@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import {
   and,
   asc,
@@ -12,7 +13,7 @@ import {
 import { data } from "react-router";
 import { dataWithError, dataWithSuccess, redirectWithError } from "remix-toast";
 import { requireUser, type AuthArgs } from "~/cookies.server";
-import { deletePicked, pickedBookings } from "~/lib/bookings.server";
+import { bookDays, deletePicked, pickedBookings } from "~/lib/bookings.server";
 import { CronError, deleteCron } from "~/lib/cron";
 import { todayStart } from "~/lib/dates";
 import { db } from "~/lib/db/drizzle.server";
@@ -389,6 +390,52 @@ export async function cancelBookingOf(
 }
 
 /**
+ * Books a desk for someone on a day (`dd.MM.yyyy`), with the same limits as
+ * their own booking, except that any desk and today after 11:00 are open.
+ */
+export async function bookFor(
+  userId: string,
+  deskId: number,
+  date: string,
+): Promise<AdminOutcome> {
+  if (!Number.isInteger(deskId)) {
+    return { ok: false, status: 404, message: "Desk not found" };
+  }
+
+  let [person, desk] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, userId.trim().toLowerCase()),
+      columns: { id: true, firstName: true },
+    }),
+    db.query.desks.findFirst({ where: eq(desks.id, deskId) }),
+  ]);
+
+  if (!person || !desk) {
+    return {
+      ok: false,
+      status: 404,
+      message: desk ? "Person not found" : "Desk not found",
+    };
+  }
+
+  let name = capitalize(person.firstName);
+  let booked = await bookDays(person.id, desk.id, [date], {
+    onBehalfOf: name,
+  });
+
+  if (!booked.ok) {
+    let { status, message, description } = booked;
+    return { ok: false, status, message, description };
+  }
+
+  let day = format(booked.days[0], "EEE d MMM");
+  return {
+    ok: true,
+    message: `Booked ${deskName(desk)} for ${name} on ${day}`,
+  };
+}
+
+/**
  * Adds a person, optionally at a desk. Only an unclaimed desk: taking a desk
  * from someone is a move, with its own confirm.
  */
@@ -481,6 +528,15 @@ export async function handleAdminAction(args: AuthArgs) {
           field(formData, "date"),
           field(formData, "userId"),
           adminId,
+        ),
+      );
+
+    case "book":
+      return toToast(
+        await bookFor(
+          field(formData, "userId"),
+          Number(field(formData, "deskId")),
+          field(formData, "date"),
         ),
       );
 

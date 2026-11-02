@@ -1,6 +1,8 @@
+import { addDays, format } from "date-fns";
 import { authFile, expect, expectToast, test } from "./fixtures";
 import { gotoHydrated } from "./pages/hydration";
 import { bookingDay, desks, users } from "./support/db";
+import { NOW } from "./support/env";
 
 // The clock is pinned to a Monday morning, so Monday is "today" and every
 // other weekday of the week is after today.
@@ -534,6 +536,115 @@ test.describe("as an admin", () => {
     });
   });
 
+  test("books a desk for someone else", async ({ page, db, adminPage }) => {
+    await adminPage.goto("bookings");
+
+    let sheet = await adminPage.open(
+      page.getByRole("button", { name: "Add booking" }),
+    );
+    await expect(sheet.title).toHaveText("Add booking");
+    await sheet.root.getByLabel("Person").selectOption("Gary Guest");
+    await sheet.root.getByLabel("Day").selectOption(bookingDay("tuesday").date);
+    await sheet.root.getByLabel("Desk").selectOption("Desk 2.1.1");
+    await sheet.button("Book desk").click();
+
+    await expectToast(
+      page,
+      `Booked desk 2.1.1 for Gary on ${bookingDay("tuesday").label}`,
+    );
+    await expect(sheet.root).toHaveCount(0);
+    await expect(adminPage.day(bookingDay("tuesday").label)).toContainText(
+      "Gary Guest",
+    );
+    await expect(
+      db.reservation(desks.unclaimed.id, "tuesday"),
+    ).resolves.toMatchObject({ userId: users.guest.id });
+  });
+
+  test("offers someone their own desk and only desks free that day", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await db.addReservation({
+      user: "guest",
+      deskId: desks.unclaimed.id,
+      day: "wednesday",
+    });
+    await adminPage.goto("bookings");
+
+    let sheet = await adminPage.open(
+      page.getByRole("button", { name: "Add booking" }),
+    );
+    let day = sheet.root.getByLabel("Day");
+    let desk = sheet.root.getByLabel("Desk");
+
+    // Today and the weekdays up to next Friday.
+    await expect(day.getByRole("option")).toHaveCount(10);
+    await expect(day.getByRole("option").first()).toHaveText(
+      `Today · ${bookingDay("monday").label}`,
+    );
+
+    await sheet.root.getByLabel("Person").selectOption("Alice Andersen");
+    await expect(desk).toHaveValue(String(desks.alice.id));
+
+    await day.selectOption(bookingDay("wednesday").date);
+    await expect(desk.getByRole("option")).toHaveText([
+      "Pick a free desk",
+      "Desk 1.1.1 · Alice's desk",
+      "Desk 1.1.2 · Bob's desk",
+      "Desk 1.1.3 · Ada's desk",
+    ]);
+  });
+
+  test("keeps the usual limits when booking for someone", async ({
+    page,
+    db,
+  }) => {
+    await db.addReservation({
+      user: "guest",
+      deskId: desks.unclaimed.id,
+      day: "thursday",
+    });
+    await db.addReservation({
+      user: "guest",
+      deskId: desks.bob.id,
+      day: "thursday",
+    });
+
+    let book = (form: Record<string, string>) =>
+      page.request.post("/admin", {
+        form: { intent: "book", ...form },
+        maxRedirects: 0,
+      });
+
+    // Two desks a day at most, also when an Admin books.
+    let full = await book({
+      userId: users.guest.id,
+      deskId: String(desks.alice.id),
+      date: bookingDay("thursday").date,
+    });
+    expect(full.status()).toBe(409);
+
+    // Not beyond next week.
+    let late = await book({
+      userId: users.guest.id,
+      deskId: String(desks.alice.id),
+      date: format(addDays(NOW, 14), "dd.MM.yyyy"),
+    });
+    expect(late.status()).toBe(400);
+
+    // Nobody by that ID.
+    let nobody = await book({
+      userId: "nobody",
+      deskId: String(desks.alice.id),
+      date: bookingDay("friday").date,
+    });
+    expect(nobody.status()).toBe(404);
+
+    await expect(db.reservationsForDesk(desks.alice.id)).resolves.toEqual([]);
+  });
+
   test("renames someone and makes them an admin", async ({
     page,
     db,
@@ -660,6 +771,33 @@ test.describe("as an admin on a phone", () => {
       firstName: "Xena",
     });
   });
+
+  test("books a desk for someone from a sheet", async ({
+    page,
+    db,
+    adminPage,
+  }) => {
+    await adminPage.goto("bookings");
+
+    let sheet = await adminPage.open(
+      page.getByRole("button", { name: "Add booking" }),
+    );
+    await sheet.root.getByLabel("Person").selectOption("Bob Berg");
+    // Their own desk is picked for them.
+    await expect(sheet.root.getByLabel("Desk")).toHaveValue(
+      String(desks.bob.id),
+    );
+    // Phones keep Book in the header.
+    await sheet.button("Book").click();
+
+    await expectToast(
+      page,
+      `Booked desk 1.1.2 for Bob on ${bookingDay("monday").label}`,
+    );
+    await expect(db.reservation(desks.bob.id, "monday")).resolves.toMatchObject(
+      { userId: users.bob.id },
+    );
+  });
 });
 
 // The UI hides the tab from regular users; the direct requests make sure the
@@ -700,6 +838,12 @@ test.describe("as a regular user", () => {
       {
         intent: "cancel-many",
         booking: `${desks.bob.id}@${bookingDay("tuesday").date}@${users.bob.id}`,
+      },
+      {
+        intent: "book",
+        userId: users.bob.id,
+        deskId: String(desks.unclaimed.id),
+        date: bookingDay("tuesday").date,
       },
       {
         intent: "add-person",
