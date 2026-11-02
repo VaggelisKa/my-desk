@@ -133,3 +133,24 @@ export function isOpenForBooking(date: Date, now: Date) {
 
   return date <= lastFriday;
 }
+
+/**
+ * Whether an Admin can book `date` for someone: the days the owner could,
+ * and today all day, since anyone may take a free desk for today.
+ */
+export function isOpenForAdmin(date: Date, now: Date) {
+  return (
+    isOpenForBooking(date, now) ||
+    (isValid(date) && !isWeekend(date) && isSameDay(date, now))
+  );
+}
+
+/** The days an Admin can book for someone, soonest first. */
+export function adminBookingDays(now: Date) {
+  let today = startOfDay(now);
+
+  // Two weeks and the weekend before them, when it is Saturday.
+  return Array.from({ length: 14 }, (_, i) => addDays(today, i)).filter(
+    (date) => isOpenForAdmin(date, now),
+  );
+}

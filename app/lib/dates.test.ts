@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminBookingDays,
   defaultDay,
   formatDate,
+  isOpenForAdmin,
   isOpenForBooking,
   normalizeDay,
   officeNow,
@@ -121,5 +123,48 @@ describe("isOpenForBooking", () => {
     expect(
       isOpenForBooking(new Date(2027, 0, 1), new Date(2026, 11, 21, 9)),
     ).toBe(true);
+  });
+});
+
+describe("isOpenForAdmin", () => {
+  // Wednesday 30 Sep 2026.
+  let at = (hour: number) => new Date(2026, 8, 30, hour);
+  let day = (d: number, m = 9) => new Date(2026, m, d);
+
+  it("keeps today open after 11:00", () => {
+    expect(isOpenForAdmin(day(30, 8), at(15))).toBe(true);
+  });
+
+  it("otherwise follows the owner's days", () => {
+    expect(isOpenForAdmin(day(9), at(15))).toBe(true); // Fri 9 Oct
+    expect(isOpenForAdmin(day(29, 8), at(15))).toBe(false); // yesterday
+    expect(isOpenForAdmin(day(3), at(15))).toBe(false); // Saturday
+    expect(isOpenForAdmin(day(12), at(15))).toBe(false); // Mon 12 Oct
+  });
+});
+
+describe("adminBookingDays", () => {
+  let label = (days: Date[]) =>
+    days.map((d) => `${d.getDate()}.${d.getMonth() + 1}`);
+
+  it("lists today and the weekdays up to next Friday", () => {
+    // Wednesday 30 Sep 2026, in the afternoon.
+    expect(label(adminBookingDays(new Date(2026, 8, 30, 15)))).toEqual([
+      "30.9",
+      "1.10",
+      "2.10",
+      "5.10",
+      "6.10",
+      "7.10",
+      "8.10",
+      "9.10",
+    ]);
+  });
+
+  it("starts from the coming week on a Saturday", () => {
+    let days = label(adminBookingDays(new Date(2026, 9, 3, 9)));
+    expect(days[0]).toBe("5.10");
+    expect(days.at(-1)).toBe("16.10");
+    expect(days).toHaveLength(10);
   });
 });

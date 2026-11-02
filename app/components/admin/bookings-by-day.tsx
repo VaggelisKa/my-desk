@@ -2,6 +2,7 @@ import { differenceInCalendarDays, format } from "date-fns";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
+import { AddBooking } from "~/components/admin/add-booking";
 import {
   focusRing,
   fullName,
@@ -69,13 +70,18 @@ export function BookingsByDay({ data }: { data: AdminData }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <SearchField
-        id="admin-bookings-search"
-        label="Search person or desk"
-        value={query}
-        onChange={setQuery}
-        results={plural(shown.length, "booking")}
-      />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <SearchField
+            id="admin-bookings-search"
+            label="Search person or desk"
+            value={query}
+            onChange={setQuery}
+            results={plural(shown.length, "booking")}
+          />
+        </div>
+        <AddBooking data={data} />
+      </div>
 
       {data.bookings.length === 0 ? (
         <NothingFound>Nothing is booked from today on.</NothingFound>

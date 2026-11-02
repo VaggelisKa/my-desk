@@ -31,3 +31,7 @@ export let rowButton = cn(
 export function bookedDays(count: number) {
   return count ? plural(count, "day") : "None";
 }
+
+/** A form field in the Admin sheets: 16px text, so iOS does not zoom in. */
+export let fieldInput =
+  "h-11 w-full rounded-[10px] border border-field bg-paper px-3 text-base text-ink placeholder:text-ink-muted focus-visible:border-moss focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-moss aria-[invalid]:border-danger";

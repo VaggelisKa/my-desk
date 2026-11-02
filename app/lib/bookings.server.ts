@@ -4,6 +4,7 @@ import { dataWithError, dataWithSuccess } from "remix-toast";
 import type { Booking } from "~/components/bookings";
 import {
   formatDate,
+  isOpenForAdmin,
   isOpenForBooking,
   LAST_BOOKING_HOUR,
   officeNow,
@@ -87,13 +88,15 @@ export type BookingRefusal = {
 /**
  * Books `deskId` for `userId` on the `dates` (`dd.MM.yyyy`), all or none.
  * The desk owner can plan ahead; anyone else can only take the desk for
- * today. Shared by the desk sheet and the MCP server, so both follow the
- * same rules.
+ * today. Shared by the desk sheet, the MCP server and Admin, so all follow
+ * the same rules. An Admin booking for someone (`onBehalfOf` names them) can
+ * use any desk on the days an owner could, and today all day.
  */
 export async function bookDays(
   userId: string,
   deskId: number,
   dates: string[],
+  { onBehalfOf }: { onBehalfOf?: string } = {},
 ): Promise<{ ok: true; days: Date[] } | BookingRefusal> {
   dates = [...new Set(dates)];
 
@@ -120,24 +123,29 @@ export async function bookDays(
   let now = officeNow();
   let today = formatDate(now);
   let days = dates.map((value) => parseDate(value));
+  let byAdmin = onBehalfOf !== undefined;
   let isOwner = desk.userId === userId;
 
-  if (!isOwner && !dates.every((date) => date === today)) {
+  if (!byAdmin && !isOwner && !dates.every((date) => date === today)) {
     return { ok: false, status: 403, ...notOwnerError };
   }
 
-  let isBookable = isOwner
-    ? (date: Date) => isOpenForBooking(date, now)
-    : (date: Date) => isValid(date) && !isWeekend(date);
+  let isBookable = byAdmin
+    ? (date: Date) => isOpenForAdmin(date, now)
+    : isOwner
+      ? (date: Date) => isOpenForBooking(date, now)
+      : (date: Date) => isValid(date) && !isWeekend(date);
 
   if (!days.every(isBookable)) {
     return {
       ok: false,
       status: 400,
       message: "Those days cannot be booked",
-      description: isOwner
-        ? `You can book weekdays this week and next. Today closes at ${LAST_BOOKING_HOUR}:00.`
-        : undefined,
+      description: byAdmin
+        ? "Admins can book weekdays this week and next."
+        : isOwner
+          ? `You can book weekdays this week and next. Today closes at ${LAST_BOOKING_HOUR}:00.`
+          : undefined,
     };
   }
 
@@ -179,7 +187,7 @@ export async function bookDays(
         ok: false,
         status: 409,
         message: `${MAX_DESKS_PER_DAY} desks a day at most`,
-        description: `You already have ${MAX_DESKS_PER_DAY} desks booked on ${full.join(", ")}.`,
+        description: `${byAdmin ? `${onBehalfOf} already has` : "You already have"} ${MAX_DESKS_PER_DAY} desks booked on ${full.join(", ")}.`,
       };
     }
     if (!isAlreadyBookedError(error)) {
@@ -190,7 +198,9 @@ export async function bookDays(
       ok: false,
       status: 409,
       message: "Desk already booked",
-      description: "Someone else booked this desk in the meantime.",
+      description: byAdmin
+        ? `Someone has this desk on that day, or ${onBehalfOf} already does.`
+        : "Someone else booked this desk in the meantime.",
     };
   }
 
