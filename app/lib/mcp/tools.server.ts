@@ -202,11 +202,6 @@ export function createDeskServer(caller: {
   let server = new McpServer(
     { name: "mydesk", title: "MyDesk", version: "1.0.0" },
     {
-      // The tools never change while the app runs, so there is nothing to
-      // tell an assistant about later. Saying so makes the SDK close a
-      // `subscriptions/listen` stream at once instead of holding it open
-      // until Vercel times the function out (20 s of a running function,
-      // then a cold start for the next call).
       capabilities: { tools: { listChanged: false } },
       instructions: caller.admin
         ? `${SERVER_INSTRUCTIONS} ${ADMIN_INSTRUCTIONS}`
