@@ -202,6 +202,7 @@ export function createDeskServer(caller: {
   let server = new McpServer(
     { name: "mydesk", title: "MyDesk", version: "1.0.0" },
     {
+      capabilities: { tools: { listChanged: false } },
       instructions: caller.admin
         ? `${SERVER_INSTRUCTIONS} ${ADMIN_INSTRUCTIONS}`
         : SERVER_INSTRUCTIONS,
