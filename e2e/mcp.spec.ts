@@ -418,6 +418,42 @@ test.describe("tools", () => {
     expect(result.instructions).toContain("YYYY-MM-DD");
   });
 
+  test("a listen for tool changes ends at once, since the tools never change", async ({
+    request,
+    db,
+  }) => {
+    let token = await db.addMcpToken("alice");
+    // How a 2026-07-28 client asks to hear about changes. Held open, it would
+    // run until the host times the function out.
+    let response = await request.post("/mcp", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json, text/event-stream",
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": "2026-07-28",
+        "Mcp-Method": "subscriptions/listen",
+      },
+      data: {
+        jsonrpc: "2.0",
+        id: ++id,
+        method: "subscriptions/listen",
+        params: {
+          notifications: { toolsListChanged: true },
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      timeout: 5_000,
+    });
+
+    expect(response.status()).toBe(200);
+    let body = await response.text();
+    expect(body).toContain('"notifications":{}');
+    expect(body).toContain('"resultType":"complete"');
+  });
+
   test("lists seven tools, reads marked read-only and cancel destructive", async ({
     request,
     db,
